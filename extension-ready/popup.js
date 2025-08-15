@@ -392,6 +392,12 @@ class ScreenshotAnnotator {
         <div class="empty-state">
           No screenshots yet.<br>Click "Capture Current Page" to get started.
         </div>`;
+      
+      // Disable PDF export when no screenshots
+      const exportBtn = document.getElementById('exportPdfBtn');
+      if (exportBtn) {
+        exportBtn.disabled = true;
+      }
     } else {
       console.log(`📋 Rendering ${this.screenshots.length} screenshots`);
       let html = '';
