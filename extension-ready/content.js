@@ -464,6 +464,14 @@ class AnnotationOverlay {
       const img = imageContainer.querySelector('img');
       this.createAnnotationMarker(imageContainer, img, annotation, this.annotations.length - 1);
       
+      await this.saveAnnotationsToStorage();
+    } catch (error) {
+      console.error('Error saving annotation:', error);
+    }
+  }
+  
+  async saveAnnotationsToStorage() {
+    try {
       // Update storage
       const result = await chrome.storage.local.get('screenshots');
       const screenshots = result.screenshots || [];
@@ -472,11 +480,15 @@ class AnnotationOverlay {
       if (index !== -1) {
         screenshots[index].annotations = this.annotations;
         await chrome.storage.local.set({ screenshots: screenshots });
-        console.log('Annotation saved:', annotation.text);
+        console.log('Annotations saved to storage');
       }
     } catch (error) {
-      console.error('Error saving annotation:', error);
+      console.error('Error saving annotations to storage:', error);
     }
+  }
+  
+  async saveAnnotationUpdate() {
+    await this.saveAnnotationsToStorage();
   }
   
   cleanup() {
