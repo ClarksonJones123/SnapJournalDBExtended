@@ -291,6 +291,12 @@ class ScreenshotAnnotator {
       
       console.log('🔗 Export URL created:', exportUrl);
       
+      // Also create debug URL for troubleshooting
+      const debugUrl = chrome.runtime.getURL('debug-export.html') + 
+        '?exportId=' + encodeURIComponent(exportId);
+      
+      console.log('🔍 Debug URL created:', debugUrl);
+      
       // Open PDF export in new window
       const windowInfo = await chrome.windows.create({
         url: exportUrl,
@@ -301,6 +307,32 @@ class ScreenshotAnnotator {
       });
       
       console.log('🪟 Export window created:', windowInfo.id);
+      
+      // If export window fails, offer debug option
+      setTimeout(async () => {
+        try {
+          const window = await chrome.windows.get(windowInfo.id);
+          if (!window) {
+            // Window was closed or failed to load, open debug page
+            chrome.windows.create({
+              url: debugUrl,
+              type: 'popup',
+              width: 800,
+              height: 600,
+              focused: true
+            });
+          }
+        } catch (error) {
+          console.log('ℹ️ Opening debug page due to potential issue');
+          chrome.windows.create({
+            url: debugUrl,
+            type: 'popup',
+            width: 800,
+            height: 600,
+            focused: true
+          });
+        }
+      }, 3000);
       
       this.showStatus('📄 PDF journal export opened in new window', 'success');
       console.log('✅ PDF export window opened successfully');
