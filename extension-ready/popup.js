@@ -246,6 +246,7 @@ class ScreenshotAnnotator {
         this.selectedScreenshot = null;
         
         document.getElementById('annotateBtn').disabled = true;
+        document.getElementById('exportPdfBtn').disabled = true;
         
         this.showStatus('All screenshots cleared!', 'success');
         console.log('Screenshots cleared successfully');
@@ -254,6 +255,45 @@ class ScreenshotAnnotator {
         console.error('Clear error:', error);
         this.showStatus('Failed to clear screenshots', 'error');
       }
+    }
+  }
+  
+  async exportPdfJournal() {
+    if (this.screenshots.length === 0) {
+      this.showStatus('No screenshots to export', 'info');
+      return;
+    }
+    
+    try {
+      console.log('🔄 Starting PDF journal export...');
+      this.showStatus('Generating PDF journal...', 'info');
+      
+      // Create PDF export window with all screenshots
+      const exportData = {
+        screenshots: this.screenshots,
+        exportDate: new Date().toISOString(),
+        totalScreenshots: this.screenshots.length,
+        totalAnnotations: this.screenshots.reduce((sum, s) => sum + (s.annotations?.length || 0), 0)
+      };
+      
+      const exportUrl = chrome.runtime.getURL('pdf-export.html') + 
+        '?data=' + encodeURIComponent(JSON.stringify(exportData));
+      
+      // Open PDF export in new window
+      chrome.windows.create({
+        url: exportUrl,
+        type: 'popup',
+        width: 1200,
+        height: 800,
+        focused: true
+      });
+      
+      this.showStatus('📄 PDF journal export opened in new window', 'success');
+      console.log('✅ PDF export window opened');
+      
+    } catch (error) {
+      console.error('❌ PDF export error:', error);
+      this.showStatus('Failed to export PDF journal', 'error');
     }
   }
   
