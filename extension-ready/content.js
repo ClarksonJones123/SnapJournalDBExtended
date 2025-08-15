@@ -243,7 +243,7 @@ class AnnotationOverlay {
         if (!this.pendingAnnotationText) {
           speechBtn.textContent = '🎤 Voice';
           speechBtn.style.background = '#ff5722';
-          status.textContent = '🎯 Click anywhere on the image to add an annotation';
+          status.textContent = '🎯 Click on image for precise pinpoint annotation (text will be repositionable)';
         }
       };
     } else {
