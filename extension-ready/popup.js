@@ -124,9 +124,13 @@ class ScreenshotAnnotator {
       if (response && response.imageData) {
         // Create screenshot object with detailed timestamp
         const now = new Date();
+        
+        // 🔧 COMPRESS IMAGE DATA TO PREVENT QUOTA EXCEEDED
+        const compressedImageData = await this.compressImageData(response.imageData);
+        
         const screenshot = {
           id: Date.now().toString(),
-          imageData: response.imageData,
+          imageData: compressedImageData,
           originalWidth: 1920,
           originalHeight: 1080,
           displayWidth: Math.round(1920 * 0.9), // 90% sizing
