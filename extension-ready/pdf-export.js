@@ -46,32 +46,28 @@ class PDFJournalExporter {
             } else {
                 throw new Error('No export data provided. Please try exporting again.');
             }
-                this.screenshots = this.exportData.screenshots || [];
-                
-                console.log('✅ Export data loaded:', {
-                    screenshots: this.screenshots.length,
-                    totalAnnotations: this.exportData.totalAnnotations,
-                    exportDate: this.exportData.exportDate
-                });
-                
-                if (this.screenshots.length === 0) {
-                    throw new Error('No screenshots found in export data');
-                }
-                
-                this.setupInterface();
-                this.setupEventListeners();
-                
-                // Hide initial loading status
-                this.showStatus('✅ PDF export system ready', 'success');
-                setTimeout(() => {
-                    const status = document.getElementById('status');
-                    if (status) status.style.display = 'none';
-                }, 2000);
-                
-            } catch (parseError) {
-                console.error('❌ Error parsing export data:', parseError);
-                throw new Error(`Failed to parse export data: ${parseError.message}`);
+            
+            this.screenshots = this.exportData.screenshots || [];
+            
+            console.log('✅ Export data loaded:', {
+                screenshots: this.screenshots.length,
+                totalAnnotations: this.exportData.totalAnnotations,
+                exportDate: this.exportData.exportDate
+            });
+            
+            if (this.screenshots.length === 0) {
+                throw new Error('No screenshots found in export data');
             }
+            
+            this.setupInterface();
+            this.setupEventListeners();
+            
+            // Hide initial loading status
+            this.showStatus('✅ PDF export system ready', 'success');
+            setTimeout(() => {
+                const status = document.getElementById('status');
+                if (status) status.style.display = 'none';
+            }, 2000);
             
         } catch (error) {
             console.error('❌ Error during initialization:', error);
