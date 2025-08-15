@@ -276,11 +276,23 @@ class ScreenshotAnnotator {
         totalAnnotations: this.screenshots.reduce((sum, s) => sum + (s.annotations?.length || 0), 0)
       };
       
+      console.log('📊 Export data prepared:', {
+        screenshots: exportData.screenshots.length,
+        totalAnnotations: exportData.totalAnnotations,
+        dataSize: JSON.stringify(exportData).length
+      });
+      
+      // Store data in chrome storage temporarily for large datasets
+      const exportId = 'pdf_export_' + Date.now();
+      await chrome.storage.local.set({ [exportId]: exportData });
+      
       const exportUrl = chrome.runtime.getURL('pdf-export.html') + 
-        '?data=' + encodeURIComponent(JSON.stringify(exportData));
+        '?exportId=' + encodeURIComponent(exportId);
+      
+      console.log('🔗 Export URL created:', exportUrl);
       
       // Open PDF export in new window
-      chrome.windows.create({
+      const windowInfo = await chrome.windows.create({
         url: exportUrl,
         type: 'popup',
         width: 1200,
@@ -288,12 +300,24 @@ class ScreenshotAnnotator {
         focused: true
       });
       
+      console.log('🪟 Export window created:', windowInfo.id);
+      
       this.showStatus('📄 PDF journal export opened in new window', 'success');
-      console.log('✅ PDF export window opened');
+      console.log('✅ PDF export window opened successfully');
+      
+      // Clean up stored data after a delay
+      setTimeout(async () => {
+        try {
+          await chrome.storage.local.remove(exportId);
+          console.log('🧹 Cleaned up temporary export data');
+        } catch (error) {
+          console.warn('⚠️ Failed to clean up export data:', error);
+        }
+      }, 300000); // 5 minutes
       
     } catch (error) {
       console.error('❌ PDF export error:', error);
-      this.showStatus('Failed to export PDF journal', 'error');
+      this.showStatus(`Failed to export PDF journal: ${error.message}`, 'error');
     }
   }
   
