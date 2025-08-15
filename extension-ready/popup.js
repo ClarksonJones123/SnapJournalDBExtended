@@ -370,6 +370,7 @@ class ScreenshotAnnotator {
                      onerror="console.error('Failed to load image:', this.src.substring(0, 50) + '...')">
                 ${this.renderAnnotationIndicators(screenshot)}
               </div>
+              ${this.renderAnnotationsList(screenshot)}
             </div>
             <div class="screenshot-title">${screenshot.title}</div>
             <div class="screenshot-details">
