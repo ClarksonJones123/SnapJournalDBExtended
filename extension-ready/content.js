@@ -278,7 +278,7 @@ class AnnotationOverlay {
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       
-      console.log(`📍 Image clicked at (${x}, ${y})`);
+      console.log(`📍 Image clicked at (${x}, ${y}) for precise pinpoint`);
       
       let annotationText = this.pendingAnnotationText;
       console.log('🔍 Pending annotation text:', annotationText);
@@ -295,18 +295,40 @@ class AnnotationOverlay {
         }
       }
       
-      // Create annotation immediately
+      // Calculate initial text position (offset from pinpoint to avoid overlap)
+      // Smart positioning: try different positions to avoid image edges
+      const imgWidth = img.offsetWidth;
+      const imgHeight = img.offsetHeight;
+      
+      let textX, textY;
+      
+      // Try to position text to the right and up
+      if (x + 100 < imgWidth) {
+        textX = x + 80; // To the right
+      } else {
+        textX = x - 80; // To the left if not enough space
+      }
+      
+      if (y > 50) {
+        textY = y - 40; // Above
+      } else {
+        textY = y + 40; // Below if not enough space
+      }
+      
+      // Create annotation object with both pinpoint and text positions
       const annotation = {
         id: Date.now().toString(),
         text: annotationText.trim(),
-        x: x,
-        y: y,
-        pointer_x: x,
-        pointer_y: y,
+        x: x,        // Precise pinpoint location
+        y: y,        // Precise pinpoint location
+        textX: textX, // Text label position (draggable)
+        textY: textY, // Text label position (draggable)
+        pointer_x: x, // Legacy compatibility
+        pointer_y: y, // Legacy compatibility
         timestamp: new Date().toISOString()
       };
       
-      console.log('🎯 Creating annotation object:', annotation);
+      console.log('🎯 Creating advanced annotation object:', annotation);
       
       await this.addAnnotation(annotation);
       
@@ -314,9 +336,9 @@ class AnnotationOverlay {
       this.pendingAnnotationText = null;
       speechBtn.textContent = '🎤 Voice';
       speechBtn.style.background = '#ff5722';
-      status.textContent = '✅ Annotation added! Click again to add more or close when done';
+      status.textContent = '✅ Annotation added! Drag text to reposition, drag red dot for precise pointing. Click again to add more.';
       
-      console.log('✅ Seamless annotation added:', annotation.text);
+      console.log('✅ Advanced annotation added with draggable components');
     });
     
     closeBtn.addEventListener('click', () => {
