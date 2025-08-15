@@ -380,9 +380,14 @@ class ScreenshotAnnotator {
             </div>
             <div class="screenshot-title">${screenshot.title}</div>
             <div class="screenshot-details">
-              <span>${date}</span>
-              <span>${screenshot.displayWidth}×${screenshot.displayHeight}</span>
-              <span class="annotation-count">${screenshot.annotations ? screenshot.annotations.length : 0} annotations</span>
+              <div class="timestamp-info">
+                <span class="capture-date">📅 ${screenshot.captureDate || new Date(screenshot.timestamp).toLocaleDateString()}</span>
+                <span class="capture-time">🕐 ${screenshot.captureTime || new Date(screenshot.timestamp).toLocaleTimeString()}</span>
+              </div>
+              <div class="technical-info">
+                <span>${screenshot.displayWidth}×${screenshot.displayHeight}</span>
+                <span class="annotation-count">${screenshot.annotations ? screenshot.annotations.length : 0} annotations</span>
+              </div>
             </div>
           </div>`;
       });
