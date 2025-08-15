@@ -105,6 +105,56 @@ class ScreenshotAnnotator {
     return Math.round(bytes / (1024 * 1024)) + ' MB';
   }
   
+  async compressImageData(imageData, quality = 0.7) {
+    try {
+      console.log('🗜️ Compressing image data...');
+      console.log('📊 Original size:', this.formatMemorySize(imageData.length));
+      
+      return new Promise((resolve) => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        
+        img.onload = () => {
+          // Calculate new dimensions (reduce by 80% for storage efficiency)
+          const maxWidth = 1200;
+          const maxHeight = 800;
+          
+          let { width, height } = img;
+          
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+          
+          if (height > maxHeight) {
+            width = (width * maxHeight) / height;
+            height = maxHeight;
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          // Draw and compress
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedData = canvas.toDataURL('image/jpeg', quality);
+          
+          console.log('✅ Compressed size:', this.formatMemorySize(compressedData.length));
+          console.log('📉 Compression ratio:', Math.round((1 - compressedData.length / imageData.length) * 100) + '%');
+          
+          resolve(compressedData);
+        };
+        
+        img.src = imageData;
+      });
+      
+    } catch (error) {
+      console.error('❌ Image compression failed:', error);
+      console.log('⚠️ Using original image data');
+      return imageData; // Fallback to original
+    }
+  }
+  
   async captureScreenshot() {
     try {
       this.showStatus('Capturing screenshot...', 'info');
