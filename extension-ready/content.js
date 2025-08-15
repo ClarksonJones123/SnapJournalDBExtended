@@ -454,7 +454,7 @@ class AnnotationOverlay {
     
     // Create the connecting arrow (SVG for precise rotation)
     const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    arrow.className = 'annotation-arrow';
+    arrow.setAttribute('class', 'annotation-arrow');
     arrow.style.cssText = `
       position: absolute;
       top: 0;
