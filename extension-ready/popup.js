@@ -271,6 +271,23 @@ class ScreenshotAnnotator {
     }
   }
   
+  renderAnnotationsList(screenshot) {
+    if (!screenshot.annotations || screenshot.annotations.length === 0) {
+      return '';
+    }
+    
+    let listHtml = '<div style="margin-top: 8px; font-size: 11px; color: #666;">';
+    screenshot.annotations.forEach((annotation, index) => {
+      const shortText = annotation.text.length > 25 ? 
+        annotation.text.substring(0, 25) + '...' : 
+        annotation.text;
+      listHtml += `<div style="margin: 2px 0;">📍 ${index + 1}: ${shortText}</div>`;
+    });
+    listHtml += '</div>';
+    
+    return listHtml;
+  }
+  
   renderAnnotationIndicators(screenshot) {
     if (!screenshot.annotations || screenshot.annotations.length === 0) {
       return '';
