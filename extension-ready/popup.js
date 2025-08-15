@@ -353,9 +353,16 @@ class ScreenshotAnnotator {
       let html = '';
       this.screenshots.forEach((screenshot, index) => {
         const isSelected = this.selectedScreenshot && this.selectedScreenshot.id === screenshot.id;
-        const date = new Date(screenshot.timestamp).toLocaleString();
+        const date = new Date(screenshot.timestamp).toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        });
         
-        console.log(`  📸 Screenshot ${index + 1}: ${screenshot.title} (selected: ${isSelected})`);
+        console.log(`  📸 Screenshot ${index + 1}: ${screenshot.title} (${date}) - ${screenshot.annotations ? screenshot.annotations.length : 0} annotations`);
         console.log(`  🖼️ Image data: ${screenshot.imageData ? screenshot.imageData.substring(0, 50) + '...' : 'NO IMAGE DATA'}`);
         console.log(`  📐 Dimensions: ${screenshot.displayWidth}x${screenshot.displayHeight}`);
         
