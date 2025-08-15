@@ -1,0 +1,31 @@
+/* Content script styles for annotation overlay */
+
+#screenshot-annotation-overlay * {
+  box-sizing: border-box !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+/* Annotation markers in content script overlay */
+.annotation-marker {
+  position: absolute !important;
+  z-index: 1000 !important;
+  pointer-events: auto !important;
+}
+
+.annotation-tooltip {
+  position: absolute !important;
+  z-index: 1001 !important;
+  pointer-events: none !important;
+}
+
+/* Popup annotation indicators */
+.annotation-indicator {
+  position: absolute !important;
+  z-index: 10 !important;
+  pointer-events: none !important;
+}
+
+.annotation-count {
+  font-weight: 500 !important;
+  color: #1976d2 !important;
+}
