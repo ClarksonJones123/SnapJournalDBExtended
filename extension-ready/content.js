@@ -320,69 +320,105 @@ class AnnotationOverlay {
   }
   
   createAnnotationMarker(container, img, annotation, index) {
+    console.log(`🔧 Creating marker ${index + 1} with text: "${annotation.text}"`);
+    
     // Create annotation marker (pin/dot)
     const marker = document.createElement('div');
     marker.className = 'annotation-marker';
     marker.style.cssText = `
       position: absolute;
-      width: 20px;
-      height: 20px;
+      width: 24px;
+      height: 24px;
       background: #ff4444;
-      border: 2px solid white;
+      border: 3px solid white;
       border-radius: 50%;
       cursor: pointer;
-      z-index: 1000;
+      z-index: 10000;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 10px;
+      font-size: 11px;
       font-weight: bold;
       color: white;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+      user-select: none;
     `;
     
-    // Calculate position relative to image
-    const rect = img.getBoundingClientRect();
-    const containerRect = container.getBoundingClientRect();
-    
-    marker.style.left = (annotation.x - 10) + 'px';
-    marker.style.top = (annotation.y - 10) + 'px';
+    // Position marker
+    marker.style.left = (annotation.x - 12) + 'px'; // Center the 24px marker
+    marker.style.top = (annotation.y - 12) + 'px';
     marker.textContent = (index + 1).toString();
     
-    // Create tooltip
+    // Create tooltip - ENHANCED VERSION
     const tooltip = document.createElement('div');
     tooltip.className = 'annotation-tooltip';
     tooltip.style.cssText = `
       position: absolute;
-      background: rgba(0,0,0,0.8);
+      background: rgba(0,0,0,0.9);
       color: white;
-      padding: 8px 12px;
-      border-radius: 4px;
-      font-size: 12px;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
       white-space: nowrap;
-      z-index: 1001;
-      top: -35px;
+      z-index: 10001;
+      top: -45px;
       left: 50%;
       transform: translateX(-50%);
       display: none;
       pointer-events: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.2);
+      max-width: 300px;
+      word-wrap: break-word;
+      white-space: normal;
     `;
-    tooltip.textContent = annotation.text;
+    
+    // Add arrow to tooltip
+    const arrow = document.createElement('div');
+    arrow.style.cssText = `
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 6px solid rgba(0,0,0,0.9);
+    `;
+    tooltip.appendChild(arrow);
+    
+    // Set tooltip text with debugging
+    tooltip.textContent = annotation.text || 'No text';
+    console.log(`📝 Tooltip text set to: "${annotation.text}"`);
+    
     marker.appendChild(tooltip);
     
-    // Add hover effects
-    marker.addEventListener('mouseenter', () => {
+    // Enhanced hover effects with debugging
+    marker.addEventListener('mouseenter', (e) => {
+      console.log(`🖱️ Mouse enter on marker ${index + 1}, showing tooltip: "${annotation.text}"`);
       tooltip.style.display = 'block';
       marker.style.background = '#ff6666';
+      marker.style.transform = 'scale(1.1)';
     });
     
-    marker.addEventListener('mouseleave', () => {
+    marker.addEventListener('mouseleave', (e) => {
+      console.log(`🖱️ Mouse leave on marker ${index + 1}`);
       tooltip.style.display = 'none';
       marker.style.background = '#ff4444';
+      marker.style.transform = 'scale(1)';
+    });
+    
+    // Click handler to show text in alert (fallback)
+    marker.addEventListener('click', (e) => {
+      e.stopPropagation(); // Don't trigger image click
+      console.log(`🖱️ Clicked marker ${index + 1}`);
+      alert(`Annotation ${index + 1}: ${annotation.text}`);
     });
     
     container.appendChild(marker);
-    console.log(`Added annotation marker ${index + 1} at (${annotation.x}, ${annotation.y}): ${annotation.text}`);
+    console.log(`✅ Added annotation marker ${index + 1} at (${annotation.x}, ${annotation.y}): "${annotation.text}"`);
   }
   
   async addAnnotation(annotation) {
