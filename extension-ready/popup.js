@@ -182,6 +182,16 @@ class ScreenshotAnnotator {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       console.log('✅ Current tab found:', tab.id, tab.title);
       
+      // Check for restricted pages
+      if (tab.url.startsWith('chrome://') || 
+          tab.url.startsWith('chrome-extension://') || 
+          tab.url.startsWith('moz-extension://') ||
+          tab.url.startsWith('edge://') ||
+          tab.url.startsWith('about:') ||
+          tab.url.startsWith('file://')) {
+        throw new Error('Cannot annotate restricted pages. Please try on a regular website like google.com');
+      }
+      
       // Check if content script is ready by sending a test message first
       console.log('🔍 Testing content script connection...');
       
