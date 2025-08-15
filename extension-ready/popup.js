@@ -465,6 +465,12 @@ class ScreenshotAnnotator {
           this.updateUI(); // Refresh to show selection
         });
       });
+      
+      // Enable PDF export when screenshots are available
+      const exportBtn = document.getElementById('exportPdfBtn');
+      if (exportBtn) {
+        exportBtn.disabled = false;
+      }
     }
     
     // Force a DOM refresh
