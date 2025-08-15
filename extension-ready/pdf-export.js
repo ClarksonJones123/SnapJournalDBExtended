@@ -70,16 +70,30 @@ class PDFJournalExporter {
     }
     
     async waitForJsPDF() {
-        return new Promise((resolve) => {
+        console.log('⏳ Waiting for jsPDF library...');
+        
+        return new Promise((resolve, reject) => {
+            let attempts = 0;
+            const maxAttempts = 50; // 5 seconds max wait
+            
             const checkJsPDF = () => {
+                attempts++;
+                console.log(`🔍 Checking jsPDF (attempt ${attempts}/${maxAttempts})`);
+                
                 if (window.jsPDF) {
                     this.jsPDF = window.jsPDF;
-                    console.log('✅ jsPDF library loaded');
+                    console.log('✅ jsPDF library loaded successfully');
+                    console.log('🔍 jsPDF version:', this.jsPDF.version || 'unknown');
                     resolve();
+                } else if (attempts >= maxAttempts) {
+                    const error = new Error('jsPDF library failed to load after 5 seconds. Please check your internet connection.');
+                    console.error('❌ jsPDF loading timeout:', error);
+                    reject(error);
                 } else {
                     setTimeout(checkJsPDF, 100);
                 }
             };
+            
             checkJsPDF();
         });
     }
