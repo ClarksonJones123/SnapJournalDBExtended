@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Screenshot Annotator - Working",
-  "version": "1.0",
-  "description": "Capture screenshots and add annotations - WORKING VERSION",
+  "name": "Screenshot Annotator - Universal",
+  "version": "2.0",
+  "description": "Capture screenshots and add annotations - WORKS ON ANY PAGE!",
   "permissions": [
     "activeTab",
     "storage",
@@ -25,6 +25,12 @@
   "background": {
     "service_worker": "background.js"
   },
+  "web_accessible_resources": [
+    {
+      "resources": ["annotation.html", "annotation.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png", 
