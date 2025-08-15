@@ -113,7 +113,7 @@ class AnnotationOverlay {
       color: #333;
       font-weight: 500;
     `;
-    status.textContent = '🎯 Click anywhere on the image to add an annotation';
+    status.textContent = '🎯 Click on image for precise pinpoint annotation (text will be repositionable)';
     
     // Speech toggle button (always visible)
     const speechBtn = document.createElement('button');
