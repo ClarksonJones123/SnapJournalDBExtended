@@ -339,120 +339,288 @@ class AnnotationOverlay {
   }
   
   createAnnotationMarker(container, img, annotation, index) {
-    console.log(`🔧 Creating marker ${index + 1} with text: "${annotation.text}"`);
+    console.log(`🔧 Creating advanced annotation ${index + 1} with text: "${annotation.text}"`);
     
-    // Create main annotation container
-    const annotationGroup = document.createElement('div');
-    annotationGroup.className = 'annotation-group';
-    annotationGroup.style.cssText = `
+    // Create main annotation container for the entire annotation system
+    const annotationSystem = document.createElement('div');
+    annotationSystem.className = 'annotation-system';
+    annotationSystem.style.cssText = `
       position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
       z-index: 10000;
-      user-select: none;
-      pointer-events: auto;
     `;
     
-    // Position the group
-    annotationGroup.style.left = annotation.x + 'px';
-    annotationGroup.style.top = annotation.y + 'px';
-    
-    // Create the numbered marker (pin/dot)
-    const marker = document.createElement('div');
-    marker.className = 'annotation-marker';
-    marker.style.cssText = `
+    // Create the precise pinpoint marker (where user clicked)
+    const pinpoint = document.createElement('div');
+    pinpoint.className = 'annotation-pinpoint';
+    pinpoint.style.cssText = `
       position: absolute;
-      width: 24px;
-      height: 24px;
+      width: 8px;
+      height: 8px;
       background: #ff4444;
-      border: 3px solid white;
+      border: 2px solid white;
       border-radius: 50%;
-      cursor: pointer;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      pointer-events: auto;
+      cursor: crosshair;
+      z-index: 10002;
+    `;
+    pinpoint.style.left = annotation.x + 'px';
+    pinpoint.style.top = annotation.y + 'px';
+    
+    // Calculate initial text position (offset from pinpoint to avoid overlap)
+    const textX = annotation.textX || (annotation.x + 60);
+    const textY = annotation.textY || (annotation.y - 30);
+    
+    // Create the draggable text label
+    const textLabel = document.createElement('div');
+    textLabel.className = 'annotation-text-label';
+    textLabel.style.cssText = `
+      position: absolute;
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      max-width: 200px;
+      min-width: 80px;
+      word-wrap: break-word;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+      border: 2px solid rgba(255,255,255,0.3);
+      pointer-events: auto;
+      cursor: move;
+      user-select: none;
+      z-index: 10003;
+      transform: translate(-50%, -50%);
+    `;
+    textLabel.style.left = textX + 'px';
+    textLabel.style.top = textY + 'px';
+    
+    // Add numbered badge to text label
+    const numberBadge = document.createElement('div');
+    numberBadge.style.cssText = `
+      position: absolute;
+      top: -8px;
+      left: -8px;
+      width: 20px;
+      height: 20px;
+      background: #ff4444;
+      color: white;
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: bold;
-      color: white;
-      box-shadow: 0 3px 6px rgba(0,0,0,0.4);
-      transform: translate(-12px, -12px);
-      transition: all 0.2s ease;
+      border: 2px solid white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
     `;
-    marker.textContent = (index + 1).toString();
+    numberBadge.textContent = (index + 1).toString();
+    textLabel.appendChild(numberBadge);
     
-    // Create the text label - ALWAYS VISIBLE
-    const textLabel = document.createElement('div');
-    textLabel.className = 'annotation-text';
-    textLabel.style.cssText = `
-      position: absolute;
-      left: 20px;
-      top: -8px;
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
-      padding: 6px 10px;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: 500;
-      white-space: nowrap;
-      max-width: 250px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-      border: 1px solid rgba(255,255,255,0.2);
-      pointer-events: none;
-    `;
+    // Add text content
+    const textContent = document.createElement('div');
+    textContent.style.cssText = `margin-top: 4px;`;
+    textContent.textContent = annotation.text || 'No text';
+    textLabel.appendChild(textContent);
     
-    // Add arrow pointing to marker
-    const arrow = document.createElement('div');
+    // Create the connecting arrow (SVG for precise rotation)
+    const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    arrow.className = 'annotation-arrow';
     arrow.style.cssText = `
       position: absolute;
-      left: -6px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 0;
-      height: 0;
-      border-top: 6px solid transparent;
-      border-bottom: 6px solid transparent;
-      border-right: 6px solid rgba(0, 0, 0, 0.8);
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10001;
     `;
-    textLabel.appendChild(arrow);
     
-    // Set the text content
-    textLabel.firstChild ? 
-      textLabel.insertBefore(document.createTextNode(annotation.text || 'No text'), textLabel.firstChild) :
-      textLabel.appendChild(document.createTextNode(annotation.text || 'No text'));
+    const arrowLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    const arrowHead = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     
-    // Assemble the annotation
-    annotationGroup.appendChild(marker);
-    annotationGroup.appendChild(textLabel);
+    // Configure arrow appearance
+    arrowLine.setAttribute('stroke', '#ff4444');
+    arrowLine.setAttribute('stroke-width', '2');
+    arrowLine.setAttribute('stroke-dasharray', '3,3');
     
-    // Enhanced hover effects
-    marker.addEventListener('mouseenter', () => {
-      marker.style.background = '#ff6666';
-      marker.style.transform = 'translate(-12px, -12px) scale(1.1)';
-      textLabel.style.background = 'rgba(0, 0, 0, 0.95)';
-      textLabel.style.transform = 'scale(1.05)';
+    arrowHead.setAttribute('fill', '#ff4444');
+    arrowHead.setAttribute('stroke', 'white');
+    arrowHead.setAttribute('stroke-width', '1');
+    
+    arrow.appendChild(arrowLine);
+    arrow.appendChild(arrowHead);
+    
+    // Function to update arrow position and rotation
+    const updateArrow = () => {
+      const pinX = annotation.x;
+      const pinY = annotation.y;
+      const labelX = parseFloat(textLabel.style.left);
+      const labelY = parseFloat(textLabel.style.top);
+      
+      // Calculate arrow vector
+      const dx = labelX - pinX;
+      const dy = labelY - pinY;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      
+      if (length > 20) { // Only show arrow if text is far enough
+        // Line from pinpoint to text label edge
+        const angle = Math.atan2(dy, dx);
+        const labelRadius = 25; // Approximate label radius for edge calculation
+        const endX = labelX - Math.cos(angle) * labelRadius;
+        const endY = labelY - Math.sin(angle) * labelRadius;
+        
+        arrowLine.setAttribute('x1', pinX);
+        arrowLine.setAttribute('y1', pinY);
+        arrowLine.setAttribute('x2', endX);
+        arrowLine.setAttribute('y2', endY);
+        
+        // Arrow head pointing toward text
+        const headSize = 8;
+        const headAngle = angle + Math.PI;
+        const head1X = endX + Math.cos(headAngle + 0.5) * headSize;
+        const head1Y = endY + Math.sin(headAngle + 0.5) * headSize;
+        const head2X = endX + Math.cos(headAngle - 0.5) * headSize;
+        const head2Y = endY + Math.sin(headAngle - 0.5) * headSize;
+        
+        arrowHead.setAttribute('points', `${endX},${endY} ${head1X},${head1Y} ${head2X},${head2Y}`);
+        arrow.style.display = 'block';
+      } else {
+        arrow.style.display = 'none';
+      }
+    };
+    
+    // Make text label draggable
+    let isDragging = false;
+    let dragOffset = { x: 0, y: 0 };
+    
+    textLabel.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      isDragging = true;
+      
+      const rect = container.getBoundingClientRect();
+      const labelX = parseFloat(textLabel.style.left);
+      const labelY = parseFloat(textLabel.style.top);
+      
+      dragOffset.x = e.clientX - rect.left - labelX;
+      dragOffset.y = e.clientY - rect.top - labelY;
+      
+      textLabel.style.cursor = 'grabbing';
+      textLabel.style.transform = 'translate(-50%, -50%) scale(1.05)';
+      
+      console.log(`🖱️ Started dragging annotation ${index + 1}`);
     });
     
-    marker.addEventListener('mouseleave', () => {
-      marker.style.background = '#ff4444';
-      marker.style.transform = 'translate(-12px, -12px) scale(1)';
-      textLabel.style.background = 'rgba(0, 0, 0, 0.8)';
-      textLabel.style.transform = 'scale(1)';
-    });
+    const handleMouseMove = (e) => {
+      if (isDragging) {
+        const rect = container.getBoundingClientRect();
+        const newX = e.clientX - rect.left - dragOffset.x;
+        const newY = e.clientY - rect.top - dragOffset.y;
+        
+        // Keep text within container bounds
+        const maxX = container.offsetWidth - 20;
+        const maxY = container.offsetHeight - 20;
+        
+        const clampedX = Math.max(20, Math.min(maxX, newX));
+        const clampedY = Math.max(20, Math.min(maxY, newY));
+        
+        textLabel.style.left = clampedX + 'px';
+        textLabel.style.top = clampedY + 'px';
+        
+        // Update stored position
+        annotation.textX = clampedX;
+        annotation.textY = clampedY;
+        
+        updateArrow();
+      }
+    };
     
-    // Click to edit annotation
-    marker.addEventListener('click', (e) => {
+    const handleMouseUp = () => {
+      if (isDragging) {
+        isDragging = false;
+        textLabel.style.cursor = 'move';
+        textLabel.style.transform = 'translate(-50%, -50%) scale(1)';
+        
+        // Save updated position
+        this.saveAnnotationsToStorage();
+        
+        console.log(`📍 Moved annotation ${index + 1} to (${annotation.textX}, ${annotation.textY})`);
+      }
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    
+    // Click to edit text
+    textContent.addEventListener('dblclick', (e) => {
       e.stopPropagation();
       const newText = prompt('Edit annotation:', annotation.text);
       if (newText !== null && newText.trim() !== annotation.text) {
         annotation.text = newText.trim() || 'No text';
-        textLabel.childNodes[0].textContent = annotation.text;
-        this.saveAnnotationUpdate();
+        textContent.textContent = annotation.text;
+        this.saveAnnotationsToStorage();
         console.log(`✏️ Updated annotation ${index + 1} to: "${annotation.text}"`);
       }
     });
     
-    container.appendChild(annotationGroup);
-    console.log(`✅ Added annotation ${index + 1} at (${annotation.x}, ${annotation.y}) with visible text: "${annotation.text}"`);
+    // Make pinpoint draggable for precise positioning
+    let isPinDragging = false;
+    
+    pinpoint.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      isPinDragging = true;
+      pinpoint.style.transform = 'translate(-50%, -50%) scale(1.5)';
+      console.log(`🎯 Started moving pinpoint ${index + 1}`);
+    });
+    
+    const handlePinMouseMove = (e) => {
+      if (isPinDragging) {
+        const rect = container.getBoundingClientRect();
+        const newX = e.clientX - rect.left;
+        const newY = e.clientY - rect.top;
+        
+        pinpoint.style.left = newX + 'px';
+        pinpoint.style.top = newY + 'px';
+        
+        annotation.x = newX;
+        annotation.y = newY;
+        
+        updateArrow();
+      }
+    };
+    
+    const handlePinMouseUp = () => {
+      if (isPinDragging) {
+        isPinDragging = false;
+        pinpoint.style.transform = 'translate(-50%, -50%) scale(1)';
+        this.saveAnnotationsToStorage();
+        console.log(`🎯 Moved pinpoint ${index + 1} to (${annotation.x}, ${annotation.y})`);
+      }
+    };
+    
+    document.addEventListener('mousemove', handlePinMouseMove);
+    document.addEventListener('mouseup', handlePinMouseUp);
+    
+    // Assemble the annotation system
+    annotationSystem.appendChild(arrow);
+    annotationSystem.appendChild(pinpoint);
+    annotationSystem.appendChild(textLabel);
+    
+    container.appendChild(annotationSystem);
+    
+    // Initial arrow update
+    updateArrow();
+    
+    console.log(`✅ Added advanced annotation ${index + 1} with draggable text and precise pinpoint`);
   }
   
   async addAnnotation(annotation) {
