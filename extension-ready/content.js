@@ -351,7 +351,8 @@ class AnnotationOverlay {
   renderExistingAnnotations(container, img) {
     console.log('Rendering existing annotations:', this.annotations.length);
     
-    // Remove existing annotation markers
+    // Remove existing annotation systems (more comprehensive cleanup)
+    container.querySelectorAll('.annotation-system').forEach(system => system.remove());
     container.querySelectorAll('.annotation-marker').forEach(marker => marker.remove());
     
     // Add annotation markers for each existing annotation
