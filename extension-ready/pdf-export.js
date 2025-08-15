@@ -22,19 +22,30 @@ class PDFJournalExporter {
             await this.waitForJsPDF();
             console.log('✅ jsPDF loaded successfully');
             
-            // Get export data from URL parameters
+            // Get export data from URL parameters or chrome storage
             const urlParams = new URLSearchParams(window.location.search);
-            const exportDataStr = urlParams.get('data');
+            let exportDataStr = urlParams.get('data');
+            const exportId = urlParams.get('exportId');
             
-            console.log('🔍 URL params found:', !!exportDataStr);
-            console.log('🔍 Export data length:', exportDataStr?.length || 0);
+            console.log('🔍 URL params found:', !!exportDataStr || !!exportId);
             
-            if (!exportDataStr) {
-                throw new Error('No export data provided in URL parameters');
-            }
-            
-            try {
+            if (exportId) {
+                // Load from chrome storage (for large datasets)
+                console.log('📦 Loading export data from storage:', exportId);
+                const result = await chrome.storage.local.get(exportId);
+                this.exportData = result[exportId];
+                
+                if (!this.exportData) {
+                    throw new Error('Export data not found in storage. Please try exporting again.');
+                }
+            } else if (exportDataStr) {
+                // Load from URL parameters (legacy method)
+                console.log('🔗 Loading export data from URL parameters');
+                console.log('🔍 Export data length:', exportDataStr.length);
                 this.exportData = JSON.parse(decodeURIComponent(exportDataStr));
+            } else {
+                throw new Error('No export data provided. Please try exporting again.');
+            }
                 this.screenshots = this.exportData.screenshots || [];
                 
                 console.log('✅ Export data loaded:', {
