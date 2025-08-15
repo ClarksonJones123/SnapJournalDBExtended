@@ -341,7 +341,21 @@ class AnnotationOverlay {
   createAnnotationMarker(container, img, annotation, index) {
     console.log(`🔧 Creating marker ${index + 1} with text: "${annotation.text}"`);
     
-    // Create annotation marker (pin/dot)
+    // Create main annotation container
+    const annotationGroup = document.createElement('div');
+    annotationGroup.className = 'annotation-group';
+    annotationGroup.style.cssText = `
+      position: absolute;
+      z-index: 10000;
+      user-select: none;
+      pointer-events: auto;
+    `;
+    
+    // Position the group
+    annotationGroup.style.left = annotation.x + 'px';
+    annotationGroup.style.top = annotation.y + 'px';
+    
+    // Create the numbered marker (pin/dot)
     const marker = document.createElement('div');
     marker.className = 'annotation-marker';
     marker.style.cssText = `
@@ -352,7 +366,6 @@ class AnnotationOverlay {
       border: 3px solid white;
       border-radius: 50%;
       cursor: pointer;
-      z-index: 10000;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -360,84 +373,86 @@ class AnnotationOverlay {
       font-weight: bold;
       color: white;
       box-shadow: 0 3px 6px rgba(0,0,0,0.4);
-      user-select: none;
+      transform: translate(-12px, -12px);
+      transition: all 0.2s ease;
     `;
-    
-    // Position marker
-    marker.style.left = (annotation.x - 12) + 'px'; // Center the 24px marker
-    marker.style.top = (annotation.y - 12) + 'px';
     marker.textContent = (index + 1).toString();
     
-    // Create tooltip - ENHANCED VERSION
-    const tooltip = document.createElement('div');
-    tooltip.className = 'annotation-tooltip';
-    tooltip.style.cssText = `
+    // Create the text label - ALWAYS VISIBLE
+    const textLabel = document.createElement('div');
+    textLabel.className = 'annotation-text';
+    textLabel.style.cssText = `
       position: absolute;
-      background: rgba(0,0,0,0.9);
+      left: 20px;
+      top: -8px;
+      background: rgba(0, 0, 0, 0.8);
       color: white;
-      padding: 10px 14px;
-      border-radius: 6px;
-      font-size: 13px;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 12px;
       font-weight: 500;
       white-space: nowrap;
-      z-index: 10001;
-      top: -45px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: none;
-      pointer-events: none;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      max-width: 250px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
       border: 1px solid rgba(255,255,255,0.2);
-      max-width: 300px;
-      word-wrap: break-word;
-      white-space: normal;
+      pointer-events: none;
     `;
     
-    // Add arrow to tooltip
+    // Add arrow pointing to marker
     const arrow = document.createElement('div');
     arrow.style.cssText = `
       position: absolute;
-      top: 100%;
-      left: 50%;
-      transform: translateX(-50%);
+      left: -6px;
+      top: 50%;
+      transform: translateY(-50%);
       width: 0;
       height: 0;
-      border-left: 6px solid transparent;
-      border-right: 6px solid transparent;
-      border-top: 6px solid rgba(0,0,0,0.9);
+      border-top: 6px solid transparent;
+      border-bottom: 6px solid transparent;
+      border-right: 6px solid rgba(0, 0, 0, 0.8);
     `;
-    tooltip.appendChild(arrow);
+    textLabel.appendChild(arrow);
     
-    // Set tooltip text with debugging
-    tooltip.textContent = annotation.text || 'No text';
-    console.log(`📝 Tooltip text set to: "${annotation.text}"`);
+    // Set the text content
+    textLabel.firstChild ? 
+      textLabel.insertBefore(document.createTextNode(annotation.text || 'No text'), textLabel.firstChild) :
+      textLabel.appendChild(document.createTextNode(annotation.text || 'No text'));
     
-    marker.appendChild(tooltip);
+    // Assemble the annotation
+    annotationGroup.appendChild(marker);
+    annotationGroup.appendChild(textLabel);
     
-    // Enhanced hover effects with debugging
-    marker.addEventListener('mouseenter', (e) => {
-      console.log(`🖱️ Mouse enter on marker ${index + 1}, showing tooltip: "${annotation.text}"`);
-      tooltip.style.display = 'block';
+    // Enhanced hover effects
+    marker.addEventListener('mouseenter', () => {
       marker.style.background = '#ff6666';
-      marker.style.transform = 'scale(1.1)';
+      marker.style.transform = 'translate(-12px, -12px) scale(1.1)';
+      textLabel.style.background = 'rgba(0, 0, 0, 0.95)';
+      textLabel.style.transform = 'scale(1.05)';
     });
     
-    marker.addEventListener('mouseleave', (e) => {
-      console.log(`🖱️ Mouse leave on marker ${index + 1}`);
-      tooltip.style.display = 'none';
+    marker.addEventListener('mouseleave', () => {
       marker.style.background = '#ff4444';
-      marker.style.transform = 'scale(1)';
+      marker.style.transform = 'translate(-12px, -12px) scale(1)';
+      textLabel.style.background = 'rgba(0, 0, 0, 0.8)';
+      textLabel.style.transform = 'scale(1)';
     });
     
-    // Click handler to show text in alert (fallback)
+    // Click to edit annotation
     marker.addEventListener('click', (e) => {
-      e.stopPropagation(); // Don't trigger image click
-      console.log(`🖱️ Clicked marker ${index + 1}`);
-      alert(`Annotation ${index + 1}: ${annotation.text}`);
+      e.stopPropagation();
+      const newText = prompt('Edit annotation:', annotation.text);
+      if (newText !== null && newText.trim() !== annotation.text) {
+        annotation.text = newText.trim() || 'No text';
+        textLabel.childNodes[0].textContent = annotation.text;
+        this.saveAnnotationUpdate();
+        console.log(`✏️ Updated annotation ${index + 1} to: "${annotation.text}"`);
+      }
     });
     
-    container.appendChild(marker);
-    console.log(`✅ Added annotation marker ${index + 1} at (${annotation.x}, ${annotation.y}): "${annotation.text}"`);
+    container.appendChild(annotationGroup);
+    console.log(`✅ Added annotation ${index + 1} at (${annotation.x}, ${annotation.y}) with visible text: "${annotation.text}"`);
   }
   
   async addAnnotation(annotation) {
