@@ -27,7 +27,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["annotation.html", "annotation.js"],
+      "resources": ["annotation.html", "annotation.js", "pdf-export.html", "pdf-export.js"],
       "matches": ["<all_urls>"]
     }
   ],
