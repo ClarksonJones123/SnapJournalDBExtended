@@ -7,39 +7,65 @@ class PDFJournalExporter {
         this.exportData = null;
         this.jsPDF = null;
         
-        this.init();
+        console.log('🚀 PDFJournalExporter constructor called');
+        this.init().catch(error => {
+            console.error('❌ Initialization failed:', error);
+            this.showStatus(`Initialization failed: ${error.message}`, 'error');
+        });
     }
     
     async init() {
         console.log('🚀 Initializing PDF journal exporter...');
         
-        // Wait for jsPDF to load
-        await this.waitForJsPDF();
-        
-        // Get export data from URL parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        const exportDataStr = urlParams.get('data');
-        
-        if (!exportDataStr) {
-            this.showStatus('No export data provided', 'error');
-            return;
-        }
-        
         try {
-            this.exportData = JSON.parse(decodeURIComponent(exportDataStr));
-            this.screenshots = this.exportData.screenshots || [];
+            // Wait for jsPDF to load
+            await this.waitForJsPDF();
+            console.log('✅ jsPDF loaded successfully');
             
-            console.log('✅ Export data loaded:', {
-                screenshots: this.screenshots.length,
-                totalAnnotations: this.exportData.totalAnnotations
-            });
+            // Get export data from URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const exportDataStr = urlParams.get('data');
             
-            this.setupInterface();
-            this.setupEventListeners();
+            console.log('🔍 URL params found:', !!exportDataStr);
+            console.log('🔍 Export data length:', exportDataStr?.length || 0);
+            
+            if (!exportDataStr) {
+                throw new Error('No export data provided in URL parameters');
+            }
+            
+            try {
+                this.exportData = JSON.parse(decodeURIComponent(exportDataStr));
+                this.screenshots = this.exportData.screenshots || [];
+                
+                console.log('✅ Export data loaded:', {
+                    screenshots: this.screenshots.length,
+                    totalAnnotations: this.exportData.totalAnnotations,
+                    exportDate: this.exportData.exportDate
+                });
+                
+                if (this.screenshots.length === 0) {
+                    throw new Error('No screenshots found in export data');
+                }
+                
+                this.setupInterface();
+                this.setupEventListeners();
+                
+                // Hide initial loading status
+                this.showStatus('✅ PDF export system ready', 'success');
+                setTimeout(() => {
+                    const status = document.getElementById('status');
+                    if (status) status.style.display = 'none';
+                }, 2000);
+                
+            } catch (parseError) {
+                console.error('❌ Error parsing export data:', parseError);
+                throw new Error(`Failed to parse export data: ${parseError.message}`);
+            }
             
         } catch (error) {
-            console.error('❌ Error loading export data:', error);
-            this.showStatus('Failed to load export data', 'error');
+            console.error('❌ Error during initialization:', error);
+            this.showStatus(`Error: ${error.message}`, 'error');
+            throw error;
         }
     }
     
