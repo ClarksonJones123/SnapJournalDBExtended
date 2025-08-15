@@ -182,77 +182,34 @@ class ScreenshotAnnotator {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       console.log('✅ Current tab found:', tab.id, tab.title);
       
-      // Check for restricted pages
-      if (tab.url.startsWith('chrome://') || 
-          tab.url.startsWith('chrome-extension://') || 
-          tab.url.startsWith('moz-extension://') ||
-          tab.url.startsWith('edge://') ||
-          tab.url.startsWith('about:') ||
-          tab.url.startsWith('file://')) {
-        throw new Error('Cannot annotate restricted pages. Please try on a regular website like google.com');
-      }
+      // 🚀 NEW UNIVERSAL APPROACH - NO RESTRICTIONS!
+      // Instead of injecting into the current page, we'll open annotation in a new context
+      console.log('🌐 Opening universal annotation interface...');
       
-      // Check if content script is ready by sending a test message first
-      console.log('🔍 Testing content script connection...');
+      // Create annotation URL with screenshot data
+      const annotationUrl = chrome.runtime.getURL('annotation.html') + 
+        '?screenshot=' + encodeURIComponent(JSON.stringify(this.selectedScreenshot));
       
-      try {
-        await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
-        console.log('✅ Content script is responsive');
-      } catch (pingError) {
-        console.log('⚠️ Content script not responding, attempting injection...');
-        
-        // Try to inject content script manually
-        try {
-          await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            files: ['content.js']
-          });
-          
-          await chrome.scripting.insertCSS({
-            target: { tabId: tab.id },
-            files: ['styles.css']
-          });
-          
-          console.log('✅ Content script injected manually');
-          
-          // Wait a moment for script to initialize
-          await new Promise(resolve => setTimeout(resolve, 500));
-          
-        } catch (injectionError) {
-          console.error('❌ Failed to inject content script:', injectionError);
-          throw new Error('Cannot inject content script. Try refreshing the page and ensure it\'s not a restricted page (chrome://, file://, etc.)');
-        }
-      }
-      
-      console.log('📡 Sending annotation message to content script...');
-      const response = await chrome.tabs.sendMessage(tab.id, {
-        action: 'startAnnotation',
-        screenshot: this.selectedScreenshot
+      // Open in new window for unrestricted annotation
+      chrome.windows.create({
+        url: annotationUrl,
+        type: 'popup',
+        width: Math.min(1200, screen.width * 0.9),
+        height: Math.min(800, screen.height * 0.9),
+        focused: true
       });
       
-      console.log('✅ Content script response:', response);
-      this.showStatus('🎯 Ready to annotate! Click anywhere on the image.', 'success');
+      console.log('✅ Universal annotation interface opened');
+      this.showStatus('🎯 Annotation window opened - works on ANY page!', 'success');
       
       // Close popup after successful annotation start
       setTimeout(() => {
         window.close();
-      }, 2000);
+      }, 1000);
       
     } catch (error) {
       console.error('❌ Annotation error details:', error);
-      
-      // Provide detailed error messages and solutions
-      if (error.message && error.message.includes('Could not establish connection')) {
-        this.showStatus('Content script not loaded. Please refresh the page and try again.', 'error');
-      } else if (error.message && error.message.includes('The tab was closed')) {
-        this.showStatus('Tab was closed during annotation setup', 'error');
-      } else if (error.message && error.message.includes('restricted page')) {
-        this.showStatus('Cannot annotate this page type. Try a regular website.', 'error');
-      } else if (error.message && error.message.includes('inject content script')) {
-        this.showStatus('Cannot access page. Refresh and try again.', 'error');
-      } else {
-        this.showStatus(`Annotation failed: ${error.message}`, 'error');
-      }
+      this.showStatus(`Annotation failed: ${error.message}`, 'error');
     }
   }
   
