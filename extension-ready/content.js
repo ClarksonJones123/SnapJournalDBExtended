@@ -146,6 +146,16 @@ class AnnotationOverlay {
     controls.appendChild(speechBtn);
     controls.appendChild(closeBtn);
     
+    // Add debug info (temporary)
+    const debugInfo = document.createElement('div');
+    debugInfo.style.cssText = `
+      font-size: 10px;
+      color: #666;
+      margin-left: 10px;
+    `;
+    debugInfo.textContent = `Annotations: ${this.annotations.length}`;
+    controls.appendChild(debugInfo);
+    
     // Create image container
     const imageContainer = document.createElement('div');
     imageContainer.style.cssText = `
