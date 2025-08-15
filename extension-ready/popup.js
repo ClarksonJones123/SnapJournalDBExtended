@@ -63,6 +63,16 @@ class ScreenshotAnnotator {
   async saveScreenshots() {
     try {
       console.log('💾 Saving screenshots to storage...');
+      
+      // Check storage quota before saving
+      const storageInfo = await this.checkStorageQuota();
+      console.log('📊 Storage info:', storageInfo);
+      
+      if (storageInfo.quotaExceeded) {
+        console.log('⚠️ Storage quota exceeded, cleaning up old screenshots...');
+        await this.cleanupOldScreenshots();
+      }
+      
       await chrome.storage.local.set({ screenshots: this.screenshots });
       console.log('✅ Saved screenshots:', this.screenshots.length);
       
@@ -82,7 +92,68 @@ class ScreenshotAnnotator {
       
     } catch (error) {
       console.error('Error saving screenshots:', error);
-      this.showStatus('Error saving screenshots', 'error');
+      
+      if (error.message && error.message.includes('quota')) {
+        console.log('🧹 Quota exceeded, attempting cleanup...');
+        await this.cleanupOldScreenshots();
+        
+        // Try saving again with fewer screenshots
+        try {
+          await chrome.storage.local.set({ screenshots: this.screenshots });
+          this.showStatus('Screenshots saved after cleanup', 'success');
+        } catch (retryError) {
+          this.showStatus('Storage quota exceeded. Please clear some screenshots.', 'error');
+        }
+      } else {
+        this.showStatus('Error saving screenshots', 'error');
+      }
+    }
+  }
+  
+  async checkStorageQuota() {
+    try {
+      if (chrome.storage.local.getBytesInUse) {
+        const bytesInUse = await chrome.storage.local.getBytesInUse();
+        const quota = chrome.storage.local.QUOTA_BYTES || 10485760; // 10MB default
+        
+        return {
+          bytesInUse,
+          quota,
+          available: quota - bytesInUse,
+          quotaExceeded: bytesInUse > quota * 0.9, // Warn at 90%
+          usagePercent: Math.round((bytesInUse / quota) * 100)
+        };
+      }
+    } catch (error) {
+      console.error('Error checking storage quota:', error);
+    }
+    
+    return { quotaExceeded: false, usagePercent: 0 };
+  }
+  
+  async cleanupOldScreenshots() {
+    try {
+      console.log('🧹 Cleaning up old screenshots...');
+      
+      if (this.screenshots.length <= 5) {
+        console.log('ℹ️ Only 5 or fewer screenshots, no cleanup needed');
+        return;
+      }
+      
+      // Sort by timestamp and keep only the most recent 10
+      this.screenshots.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      const removedCount = this.screenshots.length - 10;
+      this.screenshots = this.screenshots.slice(0, 10);
+      
+      console.log(`✅ Removed ${removedCount} old screenshots, kept ${this.screenshots.length} recent ones`);
+      
+      // Update selected screenshot if it was removed
+      if (this.selectedScreenshot && !this.screenshots.find(s => s.id === this.selectedScreenshot.id)) {
+        this.selectedScreenshot = this.screenshots[0] || null;
+      }
+      
+    } catch (error) {
+      console.error('Error during cleanup:', error);
     }
   }
   
