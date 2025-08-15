@@ -42,6 +42,10 @@ class ScreenshotAnnotator {
     document.getElementById('clearBtn').addEventListener('click', () => {
       this.clearAllScreenshots();
     });
+    
+    document.getElementById('exportPdfBtn').addEventListener('click', () => {
+      this.exportPdfJournal();
+    });
   }
   
   async loadScreenshots() {
