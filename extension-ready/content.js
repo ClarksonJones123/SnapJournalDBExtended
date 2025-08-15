@@ -268,12 +268,19 @@ class AnnotationOverlay {
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       
+      console.log(`📍 Image clicked at (${x}, ${y})`);
+      
       let annotationText = this.pendingAnnotationText;
+      console.log('🔍 Pending annotation text:', annotationText);
       
       // If no speech text captured, prompt for text input
       if (!annotationText) {
+        console.log('📝 No pending text, prompting user...');
         annotationText = prompt('Enter annotation text:');
+        console.log('📝 User entered:', annotationText);
+        
         if (!annotationText || !annotationText.trim()) {
+          console.log('❌ User cancelled or entered empty text');
           return; // User cancelled or entered empty text
         }
       }
@@ -288,6 +295,8 @@ class AnnotationOverlay {
         pointer_y: y,
         timestamp: new Date().toISOString()
       };
+      
+      console.log('🎯 Creating annotation object:', annotation);
       
       await this.addAnnotation(annotation);
       
