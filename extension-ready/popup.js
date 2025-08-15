@@ -118,7 +118,8 @@ class ScreenshotAnnotator {
       console.log('Capture response:', response ? 'Success' : 'Failed');
       
       if (response && response.imageData) {
-        // Create screenshot object
+        // Create screenshot object with detailed timestamp
+        const now = new Date();
         const screenshot = {
           id: Date.now().toString(),
           imageData: response.imageData,
@@ -128,7 +129,21 @@ class ScreenshotAnnotator {
           displayHeight: Math.round(1080 * 0.9),
           url: tab.url,
           title: tab.title,
-          timestamp: new Date().toISOString(),
+          timestamp: now.toISOString(),
+          // Enhanced timestamp information for PDF journal
+          captureDate: now.toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          }),
+          captureTime: now.toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            second: '2-digit',
+            hour12: true 
+          }),
+          captureTimestamp: now.getTime(),
           annotations: []
         };
         
