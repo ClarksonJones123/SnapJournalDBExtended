@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug PDF Export</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .debug-info {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196F3;
+        }
+        .error { border-left-color: #f44336; }
+        .success { border-left-color: #4caf50; }
+        pre {
+            background: #f8f8f8;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #1976D2; }
+    </style>
+</head>
+<body>
+    <h1>🔍 PDF Export Debug Page</h1>
+    
+    <div class="debug-info">
+        <h3>Environment Check</h3>
+        <p><strong>Page loaded:</strong> <span id="pageLoaded">✅ Yes</span></p>
+        <p><strong>Chrome APIs:</strong> <span id="chromeApis">❌ No</span></p>
+        <p><strong>Extension context:</strong> <span id="extensionContext">❌ No</span></p>
+        <p><strong>URL parameters:</strong> <span id="urlParams">None</span></p>
+    </div>
+
+    <div class="debug-info">
+        <h3>jsPDF Library Check</h3>
+        <p><strong>jsPDF loaded:</strong> <span id="jsPdfStatus">❌ No</span></p>
+        <p><strong>Library version:</strong> <span id="jsPdfVersion">Unknown</span></p>
+        <button onclick="testJsPDF()">Test jsPDF</button>
+    </div>
+
+    <div class="debug-info">
+        <h3>Export Data</h3>
+        <p><strong>Data found:</strong> <span id="dataFound">❌ No</span></p>
+        <p><strong>Screenshots count:</strong> <span id="screenshotCount">0</span></p>
+        <button onclick="loadExportData()">Load Export Data</button>
+    </div>
+
+    <div class="debug-info">
+        <h3>Console Output</h3>
+        <pre id="consoleOutput">Waiting for tests...</pre>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+        let consoleOutput = [];
+        
+        // Override console.log to capture output
+        const originalLog = console.log;
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            consoleOutput.push(args.join(' '));
+            updateConsoleDisplay();
+        };
+
+        function updateConsoleDisplay() {
+            document.getElementById('consoleOutput').textContent = consoleOutput.slice(-10).join('\n');
+        }
+
+        function checkEnvironment() {
+            console.log('🔍 Checking environment...');
+            
+            // Check Chrome APIs
+            if (typeof chrome !== 'undefined' && chrome.storage) {
+                document.getElementById('chromeApis').innerHTML = '✅ Available';
+                document.getElementById('extensionContext').innerHTML = '✅ Extension context';
+            }
+            
+            // Check URL parameters
+            const params = new URLSearchParams(window.location.search);
+            const paramsList = Array.from(params.entries()).map(([k,v]) => `${k}=${v.length > 50 ? v.substring(0,50) + '...' : v}`);
+            document.getElementById('urlParams').textContent = paramsList.length ? paramsList.join(', ') : 'None';
+            
+            // Check jsPDF
+            setTimeout(() => {
+                if (window.jsPDF) {
+                    document.getElementById('jsPdfStatus').innerHTML = '✅ Loaded';
+                    document.getElementById('jsPdfVersion').textContent = window.jsPDF.version || 'Available';
+                } else {
+                    document.getElementById('jsPdfStatus').innerHTML = '❌ Not found';
+                }
+            }, 1000);
+        }
+
+        function testJsPDF() {
+            console.log('🧪 Testing jsPDF...');
+            try {
+                if (!window.jsPDF) {
+                    throw new Error('jsPDF not loaded');
+                }
+                
+                const { jsPDF } = window.jsPDF;
+                const pdf = new jsPDF();
+                pdf.text('Test PDF', 20, 20);
+                console.log('✅ jsPDF test successful');
+                alert('✅ jsPDF is working! Check console for details.');
+            } catch (error) {
+                console.error('❌ jsPDF test failed:', error);
+                alert('❌ jsPDF test failed: ' + error.message);
+            }
+        }
+
+        function loadExportData() {
+            console.log('📦 Testing export data loading...');
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const exportDataStr = urlParams.get('data');
+            const exportId = urlParams.get('exportId');
+            
+            if (exportId && typeof chrome !== 'undefined') {
+                console.log('🔗 Loading from storage:', exportId);
+                chrome.storage.local.get(exportId).then(result => {
+                    const data = result[exportId];
+                    if (data) {
+                        document.getElementById('dataFound').innerHTML = '✅ Found in storage';
+                        document.getElementById('screenshotCount').textContent = data.screenshots?.length || 0;
+                        console.log('✅ Data loaded from storage:', data.screenshots?.length || 0, 'screenshots');
+                    } else {
+                        document.getElementById('dataFound').innerHTML = '❌ Not found in storage';
+                        console.log('❌ No data found in storage for ID:', exportId);
+                    }
+                }).catch(error => {
+                    console.error('❌ Storage error:', error);
+                });
+            } else if (exportDataStr) {
+                console.log('🔗 Loading from URL params');
+                try {
+                    const data = JSON.parse(decodeURIComponent(exportDataStr));
+                    document.getElementById('dataFound').innerHTML = '✅ Found in URL';
+                    document.getElementById('screenshotCount').textContent = data.screenshots?.length || 0;
+                    console.log('✅ Data loaded from URL:', data.screenshots?.length || 0, 'screenshots');
+                } catch (error) {
+                    document.getElementById('dataFound').innerHTML = '❌ Parse error';
+                    console.error('❌ Parse error:', error);
+                }
+            } else {
+                document.getElementById('dataFound').innerHTML = '❌ No data found';
+                console.log('❌ No export data found in URL or storage');
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Debug page initialized');
+            checkEnvironment();
+        });
+    </script>
+</body>
+</html>
