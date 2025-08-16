@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IndexedDB Schema Repair Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #results {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 IndexedDB Automatic Schema Repair Test</h1>
+    <p>Testing the automatic schema repair functionality for the Chrome extension.</p>
+    
+    <div class="test-section">
+        <h2>🔧 Test Controls</h2>
+        <button onclick="runAutomaticSchemaRepairTest()">Test Automatic Schema Repair</button>
+        <button onclick="testPdfExportStore()">Test PDF Export Store</button>
+        <button onclick="simulateSchemaIssue()">Simulate Schema Issue</button>
+        <button onclick="clearResults()">Clear Results</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>📊 Test Results</h2>
+        <div id="results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🗄️ Database Status</h2>
+        <div id="dbStatus"></div>
+    </div>
+
+    <script>
+        // Simulate the TempStorageManager class from the Chrome extension
+        class TempStorageManager {
+            constructor() {
+                this.dbName = 'ScreenshotAnnotatorDB';
+                this.dbVersion = 2;
+                this.db = null;
+                this.isReady = false;
+            }
+            
+            async init() {
+                return new Promise((resolve, reject) => {
+                    console.log('🗄️ Initializing IndexedDB...');
+                    
+                    const request = indexedDB.open(this.dbName, this.dbVersion);
+                    
+                    request.onerror = () => {
+                        console.error('❌ Failed to open IndexedDB:', request.error);
+                        reject(request.error);
+                    };
+                    
+                    request.onsuccess = () => {
+                        this.db = request.result;
+                        this.isReady = true;
+                        console.log('✅ IndexedDB initialized');
+                        resolve();
+                    };
+                    
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        console.log('🔄 Upgrading database schema...');
+                        
+                        // Create screenshots store
+                        if (!db.objectStoreNames.contains('screenshots')) {
+                            const screenshotStore = db.createObjectStore('screenshots', { keyPath: 'id' });
+                            screenshotStore.createIndex('timestamp', 'timestamp', { unique: false });
+                            console.log('✅ Created screenshots store');
+                        }
+                        
+                        // Create sessions store
+                        if (!db.objectStoreNames.contains('sessions')) {
+                            const sessionStore = db.createObjectStore('sessions', { keyPath: 'id' });
+                            sessionStore.createIndex('created', 'created', { unique: false });
+                            console.log('✅ Created sessions store');
+                        }
+                        
+                        // PDF Exports object store - THE CRITICAL ONE
+                        if (!db.objectStoreNames.contains('pdfExports')) {
+                            const pdfExportStore = db.createObjectStore('pdfExports', { keyPath: 'id' });
+                            pdfExportStore.createIndex('timestamp', 'timestamp', { unique: false });
+                            console.log('✅ Created pdfExports object store');
+                        }
+                        
+                        // Legacy temp storage
+                        if (!db.objectStoreNames.contains('tempImages')) {
+                            const tempStore = db.createObjectStore('tempImages', { keyPath: 'id' });
+                            tempStore.createIndex('created', 'created', { unique: false });
+                            console.log('✅ Created tempImages store');
+                        }
+                    };
+                });
+            }
+
+            // NEW: Automatic schema validation and repair (from popup.js)
+            async validateAndFixSchema() {
+                try {
+                    console.log('🔍 === COMPREHENSIVE SCHEMA VALIDATION START ===');
+                    
+                    const requiredStores = ['screenshots', 'sessions', 'tempImages', 'pdfExports'];
+                    const existingStores = [...this.db.objectStoreNames];
+                    const missingStores = requiredStores.filter(store => !existingStores.includes(store));
+                    
+                    console.log('📊 Schema validation analysis:', {
+                        required: requiredStores,
+                        existing: existingStores,
+                        missing: missingStores,
+                        dbVersion: this.db.version
+                    });
+                    
+                    // Additional check: Test critical PDF export functionality
+                    let pdfExportWorking = true;
+                    try {
+                        if (this.db.objectStoreNames.contains('pdfExports')) {
+                            // Try to create a test transaction to verify store is accessible
+                            const testTransaction = this.db.transaction(['pdfExports'], 'readonly');
+                            const testStore = testTransaction.objectStore('pdfExports');
+                            console.log('✅ pdfExports object store is accessible');
+                        } else {
+                            pdfExportWorking = false;
+                            console.warn('⚠️ pdfExports object store missing');
+                        }
+                    } catch (pdfTestError) {
+                        pdfExportWorking = false;
+                        console.warn('⚠️ pdfExports object store test failed:', pdfTestError.message);
+                    }
+                    
+                    // Decide if repair is needed
+                    const repairNeeded = missingStores.length > 0 || !pdfExportWorking || this.db.version < 2;
+                    
+                    if (repairNeeded) {
+                        console.warn(`🔧 SCHEMA REPAIR REQUIRED:`, {
+                            missingStores: missingStores.length,
+                            pdfExportWorking,
+                            currentVersion: this.db.version,
+                            targetVersion: this.dbVersion
+                        });
+                        
+                        console.log('🔧 Initiating automatic schema repair...');
+                        
+                        // Perform automatic schema repair
+                        await this.performAutomaticSchemaRepair();
+                        
+                        // Verify repair success
+                        const newExistingStores = [...this.db.objectStoreNames];
+                        const newMissingStores = requiredStores.filter(store => !newExistingStores.includes(store));
+                        const repairSuccessful = newMissingStores.length === 0 && this.db.version === this.dbVersion;
+                        
+                        if (repairSuccessful) {
+                            console.log('✅ AUTOMATIC SCHEMA REPAIR COMPLETED SUCCESSFULLY');
+                            return { 
+                                repaired: true, 
+                                success: true,
+                                missingStores: missingStores,
+                                fixedStores: newExistingStores,
+                                message: 'Schema automatically repaired - PDF export ready!'
+                            };
+                        } else {
+                            console.error('❌ AUTOMATIC SCHEMA REPAIR INCOMPLETE');
+                            return { 
+                                repaired: true, 
+                                success: false,
+                                missingStores: newMissingStores,
+                                error: 'Automatic repair incomplete - manual intervention may be required'
+                            };
+                        }
+                    } else {
+                        console.log('✅ SCHEMA VALIDATION PASSED - All required object stores present and functional');
+                        return { 
+                            repaired: false, 
+                            success: true,
+                            missingStores: [],
+                            message: 'Database schema is healthy and ready'
+                        };
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Schema validation failed with error:', error);
+                    return { 
+                        repaired: false, 
+                        success: false,
+                        error: error.message,
+                        message: 'Schema validation failed - extension may have limited functionality'
+                    };
+                } finally {
+                    console.log('🔍 === COMPREHENSIVE SCHEMA VALIDATION END ===');
+                }
+            }
+
+            // NEW: Enhanced automatic schema repair without user intervention
+            async performAutomaticSchemaRepair() {
+                return new Promise((resolve, reject) => {
+                    try {
+                        console.log('🔧 === ENHANCED AUTOMATIC DATABASE SCHEMA REPAIR START ===');
+                        
+                        // Close current database connection safely
+                        if (this.db) {
+                            this.db.close();
+                            console.log('🔐 Safely closed existing database connection for repair');
+                        }
+                        
+                        // Delete and recreate database with correct schema
+                        const deleteRequest = indexedDB.deleteDatabase(this.dbName);
+                        
+                        deleteRequest.onsuccess = () => {
+                            console.log('🗑️ Successfully deleted old database for automatic repair');
+                            console.log('🏗️ Creating fresh database with complete v2 schema...');
+                            
+                            // Recreate with correct schema
+                            const createRequest = indexedDB.open(this.dbName, this.dbVersion);
+                            
+                            createRequest.onsuccess = (event) => {
+                                this.db = event.target.result;
+                                this.isReady = true;
+                                
+                                const createdStores = [...this.db.objectStoreNames];
+                                console.log('✅ Database successfully recreated with automatic repair');
+                                
+                                // Verify all required stores are present
+                                const requiredStores = ['screenshots', 'sessions', 'tempImages', 'pdfExports'];
+                                const allPresent = requiredStores.every(store => createdStores.includes(store));
+                                
+                                if (allPresent) {
+                                    console.log('🎉 AUTOMATIC REPAIR SUCCESS: All required object stores created');
+                                    resolve({
+                                        success: true,
+                                        version: this.db.version,
+                                        stores: createdStores,
+                                        message: 'Database automatically repaired with full functionality'
+                                    });
+                                } else {
+                                    const missing = requiredStores.filter(store => !createdStores.includes(store));
+                                    console.error('❌ AUTOMATIC REPAIR INCOMPLETE: Missing stores:', missing);
+                                    resolve({
+                                        success: false,
+                                        missing: missing,
+                                        stores: createdStores,
+                                        message: `Repair incomplete - missing: ${missing.join(', ')}`
+                                    });
+                                }
+                            };
+                            
+                            createRequest.onerror = (event) => {
+                                console.error('❌ Database creation failed during automatic repair:', event.target.error);
+                                this.isReady = false;
+                                reject(new Error(`Database creation failed: ${event.target.error.message}`));
+                            };
+                            
+                            createRequest.onupgradeneeded = (event) => {
+                                const db = event.target.result;
+                                console.log(`🔄 Creating complete schema during automatic repair...`);
+                                
+                                try {
+                                    // Create all required object stores with proper indexes
+                                    
+                                    // Screenshots object store (Primary data)
+                                    if (!db.objectStoreNames.contains('screenshots')) {
+                                        const screenshotStore = db.createObjectStore('screenshots', { keyPath: 'id' });
+                                        screenshotStore.createIndex('timestamp', 'timestamp', { unique: false });
+                                        screenshotStore.createIndex('sessionId', 'sessionId', { unique: false });
+                                        console.log('✅ Created screenshots object store with indexes');
+                                    }
+                                    
+                                    // Sessions object store (Multi-tab support)
+                                    if (!db.objectStoreNames.contains('sessions')) {
+                                        const sessionStore = db.createObjectStore('sessions', { keyPath: 'id' });
+                                        sessionStore.createIndex('timestamp', 'timestamp', { unique: false });
+                                        sessionStore.createIndex('lastActive', 'lastActive', { unique: false });
+                                        console.log('✅ Created sessions object store with indexes');
+                                    }
+                                    
+                                    // Temp storage (Legacy compatibility)
+                                    if (!db.objectStoreNames.contains('tempImages')) {
+                                        const tempStore = db.createObjectStore('tempImages', { keyPath: 'id' });
+                                        tempStore.createIndex('timestamp', 'timestamp', { unique: false });
+                                        tempStore.createIndex('screenshotId', 'screenshotId', { unique: false });
+                                        console.log('✅ Created tempImages object store with indexes');
+                                    }
+                                    
+                                    // PDF Exports object store (CRITICAL FOR PDF EXPORT FUNCTIONALITY)
+                                    if (!db.objectStoreNames.contains('pdfExports')) {
+                                        const pdfExportStore = db.createObjectStore('pdfExports', { keyPath: 'id' });
+                                        pdfExportStore.createIndex('timestamp', 'timestamp', { unique: false });
+                                        pdfExportStore.createIndex('created', 'created', { unique: false });
+                                        console.log('✅ CRITICAL: Created pdfExports object store - PDF export functionality restored');
+                                    }
+                                    
+                                    console.log('🏗️ Complete schema created during automatic repair');
+                                    console.log('📊 All object stores created:', [...db.objectStoreNames]);
+                                    
+                                } catch (schemaError) {
+                                    console.error('❌ Schema creation failed during automatic repair:', schemaError);
+                                    throw schemaError;
+                                }
+                            };
+                        };
+                        
+                        deleteRequest.onerror = (event) => {
+                            console.error('❌ Database deletion failed during automatic repair:', event.target.error);
+                            this.isReady = false;
+                            reject(new Error(`Database deletion failed: ${event.target.error.message}`));
+                        };
+                        
+                    } catch (error) {
+                        console.error('❌ Automatic schema repair setup failed:', error);
+                        this.isReady = false;
+                        reject(error);
+                    }
+                });
+            }
+            
+            async storePdfExportData(exportId, exportData) {
+                if (!this.db) {
+                    throw new Error('Database not initialized');
+                }
+                
+                // CRITICAL CHECK: Verify pdfExports object store exists
+                if (!this.db.objectStoreNames.contains('pdfExports')) {
+                    console.error('❌ pdfExports object store not found in database');
+                    console.log('🗄️ Available object stores:', [...this.db.objectStoreNames]);
+                    
+                    // Try to reinitialize
+                    console.log('🔄 Attempting to reinitialize database...');
+                    await this.init();
+                    
+                    if (!this.db.objectStoreNames.contains('pdfExports')) {
+                        throw new Error('pdfExports object store not available. Database schema may need manual reset.');
+                    }
+                }
+                
+                const transaction = this.db.transaction(['pdfExports'], 'readwrite');
+                const store = transaction.objectStore('pdfExports');
+                
+                const exportRecord = {
+                    id: exportId,
+                    data: exportData,
+                    timestamp: Date.now(),
+                    created: new Date().toISOString()
+                };
+                
+                return new Promise((resolve, reject) => {
+                    const request = store.put(exportRecord);
+                    request.onsuccess = () => resolve({ success: true, exportId });
+                    request.onerror = () => reject(request.error);
+                });
+            }
+        }
+        
+        let tempStorage = null;
+        
+        function logResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+            results.appendChild(div);
+            results.scrollTop = results.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('dbStatus').innerHTML = '';
+        }
+
+        function updateDbStatus() {
+            const dbStatus = document.getElementById('dbStatus');
+            
+            if (tempStorage && tempStorage.db) {
+                const stores = [...tempStorage.db.objectStoreNames];
+                dbStatus.innerHTML = `
+                    <div class="info">
+                        <strong>Database Name:</strong> ${tempStorage.db.name}<br>
+                        <strong>Version:</strong> ${tempStorage.db.version}<br>
+                        <strong>Object Stores:</strong> ${stores.join(', ')}<br>
+                        <strong>Status:</strong> ${tempStorage.isReady ? 'Ready' : 'Not Ready'}<br>
+                        <strong>PDF Export Store:</strong> ${stores.includes('pdfExports') ? '✅ Present' : '❌ Missing'}
+                    </div>
+                `;
+            } else {
+                dbStatus.innerHTML = '<div class="warning">Database not initialized</div>';
+            }
+        }
+        
+        async function runAutomaticSchemaRepairTest() {
+            clearResults();
+            logResult('🚀 Starting Automatic Schema Repair Test...', 'info');
+            
+            try {
+                // Initialize storage
+                tempStorage = new TempStorageManager();
+                await tempStorage.init();
+                
+                logResult('✅ Initial database initialization complete', 'success');
+                updateDbStatus();
+                
+                // Run schema validation and repair
+                logResult('🔍 Running automatic schema validation...', 'info');
+                const repairResult = await tempStorage.validateAndFixSchema();
+                
+                if (repairResult.success) {
+                    if (repairResult.repaired) {
+                        logResult('✅ AUTOMATIC SCHEMA REPAIR SUCCESSFUL!', 'success');
+                        logResult(`📊 Repair details: ${repairResult.message}`, 'success');
+                    } else {
+                        logResult('✅ Schema validation passed - no repair needed', 'success');
+                        logResult(`📊 Status: ${repairResult.message}`, 'info');
+                    }
+                } else {
+                    logResult('❌ Automatic schema repair failed', 'error');
+                    logResult(`📊 Error: ${repairResult.error || repairResult.message}`, 'error');
+                }
+                
+                updateDbStatus();
+                
+                // Test PDF export functionality
+                await testPdfExportStore();
+                
+            } catch (error) {
+                logResult(`❌ Automatic schema repair test failed: ${error.message}`, 'error');
+                console.error('Test error:', error);
+            }
+        }
+        
+        async function testPdfExportStore() {
+            logResult('📄 Testing PDF export store functionality...', 'info');
+            
+            if (!tempStorage || !tempStorage.db) {
+                logResult('⚠️ Database not initialized', 'warning');
+                return false;
+            }
+            
+            try {
+                // Test storing PDF export data
+                const testExportId = 'test_export_' + Date.now();
+                const testData = {
+                    screenshots: [
+                        { id: 'test1', imageData: 'data:image/png;base64,test', annotations: [] }
+                    ],
+                    totalAnnotations: 0,
+                    exportDate: new Date().toISOString()
+                };
+                
+                logResult(`🧪 Testing PDF export data storage with ID: ${testExportId}`, 'info');
+                
+                const result = await tempStorage.storePdfExportData(testExportId, testData);
+                
+                if (result.success) {
+                    logResult('✅ PDF export data stored successfully', 'success');
+                    logResult('✅ PDF export functionality is working correctly', 'success');
+                    logResult('✅ "pdfExports object store not found" error should be resolved', 'success');
+                    return true;
+                } else {
+                    logResult('❌ PDF export data storage failed', 'error');
+                    return false;
+                }
+                
+            } catch (error) {
+                logResult(`❌ PDF export test failed: ${error.message}`, 'error');
+                
+                if (error.message.includes('pdfExports object store not available')) {
+                    logResult('🔍 ROOT CAUSE: pdfExports object store is missing from database schema', 'error');
+                    logResult('💡 SOLUTION: The automatic schema repair should fix this issue', 'info');
+                }
+                
+                return false;
+            }
+        }
+        
+        async function simulateSchemaIssue() {
+            logResult('🔧 Simulating schema issue by creating incomplete database...', 'warning');
+            
+            try {
+                // Close existing connection
+                if (tempStorage && tempStorage.db) {
+                    tempStorage.db.close();
+                }
+                
+                // Delete database
+                const deleteRequest = indexedDB.deleteDatabase('ScreenshotAnnotatorDB');
+                
+                deleteRequest.onsuccess = async () => {
+                    logResult('🗑️ Deleted existing database', 'info');
+                    
+                    // Create incomplete database (missing pdfExports store)
+                    const incompleteRequest = indexedDB.open('ScreenshotAnnotatorDB', 1);
+                    
+                    incompleteRequest.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        
+                        // Only create some stores, not all (simulate old version)
+                        if (!db.objectStoreNames.contains('screenshots')) {
+                            db.createObjectStore('screenshots', { keyPath: 'id' });
+                            console.log('✅ Created screenshots store only');
+                        }
+                        
+                        // Deliberately NOT creating pdfExports store to simulate the issue
+                        logResult('⚠️ Created incomplete database (missing pdfExports store)', 'warning');
+                    };
+                    
+                    incompleteRequest.onsuccess = (event) => {
+                        const db = event.target.result;
+                        db.close();
+                        
+                        logResult('✅ Incomplete database created - ready to test automatic repair', 'info');
+                        logResult('🔧 Now run "Test Automatic Schema Repair" to see the repair in action', 'info');
+                    };
+                };
+                
+            } catch (error) {
+                logResult(`❌ Failed to simulate schema issue: ${error.message}`, 'error');
+            }
+        }
+        
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            logResult('🔧 IndexedDB Automatic Schema Repair Test loaded', 'info');
+            logResult('Click "Test Automatic Schema Repair" to verify the functionality', 'info');
+        });
+    </script>
+</body>
+</html>
