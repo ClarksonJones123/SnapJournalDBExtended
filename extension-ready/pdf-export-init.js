@@ -18,24 +18,9 @@ async function initializePdfExportSystem() {
         }
         
         // Initialize PDF export page functionality
-        if (typeof initializePdfExportPage === 'function') {
-            console.log('🎨 Initializing PDF export page...');
-            await initializePdfExportPage();
-            console.log('✅ PDF export page initialized successfully');
-        } else {
-            console.warn('⚠️ PDF export page function not available yet');
-            
-            // Retry after a short delay if functions aren't loaded yet
-            setTimeout(async () => {
-                if (typeof initializePdfExportPage === 'function') {
-                    console.log('🔄 Retrying PDF export page initialization...');
-                    await initializePdfExportPage();
-                    console.log('✅ PDF export page initialized on retry');
-                } else {
-                    console.error('❌ PDF export functions still not available');
-                }
-            }, 1000);
-        }
+        // Note: PDF export is initialized via DOMContentLoaded in pdf-export.js
+        // No need to call a separate initialization function
+        console.log('🎨 PDF export system ready - PDFJournalExporter will initialize automatically');
         
     } catch (error) {
         console.error('❌ Failed to initialize PDF export system:', error);
