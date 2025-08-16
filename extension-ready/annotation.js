@@ -636,7 +636,7 @@ class UniversalAnnotator {
     
     async saveAnnotationsToStorage() {
         try {
-            console.log('💾 === SAVING ANNOTATIONS TO STORAGE (NO SCALING) ===');
+            console.log('💾 === SAVING ANNOTATIONS TO PRIMARY STORAGE (IndexedDB) ===');
             
             // Get current image for analysis
             const img = document.querySelector('.screenshot-image');
@@ -686,25 +686,26 @@ class UniversalAnnotator {
             
             console.log('💾 ANNOTATIONS CONVERTED USING NATURAL DIMENSIONS:', annotationsForStorage);
             
-            // Save to Chrome storage with proper error handling
+            // Save to PRIMARY STORAGE (IndexedDB) with proper error handling
             try {
                 // Check if we're in a Chrome extension context
-                if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-                    const result = await chrome.storage.local.get('screenshots');
-                    const screenshots = result.screenshots || [];
-                    const index = screenshots.findIndex(s => s.id === this.screenshot.id);
+                if (typeof chrome !== 'undefined' && chrome.runtime) {
+                    console.log('💾 Saving to PRIMARY IndexedDB storage...');
                     
-                    if (index !== -1) {
-                        screenshots[index].annotations = annotationsForStorage;
-                        await chrome.storage.local.set({ screenshots: screenshots });
-                        console.log('✅ Annotations saved with corrected coordinate system');
-                        console.log('💾 === SAVE COMPLETE ===');
-                        
-                        this.updateStatus('✅ Annotations saved successfully!');
-                    } else {
-                        console.warn('⚠️ Screenshot not found in storage for annotation save');
-                        this.updateStatus('⚠️ Screenshot not found - annotations may not persist');
-                    }
+                    // Send message to background/popup to save via TempStorageManager
+                    chrome.runtime.sendMessage({
+                        action: 'saveAnnotatedScreenshot',
+                        screenshot: this.screenshot
+                    }, (response) => {
+                        if (response && response.success) {
+                            console.log('✅ Annotations saved to PRIMARY storage (IndexedDB)');
+                            console.log('💾 === SAVE COMPLETE ===');
+                            this.updateStatus('✅ Annotations saved successfully to unlimited storage!');
+                        } else {
+                            console.warn('⚠️ Failed to save to PRIMARY storage:', response?.error);
+                            this.updateStatus('⚠️ Failed to save annotations - please try again');
+                        }
+                    });
                 } else {
                     // Not in Chrome extension context - annotations are saved in memory only
                     console.log('ℹ️ Running outside Chrome extension - annotations saved locally');
@@ -712,11 +713,12 @@ class UniversalAnnotator {
                 }
             } catch (storageError) {
                 // Silently handle storage errors - don't spam console
-                console.log('ℹ️ Storage save not available:', storageError.message);
+                console.log('ℹ️ Primary storage save not available:', storageError.message);
                 this.updateStatus('✅ Annotations saved locally');
             }
         } catch (error) {
             console.error('❌ Error saving annotations:', error);
+            this.updateStatus('❌ Failed to save annotations');
         }
     }
     
