@@ -356,7 +356,7 @@ class ScreenshotAnnotator {
         
         const screenshot = {
           id: Date.now().toString(),
-          imageData: compressedImageData,
+          imageData: optimizedImageData,
           originalWidth: 1920,
           originalHeight: 1080,
           displayWidth: Math.round(1920 * 0.9), // 90% sizing
