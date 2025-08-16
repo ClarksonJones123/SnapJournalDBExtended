@@ -135,7 +135,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     debugLog('✅ Persistent debug system loaded - use window.debugLog() or window.debugError() for manual testing');
-});
     
     // Check DOM elements
     debugLog('Checking DOM elements...');
