@@ -912,14 +912,10 @@ class ScreenshotAnnotator {
       });
       
       console.log('✅ Universal annotation interface opened');
-      this.showStatus('🎯 Annotation window opened - works on ANY page!', 'success');
+      this.showStatus('🎯 Annotation window opened - popup stays open for continuity!', 'success');
       
-      // Close popup after successful annotation start
-      setTimeout(() => {
-        if (window.close) {
-          window.close();
-        }
-      }, 1000);
+      // DON'T CLOSE POPUP - Keep it open for continuity!
+      console.log('✅ Keeping popup open for workflow continuity');
       
     } catch (error) {
       console.error('❌ Annotation error:', error);
