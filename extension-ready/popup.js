@@ -130,40 +130,45 @@ class ScreenshotAnnotator {
   
   async loadScreenshots() {
     try {
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        const result = await chrome.storage.local.get('screenshots');
-        this.screenshots = result.screenshots || [];
+      console.log('📱 Loading screenshots from PRIMARY STORAGE (unlimited)...');
+      
+      if (!this.tempStorage || !this.tempStorage.isReady) {
+        console.log('⚠️ PRIMARY storage not ready, waiting...');
         
-        // Restore images from temporary storage if needed
-        for (let i = 0; i < this.screenshots.length; i++) {
-          const screenshot = this.screenshots[i];
-          
-          if (screenshot.isInTempStorage && screenshot.tempImageId && this.tempStorage) {
-            try {
-              console.log(`📁 Restoring screenshot ${i + 1} from temporary storage...`);
-              const imageData = await this.tempStorage.retrieveImage(screenshot.tempImageId);
-              
-              if (imageData && imageData.imageData) {
-                screenshot.imageData = imageData.imageData;
-                screenshot.isInTempStorage = false;
-                delete screenshot.tempImageId;
-                console.log(`✅ Restored screenshot ${i + 1} from temporary storage`);
-              }
-            } catch (error) {
-              console.error(`❌ Failed to restore screenshot ${i + 1}:`, error);
-            }
-          }
+        // Wait for storage to initialize
+        let attempts = 0;
+        while ((!this.tempStorage || !this.tempStorage.isReady) && attempts < 20) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          attempts++;
         }
         
-        console.log(`📱 Loaded ${this.screenshots.length} screenshots`);
-        this.calculateMemoryUsage();
-        
-      } else {
-        console.log('Chrome storage not available, using empty screenshot list');
-        this.screenshots = [];
+        if (!this.tempStorage || !this.tempStorage.isReady) {
+          console.error('❌ PRIMARY storage failed to initialize');
+          this.screenshots = [];
+          return;
+        }
       }
+      
+      // Load from PRIMARY storage (IndexedDB - unlimited capacity)
+      const screenshots = await this.tempStorage.getAllScreenshots();
+      this.screenshots = screenshots || [];
+      
+      console.log(`📊 Loaded ${this.screenshots.length} screenshots from PRIMARY storage`);
+      console.log('🏷️ Current session:', await this.tempStorage.getCurrentSessionId());
+      
+      // Show capacity info
+      const stats = await this.tempStorage.getStorageStats();
+      console.log('💾 Storage capacity:', stats.capacity);
+      console.log('📊 Current usage:', stats.currentUsage);
+      
+      if (stats.totalSizeMB > 100) {
+        console.log(`🎉 Using ${stats.totalSizeMB}MB - Would have exceeded Chrome's 10MB limit by ${stats.totalSizeMB - 10}MB!`);
+      }
+      
+      this.calculateMemoryUsage();
+      
     } catch (error) {
-      console.error('Error loading screenshots:', error);
+      console.error('❌ Error loading screenshots from PRIMARY storage:', error);
       this.screenshots = [];
     }
   }
