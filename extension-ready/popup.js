@@ -406,9 +406,27 @@ class ScreenshotAnnotator {
         const img = new Image();
         
         img.onload = () => {
-          console.log('🖼️ Original image loaded - dimensions:', img.width, 'x', img.height);
+          console.log('🖼️ PDF Image Analysis for Coordinate Debugging:');
+          console.log('  - Canvas dimensions:', `${canvas.width}x${canvas.height}`);
+          console.log('  - Img natural dimensions:', `${img.naturalWidth}x${img.naturalHeight}`);
+          console.log('  - Screenshot display dimensions:', `${screenshot.displayWidth}x${screenshot.displayHeight}`);
+          console.log('  - Screenshot storage dimensions:', `${screenshot.storageWidth}x${screenshot.storageHeight}`);
           
-          // Use original image dimensions - NO SCALING
+          // Check if there's any size mismatch that could cause coordinate issues
+          const dimensionMismatch = 
+            img.naturalWidth !== screenshot.displayWidth || 
+            img.naturalHeight !== screenshot.displayHeight;
+          
+          console.log('  - Dimension mismatch detected:', dimensionMismatch);
+          
+          if (dimensionMismatch) {
+            console.warn('⚠️ COORDINATE ISSUE DETECTED: Image dimensions do not match expected dimensions!');
+            console.warn('  This could cause the coordinate offset issue.');
+            console.warn('  Expected:', `${screenshot.displayWidth}x${screenshot.displayHeight}`);
+            console.warn('  Actual:', `${img.naturalWidth}x${img.naturalHeight}`);
+          }
+          
+          // Use actual image dimensions
           canvas.width = img.width;
           canvas.height = img.height;
           
