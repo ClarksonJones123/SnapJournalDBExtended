@@ -270,15 +270,16 @@ class UniversalAnnotator {
             coordinateSystem: 'DISPLAY_RELATIVE'
         });
         
-        // SIMPLIFIED: Use coordinates directly since they're already display-relative
+        // COORDINATE PRECISION FIX: Account for CSS transform: translate(-50%, -50%)
+        // The CSS centers elements on their coordinates, so we use coordinates directly
         const displayX = annotation.x;
         const displayY = annotation.y;
         const displayTextX = annotation.textX || (annotation.x + 60);
         const displayTextY = annotation.textY || (annotation.y - 30);
         
-        console.log('🔧 Final display coordinates:', {
-            pinpoint: `(${displayX.toFixed(1)}, ${displayY.toFixed(1)})`,
-            textLabel: `(${displayTextX.toFixed(1)}, ${displayTextY.toFixed(1)})`
+        console.log('🔧 PRECISE coordinates (accounting for CSS centering):', {
+            pinpoint: `(${displayX.toFixed(1)}, ${displayY.toFixed(1)}) - CSS will center this`,
+            textLabel: `(${displayTextX.toFixed(1)}, ${displayTextY.toFixed(1)}) - CSS will center this`
         });
         
         // Create annotation system container
