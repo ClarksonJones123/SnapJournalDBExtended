@@ -203,8 +203,7 @@ class PDFJournalExporter {
             const contentWidth = pdfWidth;
             const contentHeight = pdfHeight;
             
-            // Add title page
-            this.addTitlePage(pdf, pageWidth, pageHeight, margin);
+            // NO TITLE PAGE - Start directly with images
             
             // Process each screenshot
             for (let i = 0; i < this.screenshots.length; i++) {
@@ -212,10 +211,10 @@ class PDFJournalExporter {
                 console.log(`📸 Processing screenshot ${i + 1}/${this.screenshots.length}`);
                 
                 if (i > 0) {
-                    pdf.addPage();
+                    pdf.addPage([pdfWidth, pdfHeight]); // Use same custom dimensions
                 }
                 
-                await this.addScreenshotPage(pdf, screenshot, i + 1, pageWidth, pageHeight, margin, contentWidth);
+                await this.addScreenshotPage(pdf, screenshot, i + 1, pdfWidth, pdfHeight, margin, contentWidth, contentHeight);
                 
                 // Update progress
                 const progress = ((i + 1) / this.screenshots.length) * 100;
