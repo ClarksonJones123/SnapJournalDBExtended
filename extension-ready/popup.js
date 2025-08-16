@@ -916,21 +916,14 @@ class ScreenshotAnnotator {
              style="position: absolute; 
                     left: ${x}px; 
                     top: ${y}px; 
-                    width: 12px; 
-                    height: 12px; 
+                    width: 8px; 
+                    height: 8px; 
                     background: #ff4444; 
                     border: 1px solid white; 
                     border-radius: 50%; 
-                    font-size: 8px; 
-                    color: white; 
-                    display: flex; 
-                    align-items: center; 
-                    justify-content: center;
-                    font-weight: bold;
                     z-index: 10;
                     box-shadow: 0 1px 2px rgba(0,0,0,0.3);"
              title="${annotation.text}">
-          ${index + 1}
         </div>`;
     });
     
