@@ -641,8 +641,8 @@ class ScreenshotAnnotator {
         // Create screenshot object with detailed timestamp
         const now = new Date();
         
-        // 🔧 STORAGE-OPTIMIZED COMPRESSION (JPEG 75% quality)
-        const processedImageData = await this.compressImageData(response.imageData, 0.75);
+        // 🔧 100% ORIGINAL QUALITY - NO COMPRESSION
+        const processedImageData = response.imageData; // Keep original image data unchanged
         
         // 🔧 GET ORIGINAL CAPTURE DIMENSIONS (before compression)
         const originalDimensions = await this.getImageDimensions(response.imageData);
