@@ -520,8 +520,49 @@ class UniversalAnnotator {
     
     async saveAnnotationsToStorage() {
         try {
-            // Update the screenshot object
-            this.screenshot.annotations = this.annotations;
+            console.log('💾 === SAVING ANNOTATIONS TO STORAGE ===');
+            
+            // Convert display coordinates back to stored coordinates before saving
+            const img = document.querySelector('.screenshot-image');
+            const displayScaleX = img.offsetWidth / this.screenshot.displayWidth;
+            const displayScaleY = img.offsetHeight / this.screenshot.displayHeight;
+            const storageScaleX = 1 / displayScaleX;
+            const storageScaleY = 1 / displayScaleY;
+            
+            console.log('📐 SAVE COORDINATE CONVERSION:', {
+                imgDisplaySize: `${img.offsetWidth}x${img.offsetHeight}`,
+                screenshotStoredSize: `${this.screenshot.displayWidth}x${this.screenshot.displayHeight}`,
+                displayScale: `${displayScaleX.toFixed(3)}x, ${displayScaleY.toFixed(3)}`,
+                storageScale: `${storageScaleX.toFixed(3)}x, ${storageScaleY.toFixed(3)}`
+            });
+            
+            // Convert all annotation coordinates from display to storage coordinates
+            const annotationsWithStoredCoords = this.annotations.map((annotation, index) => {
+                const storedX = annotation.x * storageScaleX;
+                const storedY = annotation.y * storageScaleY;
+                const storedTextX = annotation.textX * storageScaleX;
+                const storedTextY = annotation.textY * storageScaleY;
+                
+                console.log(`📍 Annotation ${index + 1} coordinate conversion:`, {
+                    displayCoords: `(${annotation.x.toFixed(1)}, ${annotation.y.toFixed(1)})`,
+                    storedCoords: `(${storedX.toFixed(1)}, ${storedY.toFixed(1)})`,
+                    displayTextPos: `(${annotation.textX.toFixed(1)}, ${annotation.textY.toFixed(1)})`,
+                    storedTextPos: `(${storedTextX.toFixed(1)}, ${storedTextY.toFixed(1)})`
+                });
+                
+                return {
+                    ...annotation,
+                    x: storedX,           // FINAL RED DOT POSITION (converted to storage coords)
+                    y: storedY,           // FINAL RED DOT POSITION (converted to storage coords)
+                    textX: storedTextX,   // FINAL TEXT POSITION (converted to storage coords)
+                    textY: storedTextY    // FINAL TEXT POSITION (converted to storage coords)
+                };
+            });
+            
+            // Update the screenshot object with converted coordinates
+            this.screenshot.annotations = annotationsWithStoredCoords;
+            
+            console.log('💾 FINAL ANNOTATIONS FOR STORAGE:', annotationsWithStoredCoords);
             
             // Save to Chrome storage
             const result = await chrome.storage.local.get('screenshots');
@@ -529,9 +570,10 @@ class UniversalAnnotator {
             const index = screenshots.findIndex(s => s.id === this.screenshot.id);
             
             if (index !== -1) {
-                screenshots[index].annotations = this.annotations;
+                screenshots[index].annotations = annotationsWithStoredCoords;
                 await chrome.storage.local.set({ screenshots: screenshots });
-                console.log('✅ Annotations saved to storage');
+                console.log('✅ Annotations saved to storage with FINAL red dot positions');
+                console.log('💾 === SAVE COMPLETE ===');
             }
         } catch (error) {
             console.error('❌ Error saving annotations:', error);
