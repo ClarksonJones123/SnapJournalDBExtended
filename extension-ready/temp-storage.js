@@ -8,57 +8,173 @@ class TempStorageManager {
   }
   
   async init() {
+    try {
+      console.log('🗄️ Initializing PRIMARY storage (IndexedDB) for unlimited capacity...');
+      
+      this.dbName = 'ScreenshotAnnotatorDB';
+      this.dbVersion = 2;
+      
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(this.dbName, this.dbVersion);
+        
+        request.onsuccess = (event) => {
+          this.db = event.target.result;
+          console.log('✅ PRIMARY storage (IndexedDB) initialized successfully');
+          console.log('🚀 UNLIMITED storage capacity available via IndexedDB');
+          
+          // AUTOMATIC SCHEMA VALIDATION: Check if all required object stores exist
+          this.validateAndFixSchema().then(() => {
+            resolve();
+          }).catch(reject);
+        };
+        
+        request.onerror = (event) => {
+          console.error('❌ PRIMARY storage initialization failed:', event.target.error);
+          reject(event.target.error);
+        };
+        
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          const oldVersion = event.oldVersion;
+          const newVersion = event.newVersion;
+          
+          console.log(`🔄 Upgrading IndexedDB schema from v${oldVersion} to v${newVersion}...`);
+          
+          // Screenshots object store (v1)
+          if (!db.objectStoreNames.contains('screenshots')) {
+            const screenshotStore = db.createObjectStore('screenshots', { keyPath: 'id' });
+            screenshotStore.createIndex('timestamp', 'timestamp', { unique: false });
+            console.log('✅ Created screenshots object store (v1)');
+          }
+          
+          // Sessions object store (v1)  
+          if (!db.objectStoreNames.contains('sessions')) {
+            const sessionStore = db.createObjectStore('sessions', { keyPath: 'id' });
+            sessionStore.createIndex('timestamp', 'timestamp', { unique: false });
+            console.log('✅ Created sessions object store (v1)');
+          }
+          
+          // Legacy temp storage (v1)
+          if (!db.objectStoreNames.contains('tempImages')) {
+            const tempStore = db.createObjectStore('tempImages', { keyPath: 'id' });
+            tempStore.createIndex('timestamp', 'timestamp', { unique: false });
+            console.log('✅ Created tempImages object store (v1 compatibility)');
+          }
+          
+          // PDF Exports object store (v2 - CRITICAL FOR PDF EXPORT)
+          if (!db.objectStoreNames.contains('pdfExports')) {
+            const pdfExportStore = db.createObjectStore('pdfExports', { keyPath: 'id' });
+            pdfExportStore.createIndex('timestamp', 'timestamp', { unique: false });
+            console.log('✅ Created pdfExports object store (v2 - for large datasets)');
+          }
+          
+          console.log(`✅ IndexedDB schema upgrade complete - v${newVersion} ready`);
+          console.log('🗄️ Available object stores:', [...db.objectStoreNames]);
+        };
+      });
+    } catch (error) {
+      console.error('❌ IndexedDB initialization error:', error);
+      throw error;
+    }
+  }
+
+  // NEW: Automatic schema validation and repair on every startup
+  async validateAndFixSchema() {
+    try {
+      console.log('🔍 Performing automatic schema validation...');
+      
+      const requiredStores = ['screenshots', 'sessions', 'tempImages', 'pdfExports'];
+      const existingStores = [...this.db.objectStoreNames];
+      const missingStores = requiredStores.filter(store => !existingStores.includes(store));
+      
+      console.log('📊 Schema validation results:', {
+        required: requiredStores,
+        existing: existingStores,
+        missing: missingStores
+      });
+      
+      if (missingStores.length > 0) {
+        console.warn(`⚠️ Missing object stores detected: ${missingStores.join(', ')}`);
+        console.log('🔧 Automatically fixing schema issues...');
+        
+        // Automatic schema repair
+        await this.performAutomaticSchemaRepair();
+        console.log('✅ Schema automatically repaired - PDF export will now work!');
+        
+        return { repaired: true, missingStores };
+      } else {
+        console.log('✅ All required object stores present - schema is healthy');
+        return { repaired: false, missingStores: [] };
+      }
+      
+    } catch (error) {
+      console.error('❌ Schema validation failed:', error);
+      // Don't throw - allow extension to continue working
+      return { repaired: false, error: error.message };
+    }
+  }
+
+  // NEW: Automatic schema repair without user intervention
+  async performAutomaticSchemaRepair() {
     return new Promise((resolve, reject) => {
-      console.log('🗄️ Initializing PRIMARY storage (IndexedDB unlimited capacity)...');
-      
-      const request = indexedDB.open(this.dbName, this.dbVersion);
-      
-      request.onerror = () => {
-        console.error('❌ Failed to open IndexedDB:', request.error);
-        reject(request.error);
-      };
-      
-      request.onsuccess = () => {
-        this.db = request.result;
-        this.isReady = true;
-        console.log('✅ PRIMARY storage initialized with unlimited capacity');
-        resolve();
-      };
-      
-      request.onupgradeneeded = (event) => {
-        const db = event.target.result;
-        console.log('🔄 Upgrading database schema...');
+      try {
+        console.log('🔧 Starting automatic database schema repair...');
         
-        // Create screenshots store (main storage)
-        if (!db.objectStoreNames.contains('screenshots')) {
-          const screenshotStore = db.createObjectStore('screenshots', { keyPath: 'id' });
-          screenshotStore.createIndex('timestamp', 'timestamp', { unique: false });
-          screenshotStore.createIndex('sessionId', 'sessionId', { unique: false });
-          screenshotStore.createIndex('tabUrl', 'tabUrl', { unique: false });
-          console.log('✅ Created screenshots store with multi-tab indexes');
+        // Close current database connection
+        if (this.db) {
+          this.db.close();
         }
         
-        // Create sessions store (for multi-tab collections)
-        if (!db.objectStoreNames.contains('sessions')) {
-          const sessionStore = db.createObjectStore('sessions', { keyPath: 'id' });
-          sessionStore.createIndex('created', 'created', { unique: false });
-          sessionStore.createIndex('name', 'name', { unique: false });
-          console.log('✅ Created sessions store for multi-tab journals');
-        }
+        // Delete and recreate database with correct schema
+        const deleteRequest = indexedDB.deleteDatabase(this.dbName);
         
-        // PDF Exports object store (NEW - for large dataset exports)
-        if (!db.objectStoreNames.contains('pdfExports')) {
-          const pdfExportStore = db.createObjectStore('pdfExports', { keyPath: 'id' });
-          pdfExportStore.createIndex('timestamp', 'timestamp', { unique: false });
-          console.log('✅ Created pdfExports object store for large datasets');
-        }
+        deleteRequest.onsuccess = () => {
+          console.log('✅ Old database deleted for schema repair');
+          
+          // Recreate with correct schema
+          const createRequest = indexedDB.open(this.dbName, this.dbVersion);
+          
+          createRequest.onsuccess = (event) => {
+            this.db = event.target.result;
+            console.log('✅ Database recreated with correct schema automatically');
+            resolve();
+          };
+          
+          createRequest.onerror = (event) => {
+            console.error('❌ Database recreation failed:', event.target.error);
+            reject(event.target.error);
+          };
+          
+          createRequest.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            console.log('🔄 Creating complete schema during automatic repair...');
+            
+            // Create all required object stores
+            const screenshotStore = db.createObjectStore('screenshots', { keyPath: 'id' });
+            screenshotStore.createIndex('timestamp', 'timestamp', { unique: false });
+            
+            const sessionStore = db.createObjectStore('sessions', { keyPath: 'id' });
+            sessionStore.createIndex('timestamp', 'timestamp', { unique: false });
+            
+            const tempStore = db.createObjectStore('tempImages', { keyPath: 'id' });
+            tempStore.createIndex('timestamp', 'timestamp', { unique: false });
+            
+            const pdfExportStore = db.createObjectStore('pdfExports', { keyPath: 'id' });
+            pdfExportStore.createIndex('timestamp', 'timestamp', { unique: false });
+            
+            console.log('✅ All object stores created during automatic repair');
+          };
+        };
         
-        // Legacy temp storage (keep for compatibility)
-        if (!db.objectStoreNames.contains('tempImages')) {
-          const tempStore = db.createObjectStore('tempImages', { keyPath: 'id' });
-          tempStore.createIndex('created', 'created', { unique: false });
-        }
-      };
+        deleteRequest.onerror = (event) => {
+          console.error('❌ Database deletion failed during repair:', event.target.error);
+          reject(event.target.error);
+        };
+        
+      } catch (error) {
+        console.error('❌ Automatic schema repair failed:', error);
+        reject(error);
+      }
     });
   }
   
