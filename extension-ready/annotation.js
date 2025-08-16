@@ -627,11 +627,6 @@ class UniversalAnnotator {
         
         console.log('🎯 Added DEBUG crosshair at exact coordinates for 3 seconds - compare with red dot position');
         
-        // Add drag functionality for fine-tuning
-        this.makeDraggable(pinpoint, annotation, updateArrow, 'pin');
-        
-        this.makeDraggable(textLabel, annotation, updateArrow, 'text');
-        
         // Add to container
         container.appendChild(annotationSystem);
         
