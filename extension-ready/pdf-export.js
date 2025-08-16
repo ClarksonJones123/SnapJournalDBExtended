@@ -250,7 +250,7 @@ class PDFJournalExporter {
         
         // Add a decorative line
         pdf.setLineWidth(0.5);
-        pdf.line(margin, 170, pageWidth - margin, 170);
+        pdf.line(margin, 175, pageWidth - margin, 175);
         
         // Footer
         pdf.setFontSize(10);
