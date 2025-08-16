@@ -64,13 +64,28 @@ class ScreenshotAnnotator {
         this.tempStorage = window.tempStorage;
         console.log('✅ Temporary storage system initialized');
         
-        // Test the connection
+        // AUTOMATIC SCHEMA REPAIR: Check and fix database schema issues
+        await this.performAutomaticSchemaCheck();
+        
+        // Test the connection after potential repair
         try {
           const stats = await this.tempStorage.getStorageStats();
           console.log('📊 Temporary storage ready:', stats);
         } catch (testError) {
-          console.warn('⚠️ Temporary storage test failed:', testError);
-          this.tempStorage = null;
+          console.warn('⚠️ Temporary storage test failed after schema check:', testError);
+          
+          // If still failing, try one more repair attempt
+          console.log('🔧 Attempting final schema repair...');
+          await this.forceSchemaRepair();
+          
+          // Final test
+          try {
+            const finalStats = await this.tempStorage.getStorageStats();
+            console.log('📊 Temporary storage recovered:', finalStats);
+          } catch (finalError) {
+            console.error('❌ Final schema repair failed:', finalError);
+            this.tempStorage = null;
+          }
         }
       } else {
         console.warn('⚠️ Temporary storage not available, using Chrome storage only');
@@ -80,6 +95,222 @@ class ScreenshotAnnotator {
       console.error('❌ Failed to initialize temporary storage:', error);
       this.tempStorage = null;
     }
+  }
+
+  // NEW: Automatic schema validation and repair on popup opening
+  async performAutomaticSchemaCheck() {
+    try {
+      console.log('🔍 === AUTOMATIC SCHEMA VALIDATION START ===');
+      this.showStatus('Checking database integrity...', 'info');
+      
+      if (!this.tempStorage || !this.tempStorage.db) {
+        console.log('⚠️ No database to check');
+        return false;
+      }
+      
+      // Check if all required object stores exist
+      const requiredStores = ['screenshots', 'sessions', 'tempImages', 'pdfExports'];
+      const existingStores = [...this.tempStorage.db.objectStoreNames];
+      const missingStores = requiredStores.filter(store => !existingStores.includes(store));
+      
+      console.log('📊 Schema check results:', {
+        required: requiredStores,
+        existing: existingStores, 
+        missing: missingStores
+      });
+      
+      // Test critical PDF export functionality
+      let pdfExportWorking = false;
+      try {
+        // Try to access pdfExports object store
+        const transaction = this.tempStorage.db.transaction(['pdfExports'], 'readonly');
+        const store = transaction.objectStore('pdfExports');
+        pdfExportWorking = true;
+        console.log('✅ PDF export object store accessible');
+      } catch (pdfError) {
+        console.warn('⚠️ PDF export object store test failed:', pdfError.message);
+        pdfExportWorking = false;
+      }
+      
+      // If there are missing stores or PDF export is broken, repair automatically
+      if (missingStores.length > 0 || !pdfExportWorking) {
+        console.log(`🔧 AUTOMATIC REPAIR NEEDED: ${missingStores.length} missing stores, PDF export: ${pdfExportWorking ? 'OK' : 'BROKEN'}`);
+        
+        this.showStatus('🔧 Repairing database schema automatically...', 'info');
+        
+        await this.automaticSchemaRepair();
+        
+        // Verify repair was successful
+        const newExistingStores = [...this.tempStorage.db.objectStoreNames];
+        const newMissingStores = requiredStores.filter(store => !newExistingStores.includes(store));
+        
+        if (newMissingStores.length === 0) {
+          console.log('✅ AUTOMATIC REPAIR SUCCESSFUL');
+          this.showStatus('✅ Database automatically repaired - PDF export ready!', 'success');
+          return true;
+        } else {
+          console.warn('⚠️ AUTOMATIC REPAIR INCOMPLETE:', newMissingStores);
+          this.showStatus('⚠️ Database repair incomplete - some features may not work', 'warning');
+          return false;
+        }
+      } else {
+        console.log('✅ Schema validation passed - all object stores present');
+        this.showStatus('✅ Database schema healthy', 'success');
+        return true;
+      }
+      
+    } catch (error) {
+      console.error('❌ Automatic schema check failed:', error);
+      this.showStatus('⚠️ Database check failed - trying repair...', 'warning');
+      
+      // Try repair anyway
+      try {
+        await this.automaticSchemaRepair();
+        this.showStatus('✅ Emergency database repair completed', 'success');
+        return true;
+      } catch (repairError) {
+        console.error('❌ Emergency repair failed:', repairError);
+        this.showStatus('❌ Database repair failed - manual intervention required', 'error');
+        return false;
+      }
+    } finally {
+      console.log('🔍 === AUTOMATIC SCHEMA VALIDATION END ===');
+    }
+  }
+
+  // NEW: Seamless automatic schema repair
+  async automaticSchemaRepair() {
+    return new Promise((resolve, reject) => {
+      try {
+        console.log('🔧 === AUTOMATIC DATABASE SCHEMA REPAIR START ===');
+        this.showStatus('🔄 Rebuilding database with correct schema...', 'info');
+        
+        // Close current database connection
+        if (this.tempStorage && this.tempStorage.db) {
+          this.tempStorage.db.close();
+          console.log('🔐 Closed existing database connection');
+        }
+        
+        // Delete and recreate database
+        const deleteRequest = indexedDB.deleteDatabase('ScreenshotAnnotatorDB');
+        
+        deleteRequest.onsuccess = async () => {
+          console.log('🗑️ Old database deleted for automatic repair');
+          this.showStatus('🏗️ Creating fresh database with all features...', 'info');
+          
+          try {
+            // Reinitialize with correct schema
+            await this.tempStorage.init();
+            
+            // Verify all object stores are created
+            const stores = [...this.tempStorage.db.objectStoreNames];
+            console.log('🏗️ New database created with stores:', stores);
+            
+            const expectedStores = ['screenshots', 'sessions', 'tempImages', 'pdfExports'];
+            const allPresent = expectedStores.every(store => stores.includes(store));
+            
+            if (allPresent) {
+              console.log('✅ AUTOMATIC REPAIR COMPLETE - All object stores created');
+              this.showStatus('✅ Database automatically repaired - all features available!', 'success');
+              resolve(true);
+            } else {
+              const missing = expectedStores.filter(store => !stores.includes(store));
+              console.error('❌ REPAIR INCOMPLETE - Missing stores:', missing);
+              this.showStatus(`⚠️ Repair incomplete - missing: ${missing.join(', ')}`, 'warning');
+              resolve(false);
+            }
+            
+          } catch (initError) {
+            console.error('❌ Database reinitialization failed:', initError);
+            this.showStatus('❌ Database repair failed during reinitialization', 'error');
+            reject(initError);
+          }
+        };
+        
+        deleteRequest.onerror = (error) => {
+          console.error('❌ Database deletion failed during repair:', error);
+          this.showStatus('❌ Database repair failed - could not delete old database', 'error');
+          reject(error.target.error);
+        };
+        
+        deleteRequest.onblocked = (event) => {
+          console.warn('⚠️ Database deletion blocked - other connections open');
+          this.showStatus('⚠️ Database repair blocked - please close other tabs and try again', 'warning');
+          // Still try to resolve after a delay
+          setTimeout(() => {
+            resolve(false);
+          }, 3000);
+        };
+        
+      } catch (error) {
+        console.error('❌ Automatic schema repair setup failed:', error);
+        this.showStatus('❌ Automatic repair setup failed', 'error');
+        reject(error);
+      }
+    });
+  }
+
+  // NEW: Force schema repair as last resort
+  async forceSchemaRepair() {
+    try {
+      console.log('🚨 FORCING SCHEMA REPAIR - LAST RESORT');
+      this.showStatus('🚨 Forcing database repair...', 'info');
+      
+      // Use the existing manual repair method but make it automatic
+      await this.resetDatabaseSchemaInternal();
+      
+      this.showStatus('✅ Forced repair completed', 'success');
+      return true;
+    } catch (error) {
+      console.error('❌ Forced schema repair failed:', error);
+      this.showStatus('❌ All repair attempts failed', 'error');
+      return false;
+    }
+  }
+
+  // Internal version of resetDatabaseSchema for automatic use
+  async resetDatabaseSchemaInternal() {
+    return new Promise((resolve, reject) => {
+      if (this.tempStorage) {
+        try {
+          console.log('🔄 Internal schema reset for automatic repair...');
+          
+          // Close current database connection
+          if (this.tempStorage.db) {
+            this.tempStorage.db.close();
+          }
+          
+          // Delete the database
+          const deleteRequest = indexedDB.deleteDatabase('ScreenshotAnnotatorDB');
+          
+          deleteRequest.onsuccess = async () => {
+            console.log('✅ Database deleted for internal reset');
+            
+            try {
+              // Reinitialize with fresh schema
+              await this.tempStorage.init();
+              console.log('✅ Database reinitialized internally');
+              
+              resolve();
+            } catch (initError) {
+              console.error('❌ Failed to reinitialize database internally:', initError);
+              reject(initError);
+            }
+          };
+          
+          deleteRequest.onerror = (error) => {
+            console.error('❌ Failed to delete database internally:', error);
+            reject(error.target.error);
+          };
+          
+        } catch (error) {
+          console.error('❌ Internal database reset failed:', error);
+          reject(error);
+        }
+      } else {
+        reject(new Error('Temp storage not available for internal reset'));
+      }
+    });
   }
   
   setupStorageListener() {
