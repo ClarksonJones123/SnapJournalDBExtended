@@ -36,6 +36,8 @@ function initializeDebugSystem() {
 initializeDebugSystem();
 
 function debugLog(message, data = null) {
+    if (!debugInitialized) initializeDebugSystem();
+    
     const timestamp = new Date().toLocaleTimeString();
     const logEntry = `[${timestamp}] ${message}`;
     if (data) {
@@ -44,12 +46,14 @@ function debugLog(message, data = null) {
         debugOutput.push(logEntry);
     }
     
-    // Persist to localStorage for continuity
+    // Persist immediately on every log
     saveDebugHistory();
     updateDebugDisplay();
 }
 
 function debugError(message, error = null) {
+    if (!debugInitialized) initializeDebugSystem();
+    
     const timestamp = new Date().toLocaleTimeString();
     const logEntry = `[${timestamp}] ❌ ${message}`;
     if (error) {
@@ -58,7 +62,7 @@ function debugError(message, error = null) {
         debugOutput.push(logEntry);
     }
     
-    // Persist to localStorage for continuity
+    // Persist immediately on every log
     saveDebugHistory();
     updateDebugDisplay();
 }
