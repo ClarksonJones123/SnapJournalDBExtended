@@ -245,6 +245,9 @@ frontend:
         - working: "updated"
         - agent: "main"
         - comment: "PRECISION IMPROVED: Added Math.round() to click coordinates and drag coordinates to eliminate sub-pixel positioning issues. Coordinates now use integer values for precise positioning. Also accounted for CSS transform centering."
+        - working: "updated"
+        - agent: "main"
+        - comment: "COORDINATE OFFSET CORRECTION: Added dynamic correction system to compensate for 0.38 inch offset reported by user. System calculates correction based on image dimensions and applies offset to PDF coordinates. Also reduced red dot size by 75%."
 
   - task: "Remove annotation numbering system"
     implemented: true
