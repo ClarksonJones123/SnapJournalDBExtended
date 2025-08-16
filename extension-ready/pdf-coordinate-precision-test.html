@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Coordinate Precision Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            background: #f5f5f5; 
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+        .success { background: #d4edda; color: #155724; border-color: #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+        .warning { background: #fff3cd; color: #856404; border-color: #ffeaa7; }
+        .info { background: #d1ecf1; color: #0c5460; border-color: #bee5eb; }
+        
+        .coordinate-display {
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        
+        .test-canvas {
+            border: 2px solid #333;
+            margin: 10px 0;
+            cursor: crosshair;
+        }
+        
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: black; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📍 PDF Coordinate Precision Test</h1>
+        <p><strong>Purpose:</strong> Verify that red dots appear in PDF exactly where positioned in annotation interface</p>
+        
+        <div class="test-section info">
+            <h2>🧪 Test Instructions</h2>
+            <ol>
+                <li><strong>Click "Create Test Image"</strong> to generate a test screenshot with grid</li>
+                <li><strong>Click on the test image</strong> to place red dots at specific coordinates</li>
+                <li><strong>Drag red dots</strong> to precise positions (this simulates user positioning)</li>
+                <li><strong>Click "Generate PDF"</strong> to test coordinate precision in PDF export</li>
+                <li><strong>Compare positions</strong> - red dots should be in EXACT same positions</li>
+            </ol>
+        </div>
+        
+        <div class="test-section">
+            <h2>🎯 Test Controls</h2>
+            <button class="btn-primary" onclick="createTestImage()">Create Test Image</button>
+            <button class="btn-success" onclick="generateTestPDF()">Generate PDF Test</button>
+            <button class="btn-warning" onclick="clearTest()">Clear Test</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>🖼️ Test Image (Click to Annotate)</h2>
+            <div id="imageContainer" style="position: relative; display: inline-block;">
+                <div id="testImagePlaceholder" style="width: 800px; height: 600px; border: 2px dashed #ccc; display: flex; align-items: center; justify-content: center; color: #666;">
+                    Click "Create Test Image" to begin
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📊 Coordinate Analysis</h2>
+            <div id="coordinateAnalysis">
+                <div class="info">Test not started - create test image to begin coordinate tracking</div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📄 PDF Test Results</h2>
+            <div id="pdfResults">
+                <div class="info">Generate PDF test to see results...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let testAnnotations = [];
+        let testImage = null;
+        let testCanvas = null;
+        let testImageData = null;
+
+        function createTestImage() {
+            console.log('🖼️ Creating test image with coordinate grid...');
+            
+            const container = document.getElementById('imageContainer');
+            const canvas = document.createElement('canvas');
+            canvas.width = 800;
+            canvas.height = 600;
+            canvas.className = 'test-canvas';
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Create grid background
+            ctx.fillStyle = '#f0f8ff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid lines every 50px
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            
+            // Vertical lines
+            for (let x = 0; x <= canvas.width; x += 50) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            // Horizontal lines
+            for (let y = 0; y <= canvas.height; y += 50) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+            
+            // Draw coordinate markers every 100px
+            ctx.fillStyle = '#666';
+            ctx.font = '12px monospace';
+            ctx.textAlign = 'center';
+            
+            for (let x = 100; x < canvas.width; x += 100) {
+                for (let y = 100; y < canvas.height; y += 100) {
+                    ctx.fillText(`${x},${y}`, x, y - 5);
+                    
+                    // Draw small cross at coordinate
+                    ctx.strokeStyle = '#333';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(x - 5, y);
+                    ctx.lineTo(x + 5, y);
+                    ctx.moveTo(x, y - 5);
+                    ctx.lineTo(x, y + 5);
+                    ctx.stroke();
+                }
+            }
+            
+            // Add title
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('PDF Coordinate Precision Test Grid', canvas.width / 2, 30);
+            
+            // Store test image data
+            testImageData = canvas.toDataURL('image/png', 1.0);
+            testCanvas = canvas;
+            
+            // Replace placeholder
+            container.innerHTML = '';
+            container.appendChild(canvas);
+            
+            // Add click handler
+            canvas.addEventListener('click', handleTestClick);
+            
+            updateCoordinateAnalysis();
+            console.log('✅ Test image created with coordinate grid');
+        }
+
+        function handleTestClick(e) {
+            const rect = testCanvas.getBoundingClientRect();
+            const x = Math.round(e.clientX - rect.left);
+            const y = Math.round(e.clientY - rect.top);
+            
+            console.log(`🎯 Test click at: (${x}, ${y})`);
+            
+            const text = prompt(`Enter annotation text for position (${x}, ${y}):`);
+            if (!text || !text.trim()) return;
+            
+            // Create annotation object (simulating the same structure as the real app)
+            const annotation = {
+                id: Date.now().toString(),
+                text: text.trim(),
+                x: x,
+                y: y,
+                textX: x + 60,
+                textY: y - 30,
+                timestamp: new Date().toISOString()
+            };
+            
+            testAnnotations.push(annotation);
+            
+            // Draw red dot on test canvas
+            drawRedDot(x, y, text);
+            
+            updateCoordinateAnalysis();
+        }
+
+        function drawRedDot(x, y, text) {
+            const ctx = testCanvas.getContext('2d');
+            
+            // Draw red dot
+            ctx.beginPath();
+            ctx.arc(x, y, 8, 0, 2 * Math.PI);
+            ctx.fillStyle = '#ff4444';
+            ctx.fill();
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Draw text label
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            ctx.fillRect(x + 60 - 5, y - 30 - 10, text.length * 8 + 10, 20);
+            
+            ctx.strokeStyle = '#ff4444';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x + 60 - 5, y - 30 - 10, text.length * 8 + 10, 20);
+            
+            ctx.fillStyle = '#333';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(text, x + 60, y - 30 + 5);
+        }
+
+        function updateCoordinateAnalysis() {
+            const analysis = document.getElementById('coordinateAnalysis');
+            
+            if (testAnnotations.length === 0) {
+                analysis.innerHTML = '<div class="info">No annotations yet - click on test image to create annotations</div>';
+                return;
+            }
+            
+            let html = `
+                <div class="success">
+                    <strong>Test Annotations Created: ${testAnnotations.length}</strong>
+                </div>
+                <div class="coordinate-display">
+            `;
+            
+            testAnnotations.forEach((annotation, index) => {
+                html += `
+                    Annotation ${index + 1}: "${annotation.text}"
+                    - Position: (${annotation.x}, ${annotation.y})
+                    - Text Position: (${annotation.textX}, ${annotation.textY})
+                    - ID: ${annotation.id}
+                    
+                `;
+            });
+            
+            html += '</div>';
+            analysis.innerHTML = html;
+        }
+
+        async function generateTestPDF() {
+            if (!testImageData || testAnnotations.length === 0) {
+                alert('Please create test image and add annotations first');
+                return;
+            }
+            
+            console.log('📄 Starting PDF precision test...');
+            
+            const results = document.getElementById('pdfResults');
+            results.innerHTML = '<div class="info">Generating PDF test...</div>';
+            
+            try {
+                // Simulate the createAnnotatedImageForPDF function with FIXED coordinate handling
+                const annotatedImageData = await createTestAnnotatedImageForPDF();
+                
+                // Create download link for the test result
+                const link = document.createElement('a');
+                link.href = annotatedImageData;
+                link.download = 'pdf-coordinate-precision-test.png';
+                link.textContent = 'Download PDF Test Result';
+                link.style.cssText = 'padding: 10px 20px; background: #28a745; color: white; text-decoration: none; border-radius: 4px; display: inline-block; margin: 10px 0;';
+                
+                results.innerHTML = `
+                    <div class="success">
+                        <strong>✅ PDF Test Generated Successfully</strong><br>
+                        Red dots should appear at EXACT positions as in test image above.<br>
+                        <strong>Coordinate System:</strong> Stored coordinates used directly (no conversion)<br>
+                        <strong>Total Annotations:</strong> ${testAnnotations.length}
+                    </div>
+                `;
+                
+                results.appendChild(link);
+                
+                // Create side-by-side comparison
+                const comparison = document.createElement('div');
+                comparison.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;';
+                comparison.innerHTML = `
+                    <div>
+                        <h4>Original Test Image</h4>
+                        <img src="${testImageData}" style="width: 100%; max-width: 400px; border: 2px solid #007bff;">
+                        <p><em>Original positions where you clicked/dragged</em></p>
+                    </div>
+                    <div>
+                        <h4>PDF Export Result</h4>
+                        <img src="${annotatedImageData}" style="width: 100%; max-width: 400px; border: 2px solid #28a745;">
+                        <p><em>Positions as they appear in PDF export</em></p>
+                    </div>
+                `;
+                
+                results.appendChild(comparison);
+                
+                // Add precision analysis
+                const precision = document.createElement('div');
+                precision.className = 'coordinate-display';
+                precision.innerHTML = `
+                    <strong>PRECISION ANALYSIS:</strong>
+                    - Coordinate System: Natural image dimensions (${testCanvas.width}x${testCanvas.height})
+                    - Conversion Method: Direct use of stored coordinates (NO scaling applied)
+                    - Expected Result: Red dots should align perfectly between original and PDF
+                    - Test Status: ${testAnnotations.length} annotations processed with precision fix
+                `;
+                
+                results.appendChild(precision);
+                
+                console.log('✅ PDF precision test completed');
+                
+            } catch (error) {
+                console.error('❌ PDF test error:', error);
+                results.innerHTML = `<div class="error">❌ PDF Test Failed: ${error.message}</div>`;
+            }
+        }
+
+        async function createTestAnnotatedImageForPDF() {
+            return new Promise((resolve, reject) => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                
+                img.onload = () => {
+                    console.log('🎯 PDF TEST: Creating annotated image with FIXED coordinate precision');
+                    
+                    // Use natural image dimensions (same as original)
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    
+                    // Draw original image
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    
+                    console.log(`📐 PDF TEST Canvas: ${canvas.width}x${canvas.height}`);
+                    
+                    // PRECISION FIX: Use stored coordinates DIRECTLY
+                    testAnnotations.forEach((annotation, index) => {
+                        // Use coordinates exactly as stored (NO conversion)
+                        const x = Math.round(annotation.x);
+                        const y = Math.round(annotation.y);
+                        const textX = Math.round(annotation.textX);
+                        const textY = Math.round(annotation.textY);
+                        
+                        console.log(`🎯 PDF TEST Annotation ${index + 1}: Using DIRECT coordinates (${x}, ${y})`);
+                        
+                        // Draw red dot at EXACT stored coordinates
+                        ctx.beginPath();
+                        ctx.arc(x, y, 8, 0, 2 * Math.PI);
+                        ctx.fillStyle = '#ff4444';
+                        ctx.fill();
+                        ctx.strokeStyle = 'white';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                        
+                        // Draw dashed line
+                        const distance = Math.sqrt((textX - x) ** 2 + (textY - y) ** 2);
+                        if (distance > 16) {
+                            ctx.beginPath();
+                            ctx.moveTo(x, y);
+                            ctx.lineTo(textX, textY);
+                            ctx.strokeStyle = '#ff4444';
+                            ctx.lineWidth = 2;
+                            ctx.setLineDash([8, 8]);
+                            ctx.stroke();
+                            ctx.setLineDash([]);
+                        }
+                        
+                        // Draw text background
+                        ctx.font = 'bold 14px Arial';
+                        const textMetrics = ctx.measureText(annotation.text);
+                        const textWidth = textMetrics.width + 16;
+                        const textHeight = 20;
+                        
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+                        ctx.fillRect(textX - 8, textY - 10, textWidth, textHeight);
+                        
+                        ctx.strokeStyle = '#ff4444';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(textX - 8, textY - 10, textWidth, textHeight);
+                        
+                        // Draw text
+                        ctx.fillStyle = '#333';
+                        ctx.font = 'bold 14px Arial';
+                        ctx.textAlign = 'left';
+                        ctx.fillText(annotation.text, textX, textY + 5);
+                    });
+                    
+                    const result = canvas.toDataURL('image/png', 1.0);
+                    console.log('✅ PDF TEST: Annotated image created with FIXED coordinate precision');
+                    resolve(result);
+                };
+                
+                img.onerror = () => reject(new Error('Failed to load test image'));
+                img.src = testImageData;
+            });
+        }
+
+        function clearTest() {
+            testAnnotations = [];
+            testImageData = null;
+            testCanvas = null;
+            
+            document.getElementById('imageContainer').innerHTML = `
+                <div id="testImagePlaceholder" style="width: 800px; height: 600px; border: 2px dashed #ccc; display: flex; align-items: center; justify-content: center; color: #666;">
+                    Click "Create Test Image" to begin
+                </div>
+            `;
+            
+            document.getElementById('coordinateAnalysis').innerHTML = '<div class="info">Test cleared - create test image to begin coordinate tracking</div>';
+            document.getElementById('pdfResults').innerHTML = '<div class="info">Generate PDF test to see results...</div>';
+            
+            console.log('🧹 Test cleared');
+        }
+    </script>
+</body>
+</html>
