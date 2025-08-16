@@ -4,8 +4,6 @@ class ScreenshotAnnotator {
     this.selectedScreenshot = null;
     this.memoryUsage = 0;
     this.isInitialized = false;
-    this.currentSessionId = null;
-    this.currentSessionName = null;
     
     // Initialize temporary storage
     this.tempStorage = null;
