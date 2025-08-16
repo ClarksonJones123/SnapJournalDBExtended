@@ -391,7 +391,19 @@ class TempStorageManager {
         screenshot.sessionId = await this.getCurrentSessionId();
       }
       
-      await store.put(screenshot);
+      // CRITICAL FIX: Properly handle IndexedDB async request
+      await new Promise((resolve, reject) => {
+        const request = store.put(screenshot);
+        
+        request.onsuccess = () => {
+          resolve(request.result);
+        };
+        
+        request.onerror = () => {
+          reject(request.error);
+        };
+      });
+      
       console.log('✅ Screenshot saved to PRIMARY storage');
       
       return { success: true };
