@@ -782,10 +782,7 @@ class ScreenshotAnnotator {
           hour12: true 
         }),
         captureTimestamp: now.getTime(),
-        annotations: [],
-        // Multi-tab session info will be added by tempStorage.saveScreenshot()
-        tabId: tab.id,
-        tabUrl: tab.url
+        annotations: []
       };
       
       console.log('✅ Screenshot object created:', {
