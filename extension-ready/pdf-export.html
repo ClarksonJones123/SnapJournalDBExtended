@@ -304,18 +304,7 @@
     <!-- Load PDF export functionality -->
     <script src="pdf-export.js"></script>
     
-    <!-- Initialize temp storage for PDF export -->
-    <script>
-        // Initialize temp storage for IndexedDB access if needed
-        if (typeof TempStorageManager !== 'undefined') {
-            console.log('🗄️ Initializing temp storage for PDF export...');
-            window.tempStorage = new TempStorageManager();
-            window.tempStorage.init().then(() => {
-                console.log('✅ Temp storage initialized for PDF export');
-            }).catch(error => {
-                console.error('❌ Failed to initialize temp storage for PDF export:', error);
-            });
-        }
-    </script>
+    <!-- Initialize PDF export - separate file for CSP compliance -->
+    <script src="pdf-export-init.js"></script>
 </body>
 </html>
