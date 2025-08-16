@@ -853,12 +853,19 @@ class ScreenshotAnnotator {
     
     let indicators = '';
     screenshot.annotations.forEach((annotation, index) => {
-      // Scale annotation position to thumbnail size
-      const scaleX = 360 / screenshot.displayWidth; // Max width is 360px
+      // Scale annotation position to thumbnail size (360px max width)
+      const thumbnailMaxWidth = 360;
+      const scaleX = thumbnailMaxWidth / screenshot.displayWidth;
       const scaleY = scaleX; // Keep aspect ratio
       
-      const x = annotation.x * scaleX - 6; // -6 to center the 12px indicator
-      const y = annotation.y * scaleY - 6;
+      const x = (annotation.x * scaleX) - 6; // -6 to center the 12px indicator
+      const y = (annotation.y * scaleY) - 6;
+      
+      console.log(`🔍 Thumbnail indicator ${index + 1}:`, {
+        originalCoords: { x: annotation.x, y: annotation.y },
+        thumbnailCoords: { x: Math.round(x + 6), y: Math.round(y + 6) },
+        scale: scaleX.toFixed(3)
+      });
       
       indicators += `
         <div class="annotation-indicator" 
