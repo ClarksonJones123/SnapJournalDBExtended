@@ -600,6 +600,52 @@ class UniversalAnnotator {
             }
         });
         
+        // DEBUG: Add temporary crosshair at exact click point for testing
+        const debugCrosshair = document.createElement('div');
+        debugCrosshair.style.position = 'absolute';
+        debugCrosshair.style.left = exactX + 'px';
+        debugCrosshair.style.top = exactY + 'px';
+        debugCrosshair.style.width = '20px';
+        debugCrosshair.style.height = '20px';
+        debugCrosshair.style.pointerEvents = 'none';
+        debugCrosshair.style.zIndex = '9999';
+        debugCrosshair.innerHTML = `
+            <div style="position: absolute; left: 50%; top: 0; width: 1px; height: 20px; background: lime; transform: translateX(-50%);"></div>
+            <div style="position: absolute; left: 0; top: 50%; width: 20px; height: 1px; background: lime; transform: translateY(-50%);"></div>
+        `;
+        
+        // Remove debug crosshair after 3 seconds
+        setTimeout(() => {
+            if (debugCrosshair.parentNode) {
+                debugCrosshair.parentNode.removeChild(debugCrosshair);
+            }
+        }, 3000);
+        
+        annotationSystem.appendChild(debugCrosshair);
+        annotationSystem.appendChild(pinpoint);
+        annotationSystem.appendChild(textLabel);
+        
+        console.log('🎯 Added DEBUG crosshair at exact coordinates for 3 seconds - compare with red dot position');
+        
+        // Add drag functionality for fine-tuning
+        this.makeDraggable(pinpoint, (newX, newY) => {
+            annotation.x = newX;
+            annotation.y = newY;
+            console.log(`🔧 Red dot dragged to: (${newX}, ${newY})`);
+        });
+        
+        this.makeDraggable(textLabel, (newX, newY) => {
+            annotation.textX = newX;
+            annotation.textY = newY;
+            console.log(`📝 Text label dragged to: (${newX}, ${newY})`);
+        });
+        
+        // Add to container
+        container.appendChild(annotationSystem);
+        
+        console.log('✅ PIXEL-PERFECT annotation marker created with debug crosshair');
+    }
+        
         // Assemble annotation system
         annotationSystem.appendChild(arrow);
         annotationSystem.appendChild(pinpoint);
