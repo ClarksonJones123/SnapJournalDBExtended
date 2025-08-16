@@ -599,18 +599,19 @@ class UniversalAnnotator {
         try {
             console.log('💾 === SAVING ANNOTATIONS TO STORAGE ===');
             
-            // Convert display coordinates back to stored coordinates before saving
+            // FIXED: Convert display coordinates to original capture coordinates before saving
             const img = document.querySelector('.screenshot-image');
-            const displayScaleX = img.offsetWidth / this.screenshot.displayWidth;
-            const displayScaleY = img.offsetHeight / this.screenshot.displayHeight;
+            const displayScaleX = img.offsetWidth / this.screenshot.originalCaptureWidth;
+            const displayScaleY = img.offsetHeight / this.screenshot.originalCaptureHeight;
             const storageScaleX = 1 / displayScaleX;
             const storageScaleY = 1 / displayScaleY;
             
-            console.log('📐 SAVE COORDINATE CONVERSION:', {
+            console.log('📐 CORRECTED SAVE COORDINATE CONVERSION:', {
                 imgDisplaySize: `${img.offsetWidth}x${img.offsetHeight}`,
-                screenshotStoredSize: `${this.screenshot.displayWidth}x${this.screenshot.displayHeight}`,
+                originalCaptureSize: `${this.screenshot.originalCaptureWidth}x${this.screenshot.originalCaptureHeight}`,
                 displayScale: `${displayScaleX.toFixed(3)}x, ${displayScaleY.toFixed(3)}`,
-                storageScale: `${storageScaleX.toFixed(3)}x, ${storageScaleY.toFixed(3)}`
+                storageScale: `${storageScaleX.toFixed(3)}x, ${storageScaleY.toFixed(3)}`,
+                coordinateReference: 'ORIGINAL_CAPTURE_DIMENSIONS'
             });
             
             // Convert all annotation coordinates from display to storage coordinates
