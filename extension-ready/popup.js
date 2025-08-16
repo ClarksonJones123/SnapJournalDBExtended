@@ -407,11 +407,10 @@ class ScreenshotAnnotator {
         return;
       }
       
-      // Get current session screenshots
-      const currentSessionId = await this.tempStorage.getCurrentSessionId();
-      this.screenshots = await this.tempStorage.getAllScreenshots(currentSessionId);
+      // Get all screenshots
+      this.screenshots = await this.tempStorage.getAllScreenshots();
       
-      console.log(`📊 Found ${this.screenshots.length} screenshots in current session`);
+      console.log(`📊 Found ${this.screenshots.length} screenshots in storage`);
       
       // Remove corrupted screenshots (those without imageData)
       const originalCount = this.screenshots.length;
@@ -433,15 +432,15 @@ class ScreenshotAnnotator {
         console.log(`🗑️ Removed ${removedCorrupted} corrupted screenshots`);
       }
       
-      // If we have too many screenshots in current session, clean up old ones
-      if (this.screenshots.length > 20) {
-        console.log('📊 Too many screenshots in session, cleaning up old ones...');
+      // If we have too many screenshots, clean up old ones (keep 50 most recent)
+      if (this.screenshots.length > 50) {
+        console.log('📊 Too many screenshots, cleaning up old ones...');
         
         // Sort by timestamp (newest first)
         this.screenshots.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         
-        const toKeep = this.screenshots.slice(0, 20);
-        const toRemove = this.screenshots.slice(20);
+        const toKeep = this.screenshots.slice(0, 50);
+        const toRemove = this.screenshots.slice(50);
         
         // Remove old screenshots from IndexedDB
         for (const screenshot of toRemove) {
@@ -455,9 +454,6 @@ class ScreenshotAnnotator {
         this.screenshots = toKeep;
         console.log(`🗑️ Removed ${toRemove.length} old screenshots, kept ${toKeep.length}`);
       }
-      
-      // Update session stats
-      await this.tempStorage.updateSessionStats(currentSessionId);
       
       // Update memory usage calculation
       this.calculateMemoryUsage();
