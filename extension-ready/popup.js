@@ -385,59 +385,6 @@ class ScreenshotAnnotator {
     }
   }
 
-  async createHighQualityImageForPDF(screenshot) {
-    try {
-      console.log('🎨 Creating high-quality image for PDF from original...');
-      
-      // For PDF export, we'll re-process from original data with higher quality
-      return new Promise((resolve) => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const img = new Image();
-        
-        img.onload = () => {
-          console.log('🖼️ Re-processing for PDF - dimensions:', img.width, 'x', img.height);
-          
-          // For PDF, use higher quality dimensions
-          let { width, height } = img;
-          
-          // Less aggressive sizing for PDF
-          const maxWidth = 1920;
-          const maxHeight = 1200;
-          
-          if (width > maxWidth || height > maxHeight) {
-            const scaleX = maxWidth / width;
-            const scaleY = maxHeight / height;
-            const scale = Math.min(scaleX, scaleY, 1);
-            
-            width = Math.round(width * scale);
-            height = Math.round(height * scale);
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          
-          // Maximum quality for PDF
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-          ctx.drawImage(img, 0, 0, width, height);
-          
-          // High quality PNG for PDF
-          const highQualityData = canvas.toDataURL('image/png', 1.0);
-          
-          console.log('✅ High-quality image created for PDF');
-          resolve(highQualityData);
-        };
-        
-        img.src = screenshot.imageData;
-      });
-      
-    } catch (error) {
-      console.error('❌ Error creating high-quality image:', error);
-      return screenshot.imageData;
-    }
-  }
-
   async createAnnotatedImageForPDF(screenshot) {
     try {
       console.log('🎨 Creating annotated image for PDF (100% original quality)...');
