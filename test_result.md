@@ -140,6 +140,9 @@ frontend:
         - working: "NA"
         - agent: "testing"
         - comment: "Need to test storage quota management, aggressive cleanup, and emergency cleanup mechanisms - this was recently implemented"
+        - working: "updated"
+        - agent: "main"
+        - comment: "UPDATED: Added automatic memory clearing when images are saved to journal queue and when PDF export completes. Added cleanupUnselectedScreenshots method and monitoring system for PDF export completion."
 
   - task: "Screenshot list display and management"
     implemented: true
