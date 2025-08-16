@@ -436,23 +436,24 @@ class UniversalAnnotator {
         const handleMouseMove = (e) => {
             if (isDragging) {
                 const rect = element.parentElement.getBoundingClientRect();
-                const newX = e.clientX - rect.left - dragOffset.x;
-                const newY = e.clientY - rect.top - dragOffset.y;
+                // Use Math.round for precise positioning
+                const newX = Math.round(e.clientX - rect.left - dragOffset.x);
+                const newY = Math.round(e.clientY - rect.top - dragOffset.y);
                 
                 element.style.left = newX + 'px';
                 element.style.top = newY + 'px';
                 
-                // SIMPLIFIED: Update coordinates directly (display coordinates)
+                // SIMPLIFIED: Update coordinates directly (display coordinates, rounded)
                 if (type === 'text') {
                     annotation.textX = newX;
                     annotation.textY = newY;
                     
-                    console.log('📝 Text dragged to:', { x: newX.toFixed(1), y: newY.toFixed(1) });
+                    console.log('📝 Text dragged to (precise):', { x: newX, y: newY });
                 } else {
                     annotation.x = newX;
                     annotation.y = newY;
                     
-                    console.log('🔴 Red dot dragged to:', { x: newX.toFixed(1), y: newY.toFixed(1) });
+                    console.log('🔴 Red dot dragged to (precise):', { x: newX, y: newY });
                 }
                 
                 updateCallback();
