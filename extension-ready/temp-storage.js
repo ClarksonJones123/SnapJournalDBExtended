@@ -168,10 +168,11 @@ class TempStorageManager {
           };
         } else {
           console.error('❌ AUTOMATIC SCHEMA REPAIR INCOMPLETE');
-          console.error('📊 Repair failure details:', {
+          console.error('📊 Repair failure details:');
+          console.error(JSON.stringify({
             stillMissing: newMissingStores,
             versionCorrect: this.db.version === this.dbVersion
-          });
+          }, null, 2));
           
           return { 
             repaired: true, 
