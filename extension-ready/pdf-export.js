@@ -6,6 +6,7 @@ class PDFJournalExporter {
         this.screenshots = [];
         this.exportData = null;
         this.jsPDF = null;
+        this.currentExportId = null; // Store export ID for cleanup
         
         console.log('🚀 PDFJournalExporter constructor called');
         this.init().catch(error => {
