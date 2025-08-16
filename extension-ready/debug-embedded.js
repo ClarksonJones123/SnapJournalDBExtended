@@ -1,6 +1,8 @@
-// EMBEDDED DEBUG SYSTEM - RUNS AUTOMATICALLY
+// EMBEDDED DEBUG SYSTEM - RUNS AUTOMATICALLY WITH PERSISTENCE
 let debugOutput = [];
 let debugVisible = true;
+const STORAGE_KEY = 'annotator_debug_history';
+const MAX_HISTORY_ENTRIES = 100;
 
 function debugLog(message, data = null) {
     const timestamp = new Date().toLocaleTimeString();
@@ -10,6 +12,9 @@ function debugLog(message, data = null) {
     } else {
         debugOutput.push(logEntry);
     }
+    
+    // Persist to localStorage for continuity
+    saveDebugHistory();
     updateDebugDisplay();
 }
 
@@ -21,7 +26,48 @@ function debugError(message, error = null) {
     } else {
         debugOutput.push(logEntry);
     }
+    
+    // Persist to localStorage for continuity
+    saveDebugHistory();
     updateDebugDisplay();
+}
+
+function saveDebugHistory() {
+    try {
+        // Keep only the last MAX_HISTORY_ENTRIES to prevent storage bloat
+        const recentHistory = debugOutput.slice(-MAX_HISTORY_ENTRIES);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            timestamp: Date.now(),
+            entries: recentHistory,
+            sessionStart: new Date().toISOString()
+        }));
+    } catch (error) {
+        console.warn('Failed to save debug history:', error);
+    }
+}
+
+function loadDebugHistory() {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+            const history = JSON.parse(stored);
+            const timeSinceLastSession = Date.now() - history.timestamp;
+            
+            // If less than 1 hour since last session, restore history
+            if (timeSinceLastSession < 3600000) {
+                debugOutput = [...(history.entries || [])];
+                debugLog(`🔄 Restored debug history from ${new Date(history.timestamp).toLocaleTimeString()}`);
+                debugLog(`📊 Session continuity maintained (${Math.round(timeSinceLastSession / 1000)}s ago)`);
+                return true;
+            } else {
+                debugLog('🆕 Starting new debug session (previous session too old)');
+                return false;
+            }
+        }
+    } catch (error) {
+        debugError('Failed to load debug history', error);
+    }
+    return false;
 }
 
 function updateDebugDisplay() {
