@@ -73,11 +73,11 @@ class ScreenshotAnnotator {
       const maxWait = 10000;
       const startTime = Date.now();
       
-      while ((!window.tempStorage || !window.tempStorage.db) && (Date.now() - startTime) < maxWait) {
+      while ((!window.tempStorage || !window.tempStorage.db || window.tempStorage.isInitializing) && (Date.now() - startTime) < maxWait) {
         await new Promise(resolve => setTimeout(resolve, 200));
       }
       
-      if (window.tempStorage && window.tempStorage.db) {
+      if (window.tempStorage && window.tempStorage.db && !window.tempStorage.isInitializing) {
         this.tempStorage = window.tempStorage;
         console.log('✅ Temporary storage system initialized');
         
