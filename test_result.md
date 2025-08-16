@@ -290,3 +290,5 @@ agent_communication:
     - message: "ADDITIONAL MAJOR UPDATES per user request: 1) REMOVED ALL COMPRESSION - Images now captured at 100% original quality with no compression or resizing, 2) REDESIGNED PDF FORMAT - PDF now has no borders, no margins, no headers, no text. Each page is custom-sized to fit the image perfectly. Pure image journal with annotations burned in."
     - agent: "main"
     - message: "FINAL REFINEMENTS per user feedback: 1) REMOVED ALL NUMBERING - Eliminated number badges from red dots, text labels, PDF rendering, and thumbnails to prevent conflicts with red dot visibility, 2) IMPROVED COORDINATE PRECISION - Added Math.round() to eliminate sub-pixel positioning issues and accounted for CSS centering transforms. Coordinates should now be pixel-perfect."
+    - agent: "main"
+    - message: "ADDITIONAL FIXES per user feedback: 1) REDUCED RED DOT SIZE BY 75% - Changed from 8px to 2px diameter for less intrusive markers, 2) COORDINATE OFFSET CORRECTION - Added dynamic correction system to compensate for reported 0.38 inch offset in PDF coordinates. System calculates percentage-based correction and applies it to PDF rendering."
