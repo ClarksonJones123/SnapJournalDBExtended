@@ -1480,38 +1480,9 @@ class ScreenshotAnnotator {
                 return await this.exportPdfJournalViaIndexedDB(validScreenshots);
             }
             
-            // ADDITIONAL SAFETY: Check Chrome storage usage before attempting Chrome method
-            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local.getBytesInUse) {
-                try {
-                    const currentUsage = await new Promise((resolve) => {
-                        chrome.storage.local.getBytesInUse((bytes) => resolve(bytes));
-                    });
-                    const storageLimit = chrome.storage.local.QUOTA_BYTES || 10485760; // 10MB
-                    const availableSpace = storageLimit - currentUsage;
-                    const estimatedExportSize = totalDataSize + (totalDataSize * 0.2); // Add 20% overhead
-                    
-                    console.log('📊 Chrome storage analysis:', {
-                        currentUsage: Math.round(currentUsage / 1024 / 1024) + 'MB',
-                        estimatedExportSize: Math.round(estimatedExportSize / 1024 / 1024) + 'MB',
-                        availableSpace: Math.round(availableSpace / 1024 / 1024) + 'MB'
-                    });
-                    
-                    if (estimatedExportSize > availableSpace) {
-                        console.log('⚠️ Chrome storage insufficient - switching to IndexedDB method');
-                        if (window.debugLog) window.debugLog(`⚠️ Chrome storage insufficient: need ${Math.round(estimatedExportSize / 1024 / 1024)}MB, available ${Math.round(availableSpace / 1024 / 1024)}MB`);
-                        
-                        return await this.exportPdfJournalViaIndexedDB(validScreenshots);
-                    }
-                } catch (storageCheckError) {
-                    console.warn('⚠️ Could not check Chrome storage usage, using IndexedDB as safeguard');
-                    if (window.debugLog) window.debugLog('⚠️ Storage check failed - using IndexedDB as safeguard');
-                    
-                    return await this.exportPdfJournalViaIndexedDB(validScreenshots);
-                }
-            }
-            
-            // Original Chrome storage method for small datasets only
-            console.log('📦 Small dataset - using Chrome storage method');
+            // Original Chrome storage method for very small datasets only
+            console.log('📦 Small dataset - using Chrome storage method as fallback');
+            if (window.debugLog) window.debugLog('📦 Using Chrome storage method for small dataset');
             return await this.exportPdfJournalViaChrome(validScreenshots);
             
         } catch (error) {
