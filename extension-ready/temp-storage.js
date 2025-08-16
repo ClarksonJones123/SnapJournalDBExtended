@@ -271,6 +271,20 @@ class TempStorageManager {
       console.log('💾 Storing PDF export data in IndexedDB:', exportId);
       console.log('📊 Export data size:', Math.round(JSON.stringify(exportData).length / 1024 / 1024), 'MB');
       
+      // CRITICAL FIX: Check if pdfExports object store exists
+      if (!this.db.objectStoreNames.contains('pdfExports')) {
+        console.error('❌ pdfExports object store not found in database');
+        console.log('🗄️ Available object stores:', [...this.db.objectStoreNames]);
+        
+        // Try to reinitialize database with correct schema
+        console.log('🔄 Attempting to reinitialize database...');
+        await this.init();
+        
+        if (!this.db.objectStoreNames.contains('pdfExports')) {
+          throw new Error('pdfExports object store not available. Database schema may need manual reset.');
+        }
+      }
+      
       const transaction = this.db.transaction(['pdfExports'], 'readwrite');
       const store = transaction.objectStore('pdfExports');
       
@@ -288,6 +302,17 @@ class TempStorageManager {
       
     } catch (error) {
       console.error('❌ Error storing PDF export data:', error);
+      
+      // Enhanced error handling with fallback suggestion
+      if (error.message.includes('object stores was not found')) {
+        console.error('💡 SOLUTION: IndexedDB schema needs update. Try:');
+        console.error('  1. Close all browser tabs');
+        console.error('  2. Reload extension');
+        console.error('  3. Or use clearExtensionStorage() to reset database');
+        
+        throw new Error(`PDF export storage failed: Database schema outdated. Please reload the extension or clear storage.`);
+      }
+      
       throw new Error(`Failed to store PDF export data: ${error.message}`);
     }
   }
@@ -299,6 +324,12 @@ class TempStorageManager {
     
     try {
       console.log('📂 Retrieving PDF export data from IndexedDB:', exportId);
+      
+      // Check if object store exists
+      if (!this.db.objectStoreNames.contains('pdfExports')) {
+        console.error('❌ pdfExports object store not found for retrieval');
+        throw new Error('PDF export data store not available. Please try exporting again.');
+      }
       
       const transaction = this.db.transaction(['pdfExports'], 'readonly');
       const store = transaction.objectStore('pdfExports');
@@ -329,6 +360,12 @@ class TempStorageManager {
     try {
       console.log('🗑️ Deleting PDF export data from IndexedDB:', exportId);
       
+      // Check if object store exists
+      if (!this.db.objectStoreNames.contains('pdfExports')) {
+        console.warn('⚠️ pdfExports object store not found for deletion - data may already be cleared');
+        return { success: true }; // Consider deletion successful if store doesn't exist
+      }
+      
       const transaction = this.db.transaction(['pdfExports'], 'readwrite');
       const store = transaction.objectStore('pdfExports');
       
@@ -350,6 +387,12 @@ class TempStorageManager {
     
     try {
       console.log('🧹 Cleaning up old PDF export data...');
+      
+      // Check if object store exists before cleanup
+      if (!this.db.objectStoreNames.contains('pdfExports')) {
+        console.log('ℹ️ pdfExports object store not found - no cleanup needed');
+        return;
+      }
       
       const transaction = this.db.transaction(['pdfExports'], 'readwrite');
       const store = transaction.objectStore('pdfExports');
