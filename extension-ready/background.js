@@ -58,6 +58,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Keep message channel open for async response
   }
   
+  if (message.action === 'saveAnnotatedScreenshot') {
+    console.log('📝 Annotation save request received for screenshot:', message.screenshot?.id);
+    
+    // Forward to popup if it's open, otherwise handle in background
+    chrome.runtime.sendMessage(message, (response) => {
+      if (chrome.runtime.lastError) {
+        // Popup might be closed, save to Chrome storage as fallback
+        console.log('💾 Popup not responding, saving to Chrome storage as fallback');
+        
+        chrome.storage.local.get('screenshots').then((result) => {
+          const screenshots = result.screenshots || [];
+          const index = screenshots.findIndex(s => s.id === message.screenshot.id);
+          
+          if (index !== -1) {
+            screenshots[index] = message.screenshot;
+            return chrome.storage.local.set({ screenshots: screenshots });
+          } else {
+            throw new Error('Screenshot not found for annotation save');
+          }
+        }).then(() => {
+          console.log('✅ Annotations saved via background script');
+          sendResponse({ success: true });
+        }).catch((error) => {
+          console.error('❌ Background annotation save failed:', error);
+          sendResponse({ success: false, error: error.message });
+        });
+      } else {
+        sendResponse(response);
+      }
+    });
+    
+    return true; // Keep message channel open
+  }
+  
   console.log('❓ Unknown action received:', message.action);
   sendResponse({ success: false, error: `Unknown action: ${message.action}` });
 });
