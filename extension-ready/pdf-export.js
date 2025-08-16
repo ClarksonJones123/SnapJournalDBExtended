@@ -289,13 +289,14 @@ class PDFJournalExporter {
             if (imageData) {
                 // Calculate image dimensions to fit page better - larger since we have annotated images
                 const maxImageWidth = contentWidth;
-                const maxImageHeight = 180; // Increased from 150 to show annotations better
+                const maxImageHeight = 200; // Increased from 180 to show high-quality images better
                 
                 // Add image to PDF (now includes annotations!)
                 pdf.addImage(imageData, 'PNG', margin, currentY, maxImageWidth, maxImageHeight);
                 currentY += maxImageHeight + 15;
                 
-                console.log(`📄 Added annotated image for screenshot ${pageNumber}`);
+                console.log(`📄 Added high-quality annotated image for screenshot ${pageNumber}`);
+                console.log(`🖼️ Image dimensions in PDF: ${maxImageWidth}x${maxImageHeight}mm`);
             }
         } catch (error) {
             console.error('Error adding image to PDF:', error);
