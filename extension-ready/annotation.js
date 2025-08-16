@@ -333,23 +333,25 @@ class UniversalAnnotator {
             storedCoords: `(${annotation.x}, ${annotation.y})`,
             storedTextPos: `(${annotation.textX}, ${annotation.textY})`,
             imgDisplaySize: `${img.offsetWidth}x${img.offsetHeight}`,
-            screenshotStoredSize: `${this.screenshot.displayWidth}x${this.screenshot.displayHeight}`
+            originalCaptureSize: `${this.screenshot.originalCaptureWidth}x${this.screenshot.originalCaptureHeight}`,
+            coordinateReference: 'ORIGINAL_CAPTURE_DIMENSIONS'
         });
         
-        // Calculate display scale factors (reverse of storage scaling)
-        const displayScaleX = img.offsetWidth / this.screenshot.displayWidth;
-        const displayScaleY = img.offsetHeight / this.screenshot.displayHeight;
+        // FIXED: Calculate display scale factors using ORIGINAL CAPTURE dimensions
+        const displayScaleX = img.offsetWidth / this.screenshot.originalCaptureWidth;
+        const displayScaleY = img.offsetHeight / this.screenshot.originalCaptureHeight;
         
-        // Convert stored coordinates back to display coordinates
+        // Convert stored coordinates (relative to original capture) back to display coordinates
         const displayX = annotation.x * displayScaleX;
         const displayY = annotation.y * displayScaleY;
         const displayTextX = (annotation.textX || (annotation.x + 60)) * displayScaleX;
         const displayTextY = (annotation.textY || (annotation.y - 30)) * displayScaleY;
         
-        console.log('🔧 DISPLAY COORDINATES:', {
+        console.log('🔧 CORRECTED DISPLAY COORDINATES:', {
             displayScale: `${displayScaleX.toFixed(3)}x, ${displayScaleY.toFixed(3)}`,
             displayCoords: `(${displayX.toFixed(1)}, ${displayY.toFixed(1)})`,
-            displayTextPos: `(${displayTextX.toFixed(1)}, ${displayTextY.toFixed(1)})`
+            displayTextPos: `(${displayTextX.toFixed(1)}, ${displayTextY.toFixed(1)})`,
+            referenceSystem: 'ORIGINAL_CAPTURE_TO_CURRENT_DISPLAY'
         });
         
         // Create annotation system container
