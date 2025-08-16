@@ -882,12 +882,12 @@ class ScreenshotAnnotator {
   
   async exportPdfJournal() {
     if (this.screenshots.length === 0) {
-      this.showStatus('No screenshots to export in this session', 'info');
+      this.showStatus('No screenshots to export', 'info');
       return;
     }
     
     try {
-      console.log('🔄 Starting PDF journal export for session:', this.currentSessionName);
+      console.log('🔄 Starting PDF journal export...');
       this.showStatus('Generating PDF journal with annotations...', 'info');
       
       // All screenshots are already in memory since we're using IndexedDB as primary
@@ -938,8 +938,6 @@ class ScreenshotAnnotator {
       }
       
       console.log('📊 Final export data summary:', {
-        sessionName: this.currentSessionName,
-        sessionId: this.currentSessionId,
         totalScreenshotsProcessed: annotatedScreenshots.length,
         originalScreenshotCount: this.screenshots.length,
         totalAnnotations: annotatedScreenshots.reduce((sum, s) => sum + (s.annotations?.length || 0), 0)
@@ -954,15 +952,12 @@ class ScreenshotAnnotator {
       // Create PDF export window with annotated screenshots
       const exportData = {
         screenshots: annotatedScreenshots, // Use annotated versions
-        sessionName: this.currentSessionName || 'Multi-Tab Journal',
-        sessionId: this.currentSessionId,
         exportDate: new Date().toISOString(),
         totalScreenshots: annotatedScreenshots.length,
         totalAnnotations: annotatedScreenshots.reduce((sum, s) => sum + (s.annotations?.length || 0), 0)
       };
       
       console.log('📊 Export data prepared:', {
-        sessionName: exportData.sessionName,
         screenshots: exportData.screenshots.length,
         totalAnnotations: exportData.totalAnnotations
       });
@@ -995,7 +990,7 @@ class ScreenshotAnnotator {
       // Monitor PDF export completion
       this.monitorPdfExportCompletion(exportId, windowInfo.id);
       
-      this.showStatus(`📄 PDF journal export opened: "${exportData.sessionName}"!`, 'success');
+      this.showStatus('📄 PDF journal export opened with annotations!', 'success');
       console.log('✅ PDF export window opened successfully');
       
     } catch (error) {
