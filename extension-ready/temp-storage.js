@@ -131,12 +131,13 @@ class TempStorageManager {
       const repairNeeded = missingStores.length > 0 || !pdfExportWorking || this.db.version < 2;
       
       if (repairNeeded) {
-        console.warn(`🔧 SCHEMA REPAIR REQUIRED:`, {
+        console.warn('🔧 SCHEMA REPAIR REQUIRED:');
+        console.warn(JSON.stringify({
           missingStores: missingStores.length,
           pdfExportWorking,
           currentVersion: this.db.version,
           targetVersion: this.dbVersion
-        });
+        }, null, 2));
         
         console.log('🔧 Initiating automatic schema repair...');
         
