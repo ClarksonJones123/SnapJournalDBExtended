@@ -134,15 +134,33 @@
 
         .annotation-pinpoint {
             position: absolute;
-            width: 2px;  /* Reduced by 75%: 8px -> 2px */
-            height: 2px; /* Reduced by 75%: 8px -> 2px */
-            background: #ff4444;
-            border: 1px solid white; /* Reduced border: 2px -> 1px */
+            width: 2px;  /* Small final size */
+            height: 2px;
+            background: var(--annotation-color, #ff4444);
+            border: 1px solid white;
             border-radius: 50%;
             transform: translate(-50%, -50%);
-            box-shadow: 0 1px 2px rgba(0,0,0,0.3); /* Reduced shadow */
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
             pointer-events: auto;
             cursor: crosshair;
+            transition: all 0.2s ease;
+        }
+        
+        .annotation-pinpoint:hover {
+            width: 6px;  /* 200% bigger on hover for easier grabbing */
+            height: 6px;
+            border: 2px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            z-index: 1003;
+        }
+        
+        .annotation-pinpoint.dragging {
+            width: 8px;  /* Even bigger while dragging */
+            height: 8px;
+            border: 2px solid white;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.5);
+            z-index: 1004;
+        }
             z-index: 1002;
             transition: transform 0.2s ease;
         }
