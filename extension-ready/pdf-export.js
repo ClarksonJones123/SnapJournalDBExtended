@@ -515,11 +515,17 @@ class PDFJournalExporter {
     showPreview() {
         const previewSection = document.getElementById('previewSection');
         const screenshotPreview = document.getElementById('screenshotPreview');
+        const previewBtn = document.getElementById('previewBtn');
+        
+        if (!previewSection || !screenshotPreview || !previewBtn) {
+            console.warn('⚠️ Preview elements not found');
+            return;
+        }
         
         if (previewSection.style.display === 'none') {
             // Show preview
             previewSection.style.display = 'block';
-            document.getElementById('previewBtn').textContent = '🙈 Hide Preview';
+            previewBtn.textContent = '🙈 Hide Preview';
             
             // Generate preview items
             screenshotPreview.innerHTML = '';
@@ -550,7 +556,7 @@ class PDFJournalExporter {
         } else {
             // Hide preview
             previewSection.style.display = 'none';
-            document.getElementById('previewBtn').textContent = '👁️ Preview Journal';
+            previewBtn.textContent = '👁️ Preview Journal';
         }
     }
     
@@ -558,12 +564,16 @@ class PDFJournalExporter {
         const loading = document.getElementById('loading');
         const controls = document.querySelector('.controls');
         
-        if (show) {
-            loading.style.display = 'block';
-            controls.style.display = 'none';
+        if (loading && controls) {
+            if (show) {
+                loading.style.display = 'block';
+                controls.style.display = 'none';
+            } else {
+                loading.style.display = 'none';
+                controls.style.display = 'block';
+            }
         } else {
-            loading.style.display = 'none';
-            controls.style.display = 'block';
+            console.warn('⚠️ Loading or controls elements not found');
         }
     }
     
