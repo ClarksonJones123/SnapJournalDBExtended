@@ -155,7 +155,7 @@ class PDFJournalExporter {
             this.updateProgress(0);
             
             // Create PDF document
-            const { jsPDF } = this.jsPDF;
+            const jsPDF = this.jsPDF;
             const pdf = new jsPDF({
                 orientation: 'portrait',
                 unit: 'mm',
