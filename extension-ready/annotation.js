@@ -357,72 +357,40 @@ class UniversalAnnotator {
             e.preventDefault();
             e.stopPropagation();
             
-            console.log('🎯 === PIXEL-PERFECT COORDINATE SYSTEM START ===');
+            console.log('🎯 === RADICAL COORDINATE FIX START ===');
             
-            // Get ALL positioning factors
-            const imgRect = img.getBoundingClientRect();
+            // RADICAL APPROACH: Calculate coordinates directly from mouse event
+            // without any offset calculations - just pure click position
             const containerRect = container.getBoundingClientRect();
+            const imgRect = img.getBoundingClientRect();
             
-            // Calculate RAW click position relative to image
-            const rawClickX = e.clientX - imgRect.left;
-            const rawClickY = e.clientY - imgRect.top;
+            // Calculate click position relative to the IMAGE element directly
+            const clickX = Math.round(e.clientX - imgRect.left);
+            const clickY = Math.round(e.clientY - imgRect.top);
             
-            // CRITICAL: Check for any border/padding on the image itself
-            const imgStyle = window.getComputedStyle(img);
-            const imgBorderLeft = parseFloat(imgStyle.borderLeftWidth) || 0;
-            const imgBorderTop = parseFloat(imgStyle.borderTopWidth) || 0;
-            const imgPaddingLeft = parseFloat(imgStyle.paddingLeft) || 0;
-            const imgPaddingTop = parseFloat(imgStyle.paddingTop) || 0;
+            console.log('🎯 RADICAL COORDINATE ANALYSIS:', {
+                rawMousePosition: { x: e.clientX, y: e.clientY },
+                imageElementRect: { left: imgRect.left, top: imgRect.top },
+                containerRect: { left: containerRect.left, top: containerRect.top },
+                calculatedClick: { x: clickX, y: clickY },
+                method: 'DIRECT_MOUSE_TO_IMAGE_CALCULATION'
+            });
             
-            // CRITICAL: Check container positioning
-            const containerStyle = window.getComputedStyle(container);
-            const containerBorderLeft = parseFloat(containerStyle.borderLeftWidth) || 0;
-            const containerBorderTop = parseFloat(containerStyle.borderTopWidth) || 0;
-            const containerPaddingLeft = parseFloat(containerStyle.paddingLeft) || 0;
-            const containerPaddingTop = parseFloat(containerStyle.paddingTop) || 0;
-            
-            // Account for ALL positioning offsets
-            const totalOffsetX = imgBorderLeft + imgPaddingLeft;
-            const totalOffsetY = imgBorderTop + imgPaddingTop;
-            
-            // Final precise coordinates
-            const preciseSClickX = Math.round(rawClickX - totalOffsetX);
-            const preciseClickY = Math.round(rawClickY - totalOffsetY);
-            
-            console.log('🔍 COMPLETE POSITIONING ANALYSIS:', {
-                rawClick: { x: rawClickX, y: rawClickY },
-                clientCoords: { x: e.clientX, y: e.clientY },
-                imgRect: { 
-                    left: imgRect.left, 
-                    top: imgRect.top, 
-                    width: imgRect.width, 
-                    height: imgRect.height 
-                },
-                containerRect: {
-                    left: containerRect.left,
-                    top: containerRect.top,
-                    width: containerRect.width,
-                    height: containerRect.height
-                },
-                imgBorderAndPadding: {
-                    borderLeft: imgBorderLeft + 'px',
-                    borderTop: imgBorderTop + 'px', 
-                    paddingLeft: imgPaddingLeft + 'px',
-                    paddingTop: imgPaddingTop + 'px'
-                },
-                containerBorderAndPadding: {
-                    borderLeft: containerBorderLeft + 'px',
-                    borderTop: containerBorderTop + 'px',
-                    paddingLeft: containerPaddingLeft + 'px',
-                    paddingTop: containerPaddingTop + 'px'
-                },
-                totalOffset: {
-                    x: totalOffsetX + 'px',
-                    y: totalOffsetY + 'px'
-                },
-                finalCoordinates: {
-                    x: preciseSClickX,
-                    y: preciseClickY
+            // Verify the image element properties
+            console.log('🔍 IMAGE ELEMENT VERIFICATION:', {
+                offsetWidth: img.offsetWidth,
+                offsetHeight: img.offsetHeight,
+                naturalWidth: img.naturalWidth,
+                naturalHeight: img.naturalHeight,
+                clientWidth: img.clientWidth,
+                clientHeight: img.clientHeight,
+                style: {
+                    left: img.style.left || 'not set',
+                    top: img.style.top || 'not set',
+                    position: window.getComputedStyle(img).position,
+                    margin: window.getComputedStyle(img).margin,
+                    padding: window.getComputedStyle(img).padding,
+                    border: window.getComputedStyle(img).border
                 }
             });
             
@@ -439,26 +407,23 @@ class UniversalAnnotator {
             const annotation = {
                 id: Date.now().toString(),
                 text: annotationText.trim(),
-                // Use the precisely calculated coordinates
-                x: preciseSClickX,
-                y: preciseClickY,
-                textX: preciseSClickX + 60,
-                textY: preciseClickY - 30,
+                // Use DIRECT coordinates with no adjustments
+                x: clickX,
+                y: clickY,
+                textX: clickX + 60,
+                textY: clickY - 30,
                 timestamp: new Date().toISOString(),
                 debug: {
-                    rawClick: { x: rawClickX, y: rawClickY },
-                    adjustedClick: { x: preciseSClickX, y: preciseClickY },
-                    offsets: {
-                        imgBorder: { x: imgBorderLeft, y: imgBorderTop },
-                        imgPadding: { x: imgPaddingLeft, y: imgPaddingTop },
-                        total: { x: totalOffsetX, y: totalOffsetY }
-                    },
-                    coordinateSystem: 'PIXEL_PERFECT_WITH_ALL_OFFSETS'
+                    method: 'RADICAL_DIRECT_CALCULATION',
+                    mouseEvent: { clientX: e.clientX, clientY: e.clientY },
+                    imageRect: imgRect,
+                    directCoordinates: { x: clickX, y: clickY },
+                    noAdjustments: true
                 }
             };
             
-            console.log('🎯 PIXEL-PERFECT ANNOTATION CREATED:', annotation);
-            console.log('🎯 === PIXEL-PERFECT COORDINATE SYSTEM END ===');
+            console.log('🎯 RADICAL ANNOTATION CREATED:', annotation);
+            console.log('🎯 === RADICAL COORDINATE FIX END ===');
             
             await this.addAnnotation(annotation, container, img);
             
@@ -469,7 +434,7 @@ class UniversalAnnotator {
                 voiceBtn.className = 'btn-voice';
             }
             
-            this.updateStatus('✅ PIXEL-PERFECT coordinates applied! Red dot should be EXACTLY at click point.');
+            this.updateStatus('✅ RADICAL FIX applied! Check if red dot and lime crosshair are now aligned.');
         });
     }
     
