@@ -475,149 +475,15 @@ class ScreenshotAnnotator {
     }
   }
   
+  // Simplified cleanup - just remove old screenshots
   schedulePeriodicCleanup() {
-    // Run cleanup every 5 minutes
+    // Run cleanup every 10 minutes (less frequent since IndexedDB has high capacity)
     setInterval(async () => {
       console.log('⏰ Running scheduled periodic cleanup...');
       await this.automaticStorageCleanup();
-    }, 5 * 60 * 1000); // 5 minutes
+    }, 10 * 60 * 1000); // 10 minutes
     
-    this.setupStorageQuotaMonitoring();
-    console.log('✅ Periodic cleanup scheduled (every 5 minutes)');
-  }
-  
-  setupStorageQuotaMonitoring() {
-    // Monitor storage before each save operation
-    setInterval(async () => {
-      try {
-        const storageInfo = await this.checkStorageQuota();
-        
-        if (storageInfo.quotaExceeded) {
-          console.log('🚨 Storage quota monitoring triggered cleanup');
-          await this.automaticStorageCleanup();
-        }
-      } catch (error) {
-        console.error('Error in storage quota monitoring:', error);
-      }
-    }, 30000); // Check every 30 seconds
-    
-    console.log('✅ Storage quota monitoring setup');
-  }
-  
-  async emergencyStorageCleanup() {
-    try {
-      console.log('🚨 Emergency storage cleanup initiated...');
-      
-      // Keep only the 3 most recent screenshots
-      if (this.screenshots.length > 3) {
-        this.screenshots.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        const removedCount = this.screenshots.length - 3;
-        this.screenshots = this.screenshots.slice(0, 3);
-        
-        console.log(`🚨 Emergency cleanup - removed ${removedCount} screenshots, kept 3 most recent`);
-      }
-      
-      // Update selected screenshot if it was removed
-      if (this.selectedScreenshot && !this.screenshots.find(s => s.id === this.selectedScreenshot.id)) {
-        this.selectedScreenshot = this.screenshots[0] || null;
-      }
-      
-      // Force memory cleanup
-      this.memoryUsage = 0;
-      this.calculateMemoryUsage();
-      
-      console.log('🚨 Emergency cleanup completed - kept 3 most recent screenshots');
-      
-    } catch (error) {
-      console.error('Error during emergency cleanup:', error);
-    }
-  }
-  
-  async extremeEmergencyCleanup() {
-    try {
-      console.log('💥 EXTREME emergency cleanup - keeping only 1 screenshot...');
-      
-      if (this.screenshots.length > 1) {
-        // Sort by timestamp and keep only the most recent
-        this.screenshots.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        const removedCount = this.screenshots.length - 1;
-        this.screenshots = this.screenshots.slice(0, 1);
-        
-        console.log(`💥 Extreme cleanup - removed ${removedCount} screenshots, kept 1 most recent`);
-      }
-      
-      // Update selected screenshot
-      this.selectedScreenshot = this.screenshots[0] || null;
-      
-      // Force memory cleanup
-      this.memoryUsage = 0;
-      this.calculateMemoryUsage();
-      
-      console.log('💥 Extreme emergency cleanup completed - kept 1 screenshot');
-      
-    } catch (error) {
-      console.error('Error during extreme emergency cleanup:', error);
-    }
-  }
-  
-  async fixCorruptedScreenshots() {
-    try {
-      console.log('🔧 Fixing corrupted screenshots...');
-      
-      const originalCount = this.screenshots.length;
-      
-      // Remove screenshots without image data and not in temp storage
-      this.screenshots = this.screenshots.filter(screenshot => {
-        const hasImageData = !!screenshot.imageData;
-        const inTempStorage = screenshot.isInTempStorage && screenshot.tempImageId;
-        
-        if (!hasImageData && !inTempStorage) {
-          console.log('🗑️ Removing corrupted screenshot:', screenshot.id, screenshot.title);
-          return false;
-        }
-        
-        return true;
-      });
-      
-      const removedCount = originalCount - this.screenshots.length;
-      
-      if (removedCount > 0) {
-        console.log(`🔧 Fixed ${removedCount} corrupted screenshots`);
-        await this.saveScreenshots();
-        this.calculateMemoryUsage();
-        this.updateUI();
-        
-        this.showStatus(`Fixed ${removedCount} corrupted screenshots`, 'success');
-      } else {
-        console.log('✅ No corrupted screenshots found');
-        this.showStatus('No corrupted screenshots found', 'info');
-      }
-      
-    } catch (error) {
-      console.error('Error fixing corrupted screenshots:', error);
-      this.showStatus('Error fixing screenshots', 'error');
-    }
-  }
-  
-  async checkStorageQuota() {
-    try {
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local && chrome.storage.local.getBytesInUse) {
-        const bytesInUse = await chrome.storage.local.getBytesInUse();
-        const quota = chrome.storage.local.QUOTA_BYTES || 10485760; // 10MB default
-        
-        return {
-          bytesInUse,
-          quota,
-          available: quota - bytesInUse,
-          quotaExceeded: bytesInUse > quota * 0.9, // Warn at 90%
-          usagePercent: Math.round((bytesInUse / quota) * 100)
-        };
-      }
-    } catch (error) {
-      console.error('Error checking storage quota:', error);
-    }
-    
-    return { quotaExceeded: false, usagePercent: 0, bytesInUse: 0, quota: 10485760, available: 10485760 };
+    console.log('✅ Periodic cleanup scheduled (every 10 minutes)');
   }
   
   calculateMemoryUsage() {
