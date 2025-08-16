@@ -652,8 +652,26 @@ class TempStorageManager {
         throw new Error(`PDF export data not found for ID: ${exportId}`);
       }
       
+      // Validate the data structure before returning
+      if (!result.data || typeof result.data !== 'object') {
+        console.error('❌ PDF export data has invalid structure:', result);
+        throw new Error(`PDF export data structure is invalid for ID: ${exportId}`);
+      }
+      
+      // Ensure screenshots array exists and is valid
+      if (!result.data.screenshots || !Array.isArray(result.data.screenshots)) {
+        console.error('❌ PDF export data missing screenshots array:', result.data);
+        throw new Error(`PDF export data missing valid screenshots array for ID: ${exportId}`);
+      }
+      
       console.log('✅ PDF export data retrieved successfully');
       console.log('📊 Retrieved data size:', Math.round(JSON.stringify(result.data).length / 1024 / 1024), 'MB');
+      console.log('📊 Data structure validation:', {
+        hasScreenshots: Array.isArray(result.data.screenshots),
+        screenshotCount: result.data.screenshots.length,
+        hasAnnotations: typeof result.data.totalAnnotations === 'number',
+        hasExportDate: !!result.data.exportDate
+      });
       
       return result.data;
       
