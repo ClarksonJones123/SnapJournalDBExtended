@@ -202,14 +202,14 @@ class ScreenshotAnnotator {
     try {
       console.log('🚨 EMERGENCY STORAGE CLEANUP...');
       
-      // Keep only the 2 most recent screenshots
+      // Keep only the 1 most recent screenshot to maximize free space
       this.screenshots.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-      const removedCount = this.screenshots.length - 2;
-      this.screenshots = this.screenshots.slice(0, 2);
+      const removedCount = this.screenshots.length - 1;
+      this.screenshots = this.screenshots.slice(0, 1);
       
       console.log(`🚨 Emergency cleanup: Removed ${removedCount} screenshots, kept ${this.screenshots.length}`);
       
-      // Clear ALL other data from storage
+      // Clear ALL other data from storage except the most recent screenshot
       const storage = await chrome.storage.local.get();
       const keysToRemove = [];
       for (const key in storage) {
@@ -225,6 +225,11 @@ class ScreenshotAnnotator {
       
       // Update selected screenshot
       this.selectedScreenshot = this.screenshots[0] || null;
+      
+      // Force memory cleanup
+      this.memoryUsage = 0;
+      
+      console.log('🚨 Emergency cleanup completed - maximum space freed');
       
     } catch (error) {
       console.error('Error during emergency cleanup:', error);
