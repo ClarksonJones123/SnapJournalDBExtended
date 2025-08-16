@@ -1262,8 +1262,9 @@ class ScreenshotAnnotator {
               <div style="position: relative; display: inline-block;">
                 <img src="${screenshot.imageData}" 
                      alt="Screenshot preview" 
+                     class="screenshot-preview-img"
                      style="width: 100%; max-width: 360px; height: auto; border-radius: 4px; margin-bottom: 8px;"
-                     onerror="console.error('Failed to load image:', this.src.substring(0, 50) + '...')">
+                     data-screenshot-id="${screenshot.id}">
                 ${this.renderAnnotationIndicators(screenshot)}
               </div>
               ${this.renderAnnotationsList(screenshot)}
