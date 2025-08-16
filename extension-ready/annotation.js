@@ -502,6 +502,15 @@ class UniversalAnnotator {
                 isDragging = false;
                 element.style.cursor = type === 'text' ? 'move' : 'crosshair';
                 element.style.transform = 'translate(-50%, -50%) scale(1)';
+                
+                if (type === 'pin') {
+                    console.log('🔴 RED DOT FINAL POSITION:', {
+                        displayCoords: `(${annotation.x.toFixed(1)}, ${annotation.y.toFixed(1)})`,
+                        elementId: annotation.id,
+                        text: annotation.text
+                    });
+                }
+                
                 this.saveAnnotationsToStorage();
             }
         };
