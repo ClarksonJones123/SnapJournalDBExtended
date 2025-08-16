@@ -94,8 +94,55 @@ class ScreenshotAnnotator {
         });
         console.log('Storage listener setup complete');
       }
+      
+      // Add runtime message listener for annotation saving
+      if (chrome && chrome.runtime && chrome.runtime.onMessage) {
+        chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+          if (request.action === 'saveAnnotatedScreenshot') {
+            this.handleAnnotationSave(request.screenshot).then(result => {
+              sendResponse(result);
+            }).catch(error => {
+              sendResponse({ success: false, error: error.message });
+            });
+            return true; // Keep message channel open for async response
+          }
+        });
+        console.log('Runtime message listener setup for annotation saving');
+      }
     } catch (error) {
       console.log('Storage listener not available (expected outside extension context)');
+    }
+  }
+  
+  async handleAnnotationSave(annotatedScreenshot) {
+    try {
+      console.log('📝 Handling annotation save for screenshot:', annotatedScreenshot.id);
+      
+      if (!this.tempStorage) {
+        throw new Error('Primary storage not available');
+      }
+      
+      // Save the annotated screenshot to IndexedDB
+      await this.tempStorage.saveScreenshot(annotatedScreenshot);
+      
+      // Update local array if the screenshot exists
+      const index = this.screenshots.findIndex(s => s.id === annotatedScreenshot.id);
+      if (index !== -1) {
+        this.screenshots[index] = annotatedScreenshot;
+        this.calculateMemoryUsage();
+        this.updateUI();
+      } else {
+        // Reload all screenshots to get the updated one
+        await this.loadScreenshots();
+        this.updateUI();
+      }
+      
+      console.log('✅ Annotation save handled successfully');
+      return { success: true };
+      
+    } catch (error) {
+      console.error('❌ Error handling annotation save:', error);
+      return { success: false, error: error.message };
     }
   }
   
