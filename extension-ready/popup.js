@@ -1832,6 +1832,48 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
   
+  // NEW: Database schema reset for PDF export issues
+  window.resetDatabaseSchema = async () => {
+    if (annotator.tempStorage) {
+      try {
+        console.log('🔄 Resetting IndexedDB schema to fix PDF export issues...');
+        
+        // Close current database connection
+        if (annotator.tempStorage.db) {
+          annotator.tempStorage.db.close();
+        }
+        
+        // Delete the database
+        const deleteRequest = indexedDB.deleteDatabase('ScreenshotAnnotatorDB');
+        
+        deleteRequest.onsuccess = async () => {
+          console.log('✅ Database deleted successfully');
+          
+          // Reinitialize with fresh schema
+          try {
+            await annotator.tempStorage.init();
+            console.log('✅ Database reinitialized with correct schema');
+            console.log('💡 PDF export should now work properly');
+            
+            // Reload screenshots from fresh database
+            await annotator.loadScreenshots();
+            annotator.updateUI();
+            
+          } catch (initError) {
+            console.error('❌ Failed to reinitialize database:', initError);
+          }
+        };
+        
+        deleteRequest.onerror = (error) => {
+          console.error('❌ Failed to delete database:', error);
+        };
+        
+      } catch (error) {
+        console.error('❌ Database reset failed:', error);
+      }
+    }
+  };
+  
   console.log('💡 ENHANCED Storage management commands available:');
   console.log('  📊 memoryStatus() - Show detailed memory breakdown');
   console.log('  🧠 optimizeMemory() - Aggressive memory optimization');
