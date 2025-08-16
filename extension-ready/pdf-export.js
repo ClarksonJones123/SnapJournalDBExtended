@@ -210,6 +210,27 @@ class PDFJournalExporter {
             
             console.log('✅ PDF generation completed:', filename);
             
+            // 🧹 TRIGGER MEMORY CLEANUP: Notify main extension to clean up memory
+            try {
+                console.log('🧹 Triggering post-export memory cleanup...');
+                
+                // Send message to background script to trigger cleanup
+                chrome.runtime.sendMessage({ 
+                    action: 'pdfExportCompleted',
+                    exportId: this.currentExportId,
+                    filename: filename
+                });
+                
+                // Also clean up local storage data immediately
+                if (this.currentExportId) {
+                    await chrome.storage.local.remove(this.currentExportId);
+                    console.log('🧹 Cleaned up export data from local storage');
+                }
+                
+            } catch (cleanupError) {
+                console.warn('⚠️ Failed to trigger post-export cleanup:', cleanupError);
+            }
+            
         } catch (error) {
             console.error('❌ PDF generation error:', error);
             this.showLoading(false);
