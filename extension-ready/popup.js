@@ -11,12 +11,19 @@ class ScreenshotAnnotator {
   }
   
   async init() {
-    console.log('🚀 Initializing ScreenshotAnnotator...');
+    console.log('🚀 Initializing ScreenshotAnnotator with AUTOMATIC database repair...');
     
     try {
-      // Initialize temporary storage first
+      this.showStatus('🚀 Initializing extension with automatic database healing...', 'info');
+      
+      // Initialize temporary storage first with automatic schema repair
       await this.initTempStorage();
       
+      if (!this.tempStorage) {
+        throw new Error('Critical: Primary storage initialization failed after repair attempts');
+      }
+      
+      this.showStatus('📱 Loading existing screenshots...', 'info');
       // CRITICAL FIX: Load existing screenshots BEFORE running cleanup
       console.log('📱 Loading existing screenshots BEFORE cleanup...');
       await this.loadScreenshots();
@@ -39,12 +46,22 @@ class ScreenshotAnnotator {
       // Setup periodic cleanup for IndexedDB (no quota monitoring needed)
       this.schedulePeriodicCleanup();
       
-      console.log('✅ ScreenshotAnnotator initialized successfully');
+      console.log('✅ ScreenshotAnnotator initialized successfully with automatic database healing');
+      this.showStatus('✅ Extension ready - automatic database repair active!', 'success');
       this.isInitialized = true;
       
     } catch (error) {
       console.error('❌ ScreenshotAnnotator initialization failed:', error);
-      this.showStatus('Extension initialization failed. Please reload.', 'error');
+      this.showStatus('❌ Extension initialization failed - try closing/reopening or manual repair', 'error');
+      
+      // Show manual repair instructions as fallback
+      setTimeout(() => {
+        console.log('💡 MANUAL REPAIR INSTRUCTIONS:');
+        console.log('   1. Open browser console (F12)');
+        console.log('   2. Run: resetDatabaseSchema()');
+        console.log('   3. Wait for: "✅ Database reinitialized with correct schema"');
+        console.log('   4. Reload extension popup');
+      }, 2000);
     }
   }
   
