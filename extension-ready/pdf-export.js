@@ -305,87 +305,26 @@ class PDFJournalExporter {
         pdf.text('Created with Universal Screenshot Annotator', centerX, pageHeight - 30, { align: 'center' });
     }
     
-    async addScreenshotPage(pdf, screenshot, pageNumber, pageWidth, pageHeight, margin, contentWidth) {
-        const yOffset = margin;
-        let currentY = yOffset;
+    async addScreenshotPage(pdf, screenshot, pageNumber, pageWidth, pageHeight, margin, contentWidth, contentHeight) {
+        console.log(`📄 Adding screenshot ${pageNumber} - NO BORDERS, FULL PAGE`);
         
-        // Page header
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(`Screenshot ${pageNumber}`, margin, currentY);
-        
-        // Screenshot info
-        currentY += 15;
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'normal');
-        
-        const captureDate = screenshot.captureDate || new Date(screenshot.timestamp).toLocaleDateString();
-        const captureTime = screenshot.captureTime || new Date(screenshot.timestamp).toLocaleTimeString();
-        
-        pdf.text(`Title: ${screenshot.title}`, margin, currentY);
-        currentY += 8;
-        pdf.text(`Captured: ${captureDate} at ${captureTime}`, margin, currentY);
-        currentY += 8;
-        pdf.text(`Dimensions: ${screenshot.displayWidth}×${screenshot.displayHeight}`, margin, currentY);
-        currentY += 8;
-        pdf.text(`Annotations: ${screenshot.annotations?.length || 0}`, margin, currentY);
-        currentY += 15;
-        
-        // Add screenshot image (now with annotations burned in!)
+        // NO HEADERS, NO TEXT - JUST THE IMAGE
         try {
             const imageData = screenshot.imageData;
             if (imageData) {
-                // Calculate image dimensions to fit page better - larger since we have annotated images
-                const maxImageWidth = contentWidth;
-                const maxImageHeight = 200; // Increased from 180 to show high-quality images better
+                // Fill entire page with image - NO MARGINS
+                console.log(`🖼️ Adding full-page image: ${contentWidth}x${contentHeight}mm`);
                 
-                // Add image to PDF (now includes annotations!)
-                pdf.addImage(imageData, 'PNG', margin, currentY, maxImageWidth, maxImageHeight);
-                currentY += maxImageHeight + 15;
+                pdf.addImage(imageData, 'PNG', 0, 0, contentWidth, contentHeight);
                 
-                console.log(`📄 Added high-quality annotated image for screenshot ${pageNumber}`);
-                console.log(`🖼️ Image dimensions in PDF: ${maxImageWidth}x${maxImageHeight}mm`);
+                console.log(`📄 Added full-page image for screenshot ${pageNumber}`);
             }
         } catch (error) {
             console.error('Error adding image to PDF:', error);
-            pdf.text('❌ Image could not be added', margin, currentY);
-            currentY += 10;
+            // If image fails, at least add page number in corner
+            pdf.setFontSize(8);
+            pdf.text(`Page ${pageNumber}`, 5, 5);
         }
-        
-        // Add annotations
-        if (screenshot.annotations && screenshot.annotations.length > 0) {
-            pdf.setFontSize(12);
-            pdf.setFont('helvetica', 'bold');
-            pdf.text('Annotations:', margin, currentY);
-            currentY += 10;
-            
-            pdf.setFontSize(10);
-            pdf.setFont('helvetica', 'normal');
-            
-            screenshot.annotations.forEach((annotation, index) => {
-                const annotationText = `${index + 1}. ${annotation.text}`;
-                const position = `(${Math.round(annotation.x)}, ${Math.round(annotation.y)})`;
-                
-                // Check if we need a new page
-                if (currentY > pageHeight - 50) {
-                    pdf.addPage();
-                    currentY = margin;
-                    pdf.setFontSize(12);
-                    pdf.setFont('helvetica', 'bold');
-                    pdf.text(`Screenshot ${pageNumber} - Annotations (continued)`, margin, currentY);
-                    currentY += 15;
-                    pdf.setFontSize(10);
-                    pdf.setFont('helvetica', 'normal');
-                }
-                
-                pdf.text(`${annotationText} ${position}`, margin, currentY);
-                currentY += 8;
-            });
-        }
-        
-        // Page footer
-        pdf.setFontSize(8);
-        pdf.text(`Page ${pageNumber}`, pageWidth - margin, pageHeight - 15, { align: 'right' });
     }
     
     showPreview() {
