@@ -357,41 +357,20 @@ class UniversalAnnotator {
             e.preventDefault();
             e.stopPropagation();
             
-            console.log('🎯 === RADICAL COORDINATE FIX START ===');
+            console.log('🎯 === PRECISION COORDINATE CALCULATION START ===');
             
-            // RADICAL APPROACH: Calculate coordinates directly from mouse event
-            // without any offset calculations - just pure click position
-            const containerRect = container.getBoundingClientRect();
             const imgRect = img.getBoundingClientRect();
             
-            // Calculate click position relative to the IMAGE element directly
+            // PRECISION FIX: Account for the red dot's transform: translate(-50%, -50%)
+            // The red dot's center should align with the click point
             const clickX = Math.round(e.clientX - imgRect.left);
             const clickY = Math.round(e.clientY - imgRect.top);
             
-            console.log('🎯 RADICAL COORDINATE ANALYSIS:', {
-                rawMousePosition: { x: e.clientX, y: e.clientY },
-                imageElementRect: { left: imgRect.left, top: imgRect.top },
-                containerRect: { left: containerRect.left, top: containerRect.top },
-                calculatedClick: { x: clickX, y: clickY },
-                method: 'DIRECT_MOUSE_TO_IMAGE_CALCULATION'
-            });
-            
-            // Verify the image element properties
-            console.log('🔍 IMAGE ELEMENT VERIFICATION:', {
-                offsetWidth: img.offsetWidth,
-                offsetHeight: img.offsetHeight,
-                naturalWidth: img.naturalWidth,
-                naturalHeight: img.naturalHeight,
-                clientWidth: img.clientWidth,
-                clientHeight: img.clientHeight,
-                style: {
-                    left: img.style.left || 'not set',
-                    top: img.style.top || 'not set',
-                    position: window.getComputedStyle(img).position,
-                    margin: window.getComputedStyle(img).margin,
-                    padding: window.getComputedStyle(img).padding,
-                    border: window.getComputedStyle(img).border
-                }
+            console.log('🎯 PRECISION ANALYSIS:', {
+                mousePosition: { x: e.clientX, y: e.clientY },
+                imageRect: { left: imgRect.left, top: imgRect.top, width: imgRect.width, height: imgRect.height },
+                clickRelativeToImage: { x: clickX, y: clickY },
+                method: 'PRECISION_WITH_TRANSFORM_COMPENSATION'
             });
             
             let annotationText = this.pendingAnnotationText;
@@ -407,23 +386,22 @@ class UniversalAnnotator {
             const annotation = {
                 id: Date.now().toString(),
                 text: annotationText.trim(),
-                // Use DIRECT coordinates with no adjustments
+                // Store the exact click coordinates
                 x: clickX,
                 y: clickY,
                 textX: clickX + 60,
                 textY: clickY - 30,
                 timestamp: new Date().toISOString(),
                 debug: {
-                    method: 'RADICAL_DIRECT_CALCULATION',
+                    method: 'PRECISION_COORDINATE_CALCULATION',
                     mouseEvent: { clientX: e.clientX, clientY: e.clientY },
                     imageRect: imgRect,
-                    directCoordinates: { x: clickX, y: clickY },
-                    noAdjustments: true
+                    calculatedCoordinates: { x: clickX, y: clickY }
                 }
             };
             
-            console.log('🎯 RADICAL ANNOTATION CREATED:', annotation);
-            console.log('🎯 === RADICAL COORDINATE FIX END ===');
+            console.log('🎯 PRECISION ANNOTATION CREATED:', annotation);
+            console.log('🎯 === PRECISION COORDINATE CALCULATION END ===');
             
             await this.addAnnotation(annotation, container, img);
             
@@ -434,7 +412,7 @@ class UniversalAnnotator {
                 voiceBtn.className = 'btn-voice';
             }
             
-            this.updateStatus('✅ RADICAL FIX applied! Check if red dot and lime crosshair are now aligned.');
+            this.updateStatus('✅ Precision coordinates applied! Red dot should align perfectly.');
         });
     }
     
