@@ -468,9 +468,119 @@ class ScreenshotAnnotator {
     }
   }
   
+  // Enhanced memory management - Aggressive cleanup for large datasets
+  async aggressiveMemoryOptimization() {
+    try {
+      console.log('🧠 === AGGRESSIVE MEMORY OPTIMIZATION START ===');
+      
+      if (!this.tempStorage) {
+        console.log('⚠️ PRIMARY storage not available for optimization');
+        return;
+      }
+      
+      // Get current memory stats
+      const stats = await this.tempStorage.getStorageStats();
+      console.log('📊 Current memory usage before optimization:', stats);
+      
+      // If memory usage is high (>100MB), be more aggressive
+      const isHighMemoryUsage = stats.totalSize > 100 * 1024 * 1024; // 100MB threshold
+      
+      if (isHighMemoryUsage) {
+        console.log(`⚠️ High memory usage detected: ${stats.totalSizeMB}MB - applying aggressive cleanup`);
+        
+        // More aggressive: Keep only 20 most recent instead of 50
+        if (this.screenshots.length > 20) {
+          console.log('🗑️ Applying aggressive screenshot limit (20 instead of 50)...');
+          
+          this.screenshots.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+          const toKeep = this.screenshots.slice(0, 20);
+          const toRemove = this.screenshots.slice(20);
+          
+          // Remove from IndexedDB
+          for (const screenshot of toRemove) {
+            try {
+              await this.tempStorage.deleteScreenshot(screenshot.id);
+            } catch (error) {
+              console.error('Error deleting screenshot during aggressive cleanup:', error);
+            }
+          }
+          
+          this.screenshots = toKeep;
+          console.log(`🗑️ Aggressive cleanup: Removed ${toRemove.length} screenshots, kept ${toKeep.length}`);
+        }
+        
+        // Force garbage collection if available
+        if (window.gc && typeof window.gc === 'function') {
+          try {
+            window.gc();
+            console.log('🗑️ Forced garbage collection executed');
+          } catch (gcError) {
+            console.log('ℹ️ Garbage collection not available (normal in production)');
+          }
+        }
+        
+        // Clear any cached image elements from DOM
+        this.clearCachedImageElements();
+        
+        // Update memory usage
+        this.calculateMemoryUsage();
+        
+        // Get updated stats
+        const newStats = await this.tempStorage.getStorageStats();
+        const memoryFreed = stats.totalSize - newStats.totalSize;
+        const memoryFreedMB = Math.round(memoryFreed / (1024 * 1024));
+        
+        console.log(`✅ Aggressive optimization complete - freed ${memoryFreedMB}MB`);
+        console.log('📊 New memory usage:', newStats);
+        
+        this.showStatus(`🧠 Memory optimized! Freed ${memoryFreedMB}MB`, 'success');
+        
+      } else {
+        console.log(`✅ Memory usage acceptable: ${stats.totalSizeMB}MB - no aggressive cleanup needed`);
+      }
+      
+      console.log('🧠 === AGGRESSIVE MEMORY OPTIMIZATION END ===');
+      
+    } catch (error) {
+      console.error('❌ Error during aggressive memory optimization:', error);
+    }
+  }
+  
+  // Clear cached image elements that might be holding references
+  clearCachedImageElements() {
+    try {
+      console.log('🗑️ Clearing cached DOM image elements...');
+      
+      // Remove any preview images that might be cached
+      const previewImages = document.querySelectorAll('.screenshot-preview-img');
+      previewImages.forEach((img, index) => {
+        if (img.src && img.src.startsWith('data:image/')) {
+          img.src = ''; // Clear data URL reference
+          console.log(`🗑️ Cleared cached image ${index + 1}`);
+        }
+      });
+      
+      // Clear any annotation canvas references
+      const canvases = document.querySelectorAll('canvas');
+      canvases.forEach((canvas, index) => {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          console.log(`🗑️ Cleared canvas ${index + 1}`);
+        }
+      });
+      
+      console.log('✅ DOM image cache cleared');
+      
+    } catch (error) {
+      console.error('❌ Error clearing cached image elements:', error);
+    }
+  }
+  
+  // Enhanced automatic cleanup with memory pressure detection
   async automaticStorageCleanup() {
     try {
-      console.log('🧹 === AUTOMATIC STORAGE CLEANUP START ===');
+      console.log('🧹 === ENHANCED AUTOMATIC STORAGE CLEANUP START ===');
       
       if (!this.tempStorage) {
         console.log('⚠️ PRIMARY storage not available, skipping cleanup');
@@ -479,19 +589,26 @@ class ScreenshotAnnotator {
       
       // Get all screenshots
       this.screenshots = await this.tempStorage.getAllScreenshots();
-      
       console.log(`📊 Found ${this.screenshots.length} screenshots in storage`);
+      
+      // Check memory pressure FIRST
+      if (this.screenshots.length > 30) {
+        console.log('⚠️ High screenshot count detected - checking for memory pressure optimization');
+        await this.aggressiveMemoryOptimization();
+        
+        // Refresh screenshots array after optimization
+        this.screenshots = await this.tempStorage.getAllScreenshots();
+      }
       
       // Remove corrupted screenshots (those without imageData)
       const originalCount = this.screenshots.length;
       const validScreenshots = [];
       
       for (const screenshot of this.screenshots) {
-        if (screenshot.imageData) {
+        if (screenshot.imageData && screenshot.imageData.startsWith('data:image/')) {
           validScreenshots.push(screenshot);
         } else {
           console.log('🗑️ Removing corrupted screenshot:', screenshot.id);
-          // Delete from IndexedDB
           await this.tempStorage.deleteScreenshot(screenshot.id);
         }
       }
@@ -502,15 +619,15 @@ class ScreenshotAnnotator {
         console.log(`🗑️ Removed ${removedCorrupted} corrupted screenshots`);
       }
       
-      // If we have too many screenshots, clean up old ones (keep 50 most recent)
-      if (this.screenshots.length > 50) {
-        console.log('📊 Too many screenshots, cleaning up old ones...');
+      // Standard cleanup: Keep 50 most recent (or fewer if aggressive cleanup already applied)
+      const maxScreenshots = this.screenshots.length > 100 ? 30 : 50; // Dynamic limit based on total count
+      
+      if (this.screenshots.length > maxScreenshots) {
+        console.log(`📊 Too many screenshots (${this.screenshots.length}), cleaning up old ones (keeping ${maxScreenshots})...`);
         
-        // Sort by timestamp (newest first)
         this.screenshots.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        
-        const toKeep = this.screenshots.slice(0, 50);
-        const toRemove = this.screenshots.slice(50);
+        const toKeep = this.screenshots.slice(0, maxScreenshots);
+        const toRemove = this.screenshots.slice(maxScreenshots);
         
         // Remove old screenshots from IndexedDB
         for (const screenshot of toRemove) {
@@ -528,11 +645,21 @@ class ScreenshotAnnotator {
       // Update memory usage calculation
       this.calculateMemoryUsage();
       
-      console.log('✅ Automatic cleanup completed successfully');
-      console.log('🧹 === AUTOMATIC STORAGE CLEANUP END ===');
+      // Log final memory status
+      if (this.tempStorage) {
+        const finalStats = await this.tempStorage.getStorageStats();
+        console.log('📊 Final memory status:', finalStats);
+        
+        if (finalStats.totalSizeMB > 200) { // 200MB warning
+          console.warn(`⚠️ Memory usage still high: ${finalStats.totalSizeMB}MB - consider manual cleanup`);
+        }
+      }
+      
+      console.log('✅ Enhanced automatic cleanup completed successfully');
+      console.log('🧹 === ENHANCED AUTOMATIC STORAGE CLEANUP END ===');
       
     } catch (error) {
-      console.error('❌ Error during automatic storage cleanup:', error);
+      console.error('❌ Error during enhanced automatic storage cleanup:', error);
     }
   }
   
