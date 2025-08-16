@@ -447,30 +447,17 @@ class UniversalAnnotator {
                 element.style.left = newX + 'px';
                 element.style.top = newY + 'px';
                 
+                // SIMPLIFIED: Update coordinates directly (display coordinates)
                 if (type === 'text') {
                     annotation.textX = newX;
                     annotation.textY = newY;
                     
-                    // 🔍 DEBUG: Track text position changes
-                    if (annotation.debug) {
-                        annotation.debug.coordinateHistory.push({
-                            event: 'TEXT_DRAG',
-                            displayCoords: { textX: newX, textY: newY },
-                            timestamp: new Date().toISOString()
-                        });
-                    }
+                    console.log('📝 Text dragged to:', { x: newX.toFixed(1), y: newY.toFixed(1) });
                 } else {
                     annotation.x = newX;
                     annotation.y = newY;
                     
-                    // 🔍 DEBUG: Track red dot position changes
-                    if (annotation.debug) {
-                        annotation.debug.coordinateHistory.push({
-                            event: 'RED_DOT_DRAG',
-                            displayCoords: { x: newX, y: newY },
-                            timestamp: new Date().toISOString()
-                        });
-                    }
+                    console.log('🔴 Red dot dragged to:', { x: newX.toFixed(1), y: newY.toFixed(1) });
                 }
                 
                 updateCallback();
@@ -483,28 +470,10 @@ class UniversalAnnotator {
                 element.style.cursor = type === 'text' ? 'move' : 'crosshair';
                 element.style.transform = 'translate(-50%, -50%) scale(1)';
                 
-                if (type === 'pin') {
-                    console.log('🔴 RED DOT FINAL POSITION:', {
-                        displayCoords: `(${annotation.x.toFixed(1)}, ${annotation.y.toFixed(1)})`,
-                        elementId: annotation.id,
-                        text: annotation.text
-                    });
-                    
-                    // 🔍 DEBUG: Record final red dot position
-                    if (annotation.debug) {
-                        annotation.debug.coordinateHistory.push({
-                            event: 'RED_DOT_FINAL_POSITION',
-                            displayCoords: { x: annotation.x, y: annotation.y },
-                            timestamp: new Date().toISOString()
-                        });
-                        
-                        annotation.debug.finalRedDotPosition = { 
-                            x: annotation.x, 
-                            y: annotation.y,
-                            timestamp: new Date().toISOString()
-                        };
-                    }
-                }
+                console.log(`✅ ${type === 'text' ? 'Text' : 'Red dot'} final position:`, {
+                    x: (type === 'text' ? annotation.textX : annotation.x).toFixed(1),
+                    y: (type === 'text' ? annotation.textY : annotation.y).toFixed(1)
+                });
                 
                 this.saveAnnotationsToStorage();
             }
