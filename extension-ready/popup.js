@@ -725,6 +725,153 @@ class ScreenshotAnnotator {
     });
   }
   
+  // 🎨 CRITICAL MISSING METHOD - RENDERS ANNOTATIONS IN PDF
+  async createAnnotatedImageForPDF(screenshot) {
+    try {
+      console.log('🎨 Creating annotated image for PDF (100% original quality)...');
+      console.log('📊 Screenshot info:', {
+        displayWidth: screenshot.displayWidth,
+        displayHeight: screenshot.displayHeight,
+        annotations: screenshot.annotations?.length || 0
+      });
+      
+      if (!screenshot.annotations || screenshot.annotations.length === 0) {
+        console.log('ℹ️ No annotations to render, using original image at 100% quality...');
+        return screenshot.imageData;
+      }
+
+      return new Promise((resolve) => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        
+        img.onload = () => {
+          console.log('🖼️ PDF Image Analysis for Coordinate Debugging:');
+          console.log('  - Canvas dimensions:', `${canvas.width}x${canvas.height}`);
+          console.log('  - Img natural dimensions:', `${img.naturalWidth}x${img.naturalHeight}`);
+          console.log('  - Screenshot display dimensions:', `${screenshot.displayWidth}x${screenshot.displayHeight}`);
+          
+          // Use natural image dimensions as the authoritative source
+          const naturalWidth = img.naturalWidth;
+          const naturalHeight = img.naturalHeight;
+          
+          console.log('  - Using natural dimensions as coordinate reference:', `${naturalWidth}x${naturalHeight}`);
+          
+          // Set canvas to natural image size
+          canvas.width = naturalWidth;
+          canvas.height = naturalHeight;
+          
+          // Draw the original image at natural size
+          ctx.drawImage(img, 0, 0, naturalWidth, naturalHeight);
+          
+          console.log('📏 PDF rendering with 1:1 scale (100% original):', { 
+            imageSize: `${img.width}x${img.height}`,
+            coordinateReference: 'DIRECT_ORIGINAL_COORDINATES'
+          });
+          
+          // Render each annotation
+          screenshot.annotations.forEach((annotation, index) => {
+            console.log(`🎯 Rendering annotation ${index + 1}: "${annotation.text}"`);
+            
+            // Use annotation coordinates directly (they're already in the right space)
+            const x = Math.round(annotation.x);
+            const y = Math.round(annotation.y);
+            
+            // Handle text positioning
+            let textX, textY;
+            if (annotation.textX && annotation.textY) {
+              textX = Math.round(annotation.textX);
+              textY = Math.round(annotation.textY);
+            } else {
+              textX = x + 60;
+              textY = y - 30;
+            }
+            
+            console.log(`📍 PDF annotation coordinates:`, { 
+              x, y, textX, textY, text: annotation.text
+            });
+            
+            // Calculate sizes for PDF (larger for visibility)
+            const pinRadius = 8;  // Larger for PDF visibility
+            const lineWidth = 2;  // Thicker lines
+            const fontSize = 18;  // Readable font size
+            
+            // Draw pinpoint circle (large red dot)
+            ctx.beginPath();
+            ctx.arc(x, y, pinRadius, 0, 2 * Math.PI);
+            ctx.fillStyle = '#ff4444';
+            ctx.fill();
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = lineWidth;
+            ctx.stroke();
+            
+            // Draw connecting line to text
+            const distance = Math.sqrt((textX - x) ** 2 + (textY - y) ** 2);
+            if (distance > pinRadius * 2) {
+              ctx.beginPath();
+              ctx.moveTo(x, y);
+              ctx.lineTo(textX, textY);
+              ctx.strokeStyle = '#ff4444';
+              ctx.lineWidth = lineWidth;
+              ctx.setLineDash([8, 8]);
+              ctx.stroke();
+              ctx.setLineDash([]);
+            }
+            
+            // Draw text background
+            ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            const textMetrics = ctx.measureText(annotation.text);
+            const textWidth = textMetrics.width + 16;
+            const textHeight = fontSize * 1.4;
+            
+            // Ensure text stays within canvas bounds
+            const finalTextX = Math.max(8, Math.min(textX, canvas.width - textWidth - 8));
+            const finalTextY = Math.max(8, Math.min(textY, canvas.height - textHeight - 8));
+            
+            // Text shadow/background
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            ctx.fillRect(finalTextX - 4, finalTextY - 4, textWidth + 8, textHeight + 8);
+            
+            // Main text background
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            ctx.fillRect(finalTextX - 8, finalTextY - 8, textWidth, textHeight);
+            
+            // Border around text
+            ctx.strokeStyle = '#ff4444';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(finalTextX - 8, finalTextY - 8, textWidth, textHeight);
+            
+            // Draw the text
+            ctx.fillStyle = '#333333';
+            ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+            ctx.fillText(annotation.text, finalTextX, finalTextY);
+            
+            console.log(`✅ Rendered annotation ${index + 1} at (${x}, ${y})`);
+          });
+          
+          // Return annotated image
+          const annotatedImage = canvas.toDataURL('image/png', 1.0);
+          console.log('✅ Annotated image created for PDF (100% quality)');
+          console.log(`📊 Total annotations rendered: ${screenshot.annotations.length}`);
+          resolve(annotatedImage);
+        };
+        
+        img.onerror = () => {
+          console.error('❌ Failed to load image for annotation rendering');
+          resolve(screenshot.imageData); // Fallback to original
+        };
+        
+        img.src = screenshot.imageData;
+      });
+      
+    } catch (error) {
+      console.error('❌ Error creating annotated image:', error);
+      return screenshot.imageData; // Fallback to original
+    }
+  }
+  
   async captureScreenshot() {
     try {
       this.showStatus('Capturing screenshot...', 'info');
