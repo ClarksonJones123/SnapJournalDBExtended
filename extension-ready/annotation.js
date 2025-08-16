@@ -611,7 +611,7 @@ class UniversalAnnotator {
                 isDragging = false;
                 // Remove dragging class
                 element.classList.remove('dragging');
-                element.style.cursor = type === 'text' ? 'move' : 'crosshair';
+                element.style.cursor = type === 'text' ? 'move' : 'grab';
                 
                 console.log(`✅ ${type === 'text' ? 'Text' : 'Red dot'} final position (precise):`, {
                     x: (type === 'text' ? annotation.textX : annotation.x),
