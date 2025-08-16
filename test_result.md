@@ -269,6 +269,7 @@ test_plan:
     - "Image compression aspect ratio preservation"
     - "Simplified coordinate system for annotation precision"
     - "Automatic memory cleanup on PDF export completion"
+    - "PDF journal formatting with no borders"
   stuck_tasks: []
   test_all: true
   test_priority: "high_first"
