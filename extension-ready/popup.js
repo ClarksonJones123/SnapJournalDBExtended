@@ -174,72 +174,90 @@ class ScreenshotAnnotator {
     try {
       console.log('💾 Saving screenshots...');
       
-      // Simple approach: Save directly to Chrome storage first
-      // Use temporary storage as an enhancement, not a requirement
-      
-      if (this.tempStorage && this.tempStorage.db) {
-        console.log('📁 Temporary storage available - using hybrid approach...');
-        
-        // For screenshots that are too large, try to use temp storage
-        const processedScreenshots = [];
-        
-        for (let i = 0; i < this.screenshots.length; i++) {
-          const screenshot = this.screenshots[i];
-          
-          if (screenshot.imageData && screenshot.imageData.length > 1000000 && !screenshot.isInTempStorage) {
-            // Large image (>1MB) - try to move to temp storage
-            console.log(`📁 Moving large screenshot ${screenshot.id} to temp storage...`);
-            
-            const tempId = `screenshot_${screenshot.id}_${Date.now()}`;
-            const storeResult = await this.tempStorage.storeImage(tempId, screenshot.imageData, {
-              screenshotId: screenshot.id,
-              title: screenshot.title
-            });
-            
-            if (storeResult.stored) {
-              const lightweightScreenshot = this.tempStorage.createLightweightScreenshot(screenshot, tempId);
-              processedScreenshots.push(lightweightScreenshot);
-              console.log(`✅ Moved screenshot ${screenshot.id} to temp storage`);
-            } else {
-              // Fallback to Chrome storage
-              processedScreenshots.push(screenshot);
-              console.log(`⚠️ Temp storage failed for ${screenshot.id}, using Chrome storage`);
-            }
-          } else {
-            // Small image or already in temp storage
-            processedScreenshots.push(screenshot);
-          }
-        }
-        
-        this.screenshots = processedScreenshots;
+      // Check storage quota first
+      const storageCheck = await this.checkStorageQuota();
+      if (storageCheck.quotaExceeded) {
+        console.log('🚨 Storage quota exceeded - forcing cleanup before save');
+        await this.emergencyStorageCleanup();
       }
       
-      // Save to Chrome storage (with or without temp storage optimization)
-      await chrome.storage.local.set({ screenshots: this.screenshots });
-      console.log('✅ Saved screenshots:', this.screenshots.length);
+      // Try to save with current screenshots first
+      try {
+        await chrome.storage.local.set({ screenshots: this.screenshots });
+        console.log('✅ Saved screenshots directly to Chrome storage');
+        
+        this.calculateMemoryUsage();
+        this.updateUI();
+        return;
+        
+      } catch (directSaveError) {
+        if (directSaveError.message && directSaveError.message.includes('quota')) {
+          console.log('🚨 Direct save failed due to quota - attempting temp storage migration');
+          
+          // Emergency: Try to use temporary storage
+          if (this.tempStorage && this.tempStorage.db) {
+            await this.forceTemporaryStorageMigration();
+          } else {
+            // No temp storage available - aggressive cleanup
+            console.log('🚨 No temp storage - performing aggressive cleanup');
+            await this.extremeEmergencyCleanup();
+          }
+          
+          // Try saving again after cleanup/migration
+          await chrome.storage.local.set({ screenshots: this.screenshots });
+          console.log('✅ Saved screenshots after emergency measures');
+        } else {
+          throw directSaveError;
+        }
+      }
       
       this.calculateMemoryUsage();
       this.updateUI();
       
     } catch (error) {
-      console.error('Error saving screenshots:', error);
+      console.error('❌ Critical save error:', error);
+      this.showStatus('Critical save error. Use clearExtensionStorage() from console.', 'error');
+    }
+  }
+  
+  // 🚨 Force migration to temporary storage
+  async forceTemporaryStorageMigration() {
+    try {
+      console.log('🚨 Forcing migration to temporary storage...');
       
-      if (error.message && error.message.includes('quota')) {
-        console.log('🚨 QUOTA EXCEEDED - Attempting emergency measures...');
+      const migratedScreenshots = [];
+      
+      for (let i = 0; i < this.screenshots.length; i++) {
+        const screenshot = this.screenshots[i];
         
-        // Try emergency cleanup
-        await this.emergencyStorageCleanup();
-        
-        try {
-          await chrome.storage.local.set({ screenshots: this.screenshots });
-          this.showStatus('Screenshots saved after cleanup', 'success');
-        } catch (retryError) {
-          console.error('❌ Emergency save failed:', retryError);
-          this.showStatus('Storage full. Please use clearExtensionStorage() from console.', 'error');
+        if (screenshot.imageData && !screenshot.isInTempStorage) {
+          const tempId = `emergency_${screenshot.id}_${Date.now()}`;
+          console.log(`📁 Migrating screenshot ${screenshot.id} to temp storage...`);
+          
+          const storeResult = await this.tempStorage.storeImage(tempId, screenshot.imageData, {
+            screenshotId: screenshot.id,
+            title: screenshot.title
+          });
+          
+          if (storeResult.stored) {
+            const lightweightScreenshot = this.tempStorage.createLightweightScreenshot(screenshot, tempId);
+            migratedScreenshots.push(lightweightScreenshot);
+            console.log(`✅ Migrated screenshot ${screenshot.id} to temp storage`);
+          } else {
+            console.error(`❌ Failed to migrate screenshot ${screenshot.id} to temp storage`);
+          }
+        } else {
+          migratedScreenshots.push(screenshot);
         }
-      } else {
-        this.showStatus('Error saving screenshots', 'error');
       }
+      
+      this.screenshots = migratedScreenshots;
+      console.log('✅ Temporary storage migration completed');
+      
+    } catch (error) {
+      console.error('❌ Temporary storage migration failed:', error);
+      // Fallback to extreme cleanup
+      await this.extremeEmergencyCleanup();
     }
   }
   
