@@ -440,56 +440,43 @@ class ScreenshotAnnotator {
 
   async createAnnotatedImageForPDF(screenshot) {
     try {
-      console.log('🎨 Creating annotated image for PDF...');
+      console.log('🎨 Creating annotated image for PDF (100% original quality)...');
       console.log('📊 Screenshot info:', {
         displayWidth: screenshot.displayWidth,
         displayHeight: screenshot.displayHeight,
-        originalWidth: screenshot.originalWidth,
-        originalHeight: screenshot.originalHeight,
         annotations: screenshot.annotations?.length || 0
       });
       
       if (!screenshot.annotations || screenshot.annotations.length === 0) {
-        console.log('ℹ️ No annotations to render, creating high-quality version...');
-        // Even without annotations, create high-quality version for PDF
-        return await this.createHighQualityImageForPDF(screenshot);
+        console.log('ℹ️ No annotations to render, using original image at 100% quality...');
+        // Return original image data unchanged
+        return screenshot.imageData;
       }
 
-      return new Promise(async (resolve) => {
-        // First, get high-quality base image for PDF
-        const highQualityImageData = await this.createHighQualityImageForPDF(screenshot);
-        
+      return new Promise((resolve) => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         const img = new Image();
         
         img.onload = () => {
-          console.log('🖼️ High-quality image loaded - dimensions:', img.width, 'x', img.height);
-          console.log('📏 Display dimensions used for annotations:', screenshot.displayWidth, 'x', screenshot.displayHeight);
-          console.log('📊 Original capture reference system:', {
-            originalCaptureWidth: screenshot.originalCaptureWidth,
-            originalCaptureHeight: screenshot.originalCaptureHeight,
-            currentPdfImageSize: `${img.width}x${img.height}`
-          });
+          console.log('🖼️ Original image loaded - dimensions:', img.width, 'x', img.height);
           
-          // Use actual image dimensions
+          // Use original image dimensions - NO SCALING
           canvas.width = img.width;
           canvas.height = img.height;
           
-          // Draw the high-quality image
+          // Draw the original image at full quality
           ctx.drawImage(img, 0, 0);
           
-          // FIXED: Calculate scaling factors using ORIGINAL CAPTURE dimensions as reference
-          const scaleX = img.width / screenshot.originalCaptureWidth;
-          const scaleY = img.height / screenshot.originalCaptureHeight;
+          // SIMPLIFIED: Use 1:1 scaling (no scaling needed since we're using original dimensions)
+          const scaleX = 1.0;
+          const scaleY = 1.0;
           
-          console.log('📏 CORRECTED PDF scaling factors:', { 
-            scaleX: scaleX.toFixed(3), 
-            scaleY: scaleY.toFixed(3),
-            pdfImageSize: `${img.width}x${img.height}`,
-            originalCaptureSize: `${screenshot.originalCaptureWidth}x${screenshot.originalCaptureHeight}`,
-            coordinateReference: 'ORIGINAL_CAPTURE_DIMENSIONS',
-            shouldBeReasonable: Math.abs(scaleX - 1) < 2 && Math.abs(scaleY - 1) < 2 ? 'YES' : 'NO'
+          console.log('📏 PDF rendering with 1:1 scale (100% original):', { 
+            scaleX, 
+            scaleY,
+            imageSize: `${img.width}x${img.height}`,
+            coordinateReference: 'DIRECT_ORIGINAL_COORDINATES'
           });
           
           // Configure text rendering
