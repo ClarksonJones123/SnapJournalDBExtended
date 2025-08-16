@@ -606,7 +606,19 @@ class TempStorageManager {
         created: new Date().toISOString()
       };
       
-      await store.put(exportRecord);
+      // CRITICAL FIX: Properly handle IndexedDB async request
+      await new Promise((resolve, reject) => {
+        const request = store.put(exportRecord);
+        
+        request.onsuccess = () => {
+          resolve(request.result);
+        };
+        
+        request.onerror = () => {
+          reject(request.error);
+        };
+      });
+      
       console.log('✅ PDF export data stored successfully in IndexedDB');
       
       return { success: true, exportId };
