@@ -87,14 +87,21 @@ class PDFJournalExporter {
                 attempts++;
                 console.log(`🔍 Checking jsPDF (attempt ${attempts}/${maxAttempts})`);
                 
+                // Check for both window.jsPDF and window.jspdf.jsPDF (UMD pattern)
                 if (window.jsPDF) {
                     this.jsPDF = window.jsPDF;
-                    console.log('✅ jsPDF library loaded successfully');
+                    console.log('✅ jsPDF library loaded successfully from window.jsPDF');
                     console.log('🔍 jsPDF version:', this.jsPDF.version || 'unknown');
                     resolve();
+                } else if (window.jspdf && window.jspdf.jsPDF) {
+                    this.jsPDF = window.jspdf.jsPDF;
+                    console.log('✅ jsPDF library loaded successfully from window.jspdf.jsPDF');
+                    console.log('🔍 jsPDF version:', this.jsPDF.version || 'unknown');
+                    resolve();  
                 } else if (attempts >= maxAttempts) {
                     const error = new Error('jsPDF library failed to load after 5 seconds. Please check your internet connection.');
                     console.error('❌ jsPDF loading timeout:', error);
+                    console.log('🔍 Available on window:', Object.keys(window).filter(key => key.toLowerCase().includes('pdf')));
                     reject(error);
                 } else {
                     setTimeout(checkJsPDF, 100);
