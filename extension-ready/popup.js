@@ -1192,12 +1192,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const annotator = new ScreenshotAnnotator();
   window.screenshotAnnotator = annotator;
   
-  // 🧹 EXPOSE MANUAL CLEAR METHOD FOR CONSOLE ACCESS
+  // 🧹 EXPOSE MANUAL CLEAR METHODS FOR CONSOLE ACCESS
   window.clearExtensionStorage = () => {
     annotator.manualStorageClear();
   };
   
-  console.log('💡 To clear all storage manually, run: clearExtensionStorage()');
+  window.extremeCleanup = () => {
+    annotator.extremeEmergencyCleanup();
+  };
+  
+  console.log('💡 Storage management commands:');
+  console.log('  clearExtensionStorage() - Clear all data');
+  console.log('  extremeCleanup() - Keep only 1 screenshot');
 });
 
 // Also refresh UI when popup becomes visible (handles popup lifecycle)
