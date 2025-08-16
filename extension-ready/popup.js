@@ -156,6 +156,48 @@ class ScreenshotAnnotator {
     }
   }
 
+  // 🧹 NEW METHOD: Clean up memory from unselected screenshots
+  async cleanupUnselectedScreenshots(selectedId) {
+    try {
+      console.log('🧹 Cleaning up unselected screenshots...');
+      
+      let cleanedCount = 0;
+      const maxUnselectedToKeep = 3; // Keep only 3 unselected screenshots
+      
+      // Find unselected screenshots (oldest first)
+      const unselectedScreenshots = this.screenshots
+        .filter(s => s.id !== selectedId)
+        .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      
+      if (unselectedScreenshots.length > maxUnselectedToKeep) {
+        // Remove excess unselected screenshots
+        const toRemove = unselectedScreenshots.slice(0, unselectedScreenshots.length - maxUnselectedToKeep);
+        
+        for (const screenshot of toRemove) {
+          console.log(`🧹 Removing unselected screenshot: ${screenshot.title}`);
+          
+          // Remove from array
+          const index = this.screenshots.findIndex(s => s.id === screenshot.id);
+          if (index !== -1) {
+            this.screenshots.splice(index, 1);
+            cleanedCount++;
+          }
+        }
+        
+        // Save updated screenshots
+        if (cleanedCount > 0) {
+          await this.saveScreenshots();
+          console.log(`✅ Cleaned up ${cleanedCount} unselected screenshots`);
+        }
+      }
+      
+      console.log(`ℹ️ Memory cleanup complete. Kept selected + ${Math.min(maxUnselectedToKeep, unselectedScreenshots.length)} recent unselected screenshots`);
+      
+    } catch (error) {
+      console.error('❌ Error during unselected cleanup:', error);
+    }
+  }
+
   async emergencyStorageCleanup() {
     try {
       console.log('🚨 EMERGENCY STORAGE CLEANUP...');
