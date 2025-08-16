@@ -9,6 +9,17 @@ class UniversalAnnotator {
         this.recognition = null;
         this.isListening = false;
         
+        // 🎨 CUSTOMIZATION SETTINGS
+        this.settings = {
+            annotationColor: '#ff4444',
+            textColor: '#333333',
+            textBgColor: '#ffffff',
+            textBgOpacity: 95,
+            fontSize: 14,
+            fontWeight: 'bold',
+            fontFamily: 'Arial, sans-serif'
+        };
+        
         this.init();
     }
     
