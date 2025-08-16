@@ -431,108 +431,121 @@ class UniversalAnnotator {
     }
     
     createAnnotationMarker(container, img, annotation, index) {
-        console.log(`🔧 Creating COMPLETE annotation ${index + 1}: "${annotation.text}"`);
+        console.log(`🔧 Creating annotation ${index + 1} with PRECISION positioning and VISIBLE dashed arrows`);
         
-        // Use coordinates EXACTLY as calculated (no adjustments)
+        // Use coordinates exactly as calculated 
         const exactX = annotation.x;
         const exactY = annotation.y;
         const exactTextX = annotation.textX || (annotation.x + 60);
         const exactTextY = annotation.textY || (annotation.y - 30);
         
-        console.log('🎯 ANNOTATION COORDINATES:', {
+        console.log('🎯 PRECISION COORDINATES:', {
             annotationId: annotation.id,
-            exactCoords: `(${exactX}, ${exactY})`,
-            textCoords: `(${exactTextX}, ${exactTextY})`
+            redDotPosition: `(${exactX}, ${exactY})`,
+            textPosition: `(${exactTextX}, ${exactTextY})`
         });
         
         // Create annotation system container positioned exactly over the image
         const annotationSystem = document.createElement('div');
         annotationSystem.className = 'annotation-system';
-        annotationSystem.style.position = 'absolute';
-        annotationSystem.style.top = '0';
-        annotationSystem.style.left = '0';
-        annotationSystem.style.width = '100%';
-        annotationSystem.style.height = '100%';
-        annotationSystem.style.pointerEvents = 'none';
-        annotationSystem.style.zIndex = '1000';
+        annotationSystem.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        `;
         
-        // Create pinpoint with EXACT positioning
+        // PRECISION FIX: Create red dot with exact positioning
         const pinpoint = document.createElement('div');
         pinpoint.className = 'annotation-pinpoint';
-        pinpoint.style.position = 'absolute';
-        pinpoint.style.left = exactX + 'px';
-        pinpoint.style.top = exactY + 'px';
-        pinpoint.style.width = '14px';
-        pinpoint.style.height = '14px';
-        pinpoint.style.backgroundColor = '#ff0000';
-        pinpoint.style.border = '2px solid #ffffff';
-        pinpoint.style.borderRadius = '50%';
-        pinpoint.style.transform = 'translate(-50%, -50%)';
-        pinpoint.style.cursor = 'move';
-        pinpoint.style.pointerEvents = 'auto';
-        pinpoint.style.zIndex = '1002';
-        pinpoint.style.boxShadow = '0 2px 6px rgba(0,0,0,0.5)';
+        pinpoint.style.cssText = `
+            position: absolute;
+            left: ${exactX}px;
+            top: ${exactY}px;
+            width: 16px;
+            height: 16px;
+            background-color: #ff0000;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            cursor: move;
+            pointer-events: auto;
+            z-index: 1002;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+        `;
         
-        // Create text label with EXACT positioning
+        // Create text label with exact positioning
         const textLabel = document.createElement('div');
         textLabel.className = 'annotation-text-label';
-        textLabel.style.position = 'absolute';
-        textLabel.style.left = exactTextX + 'px';
-        textLabel.style.top = exactTextY + 'px';
-        textLabel.style.transform = 'translate(-50%, -50%)';
-        textLabel.style.cursor = 'move';
-        textLabel.style.pointerEvents = 'auto';
-        textLabel.style.zIndex = '1003';
-        textLabel.style.backgroundColor = 'rgba(255, 255, 255, 0.98)';
-        textLabel.style.color = '#000000';
-        textLabel.style.padding = '8px 12px';
-        textLabel.style.borderRadius = '6px';
-        textLabel.style.fontSize = '14px';
-        textLabel.style.fontWeight = '600';
-        textLabel.style.fontFamily = 'Arial, sans-serif';
-        textLabel.style.border = '2px solid #ff0000';
-        textLabel.style.boxShadow = '0 3px 8px rgba(0,0,0,0.4)';
-        textLabel.style.maxWidth = '220px';
-        textLabel.style.wordWrap = 'break-word';
+        textLabel.style.cssText = `
+            position: absolute;
+            left: ${exactTextX}px;
+            top: ${exactTextY}px;
+            transform: translate(-50%, -50%);
+            cursor: move;
+            pointer-events: auto;
+            z-index: 1003;
+            background-color: rgba(255, 255, 255, 0.98);
+            color: #000000;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: Arial, sans-serif;
+            border: 2px solid #ff0000;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+            max-width: 220px;
+            word-wrap: break-word;
+        `;
         textLabel.textContent = annotation.text;
         
-        // Create SVG arrow
-        const arrow = this.createArrow();
+        // DASHED ARROW FIX: Create properly sized and visible SVG arrow
+        const arrow = this.createDashedArrow();
         
-        // Arrow update function
+        // Arrow update function with enhanced debugging
         const updateArrow = () => {
             const pinX = parseFloat(pinpoint.style.left);
             const pinY = parseFloat(pinpoint.style.top);
             const labelX = parseFloat(textLabel.style.left);
             const labelY = parseFloat(textLabel.style.top);
             
-            this.updateArrowPosition(arrow, pinX, pinY, labelX, labelY);
+            console.log(`🔗 Updating arrow for annotation ${annotation.id}:`, {
+                pinPosition: `(${pinX}, ${pinY})`,
+                labelPosition: `(${labelX}, ${labelY})`
+            });
+            
+            this.updateDashedArrowPosition(arrow, pinX, pinY, labelX, labelY);
         };
         
         // Make elements draggable
         this.makeDraggable(textLabel, annotation, updateArrow, 'text');
         this.makeDraggable(pinpoint, annotation, updateArrow, 'pin');
         
-        // DEBUG: Add temporary crosshair for coordinate verification
+        // DEBUG: Add verification crosshair (temporary)
         const debugCrosshair = document.createElement('div');
-        debugCrosshair.style.position = 'absolute';
-        debugCrosshair.style.left = exactX + 'px';
-        debugCrosshair.style.top = exactY + 'px';
-        debugCrosshair.style.width = '20px';
-        debugCrosshair.style.height = '20px';
-        debugCrosshair.style.pointerEvents = 'none';
-        debugCrosshair.style.zIndex = '9999';
+        debugCrosshair.style.cssText = `
+            position: absolute;
+            left: ${exactX}px;
+            top: ${exactY}px;
+            width: 30px;
+            height: 30px;
+            pointer-events: none;
+            z-index: 9999;
+        `;
         debugCrosshair.innerHTML = `
-            <div style="position: absolute; left: 50%; top: 0; width: 1px; height: 20px; background: lime; transform: translateX(-50%);"></div>
-            <div style="position: absolute; left: 0; top: 50%; width: 20px; height: 1px; background: lime; transform: translateY(-50%);"></div>
+            <div style="position: absolute; left: 50%; top: 0; width: 2px; height: 30px; background: lime; transform: translateX(-50%);"></div>
+            <div style="position: absolute; left: 0; top: 50%; width: 30px; height: 2px; background: lime; transform: translateY(-50%);"></div>
         `;
         
-        // Remove crosshair after 5 seconds
+        // Remove crosshair after verification period
         setTimeout(() => {
             if (debugCrosshair.parentNode) {
                 debugCrosshair.parentNode.removeChild(debugCrosshair);
             }
-        }, 5000);
+        }, 8000);
         
         // Double-click to edit text
         textLabel.addEventListener('dblclick', (e) => {
@@ -545,20 +558,20 @@ class UniversalAnnotator {
             }
         });
         
-        // Assemble complete annotation system
-        annotationSystem.appendChild(arrow);
-        annotationSystem.appendChild(debugCrosshair);
-        annotationSystem.appendChild(pinpoint);
-        annotationSystem.appendChild(textLabel);
+        // Assemble annotation system (order is important for layering)
+        annotationSystem.appendChild(arrow);          // Bottom layer
+        annotationSystem.appendChild(debugCrosshair); // Verification layer  
+        annotationSystem.appendChild(pinpoint);       // Red dot
+        annotationSystem.appendChild(textLabel);      // Top layer
         
         // Add to container
         container.appendChild(annotationSystem);
         
-        // Initialize arrow
+        // Initialize arrow positioning
         updateArrow();
         
-        console.log('✅ COMPLETE annotation system created: red dot + text + dashed arrow + lime crosshair');
-        console.log('🎯 Compare lime crosshair (5 sec) with red dot position for accuracy verification');
+        console.log('✅ PRECISION annotation system created with VISIBLE dashed arrow');
+        console.log('🎯 Lime crosshair shows exact click point - compare with red dot for 8 seconds');
     }
     
     createArrow() {
