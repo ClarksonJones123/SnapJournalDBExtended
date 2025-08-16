@@ -263,6 +263,9 @@ test_plan:
     - "Storage quota management system"
     - "Screenshot capture functionality"
     - "Screenshot list display and management"
+    - "Image compression aspect ratio preservation"
+    - "Simplified coordinate system for annotation precision"
+    - "Automatic memory cleanup on PDF export completion"
   stuck_tasks: []
   test_all: true
   test_priority: "high_first"
