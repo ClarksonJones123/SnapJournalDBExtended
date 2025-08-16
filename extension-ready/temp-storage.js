@@ -645,7 +645,18 @@ class TempStorageManager {
       const transaction = this.db.transaction(['pdfExports'], 'readonly');
       const store = transaction.objectStore('pdfExports');
       
-      const result = await store.get(exportId);
+      // CRITICAL FIX: Properly handle IndexedDB async request
+      const result = await new Promise((resolve, reject) => {
+        const request = store.get(exportId);
+        
+        request.onsuccess = () => {
+          resolve(request.result);
+        };
+        
+        request.onerror = () => {
+          reject(request.error);
+        };
+      });
       
       if (!result) {
         console.error('❌ PDF export data not found:', exportId);
