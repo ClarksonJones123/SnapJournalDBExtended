@@ -1213,22 +1213,50 @@ class ScreenshotAnnotator {
             });
             console.log('📊 Total image data size:', Math.round(totalDataSize / 1024 / 1024), 'MB');
             
-            // WARNING: Check if data might be too large for Chrome storage
-            if (totalDataSize > 5 * 1024 * 1024) { // 5MB threshold
-                console.warn('⚠️ Large dataset detected - may cause Chrome storage issues');
-                if (window.debugLog) window.debugLog(`⚠️ Large dataset: ${Math.round(totalDataSize / 1024 / 1024)}MB`);
+            // CRITICAL FIX: Use IndexedDB instead of Chrome storage for large datasets
+            if (totalDataSize > 8 * 1024 * 1024) { // 8MB threshold
+                console.log('🚀 Large dataset detected - using IndexedDB export method instead of Chrome storage');
+                if (window.debugLog) window.debugLog(`🚀 Large dataset: ${Math.round(totalDataSize / 1024 / 1024)}MB - switching to IndexedDB method`);
+                
+                return await this.exportPdfJournalViaIndexedDB(validScreenshots);
+            }
+            
+            // Original Chrome storage method for small datasets only
+            console.log('📦 Small dataset - using Chrome storage method');
+            return await this.exportPdfJournalViaChrome(validScreenshots);
+            
+        } catch (error) {
+            console.error('❌ PDF export error:', error);
+            console.error('❌ Error stack:', error.stack);
+            if (window.debugError) {
+                window.debugError(`PDF export failed: ${error.message}`);
+                window.debugError('🔄 Debug continuity maintained despite error');
+            }
+            this.showStatus(`Failed to export PDF journal: ${error.message}`, 'error');
+        }
+        
+        console.log('📄 === PDF EXPORT DEBUG END ===');
+    }
+
+    // NEW: IndexedDB export method for large datasets
+    async exportPdfJournalViaIndexedDB(validScreenshots) {
+        console.log('🗄️ === INDEXEDDB PDF EXPORT METHOD START ===');
+        
+        try {
+            if (!this.tempStorage) {
+                throw new Error('IndexedDB storage not available for large dataset export');
             }
             
             // Create annotated versions for PDF
             const annotatedScreenshots = [];
-            console.log(`🎨 Processing ${validScreenshots.length} screenshots for PDF with annotations...`);
+            console.log(`🎨 Processing ${validScreenshots.length} screenshots for IndexedDB PDF export...`);
             
             for (let i = 0; i < validScreenshots.length; i++) {
                 const screenshot = validScreenshots[i];
                 console.log(`🎨 Processing screenshot ${i + 1}/${validScreenshots.length}: ${screenshot.title}`);
                 
                 try {
-                    // Create annotated version for PDF (this is where issues might occur)
+                    // Create annotated version for PDF
                     const annotatedImageData = await this.createAnnotatedImageForPDF(screenshot);
                     
                     annotatedScreenshots.push({
@@ -1238,7 +1266,7 @@ class ScreenshotAnnotator {
                     });
                     
                     console.log(`✅ Successfully processed screenshot ${i + 1}: ${screenshot.title} with ${screenshot.annotations?.length || 0} annotations`);
-                    this.showStatus(`Processing annotations for PDF: ${i + 1}/${validScreenshots.length}`, 'info');
+                    this.showStatus(`Processing annotations for IndexedDB export: ${i + 1}/${validScreenshots.length}`, 'info');
                     
                 } catch (imageError) {
                     console.error(`❌ Error processing screenshot ${i + 1}:`, imageError);
@@ -1255,83 +1283,41 @@ class ScreenshotAnnotator {
                 }
             }
             
-            console.log('📊 Final export data summary:', {
-                totalScreenshotsProcessed: annotatedScreenshots.length,
-                originalScreenshotCount: this.screenshots.length,
-                totalAnnotations: annotatedScreenshots.reduce((sum, s) => sum + (s.annotations?.length || 0), 0)
-            });
-            
             if (annotatedScreenshots.length === 0) {
-                console.error('❌ No screenshots were successfully processed for PDF');
-                if (window.debugError) window.debugError('No screenshots successfully processed');
+                console.error('❌ No screenshots were successfully processed for IndexedDB export');
+                if (window.debugError) window.debugError('No screenshots successfully processed for IndexedDB export');
                 this.showStatus('Failed to process any screenshots for PDF export', 'error');
                 return;
             }
             
-            // Create export data
+            // Store export data in IndexedDB (unlimited capacity)
+            const exportId = 'pdf_export_indexeddb_' + Date.now();
             const exportData = {
                 screenshots: annotatedScreenshots,
                 exportDate: new Date().toISOString(),
                 totalScreenshots: annotatedScreenshots.length,
-                totalAnnotations: annotatedScreenshots.reduce((sum, s) => sum + (s.annotations?.length || 0), 0)
+                totalAnnotations: annotatedScreenshots.reduce((sum, s) => sum + (s.annotations?.length || 0), 0),
+                exportMethod: 'IndexedDB',
+                dataSize: JSON.stringify(annotatedScreenshots).length
             };
             
-            console.log('📊 Export data prepared:', {
-                screenshots: exportData.screenshots.length,
-                totalAnnotations: exportData.totalAnnotations
-            });
+            console.log('🗄️ Storing large export data in IndexedDB...');
+            console.log('📊 Export data size:', Math.round(exportData.dataSize / 1024 / 1024), 'MB');
             
-            // CRITICAL: Check Chrome APIs before attempting window creation
-            if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.windows) {
-                console.error('❌ Chrome extension APIs not available for PDF export');
-                if (window.debugError) window.debugError('Chrome APIs not available for PDF export');
-                this.showStatus('Chrome extension APIs not available. Please ensure extension is properly loaded.', 'error');
-                throw new Error('Chrome extension APIs not available for PDF export window.');
-            }
+            // Use IndexedDB to store export data (unlimited capacity)
+            await this.tempStorage.storePdfExportData(exportId, exportData);
+            console.log('✅ Large export data saved to IndexedDB successfully');
             
-            console.log('✅ Chrome APIs verified for PDF export');
-            
-            // Store export data temporarily - with size check
-            const exportId = 'pdf_export_' + Date.now();
-            const exportDataStr = JSON.stringify(exportData);
-            const exportDataSize = exportDataStr.length;
-            
-            console.log('💾 Export data size:', Math.round(exportDataSize / 1024 / 1024), 'MB');
-            
-            // Chrome storage has ~10MB limit - warn if approaching
-            if (exportDataSize > 8 * 1024 * 1024) { // 8MB warning threshold
-                console.warn('⚠️ Export data approaching Chrome storage limit');
-                if (window.debugError) window.debugError(`Large export data: ${Math.round(exportDataSize / 1024 / 1024)}MB`);
-                this.showStatus('Warning: Large dataset may cause export issues', 'error');
-                
-                // Offer user option to continue or cancel
-                if (!confirm('Large dataset detected. PDF export may fail due to Chrome storage limits. Continue anyway?')) {
-                    console.log('👤 User cancelled PDF export due to size warning');
-                    return;
-                }
-            }
-            
-            try {
-                console.log('💾 Saving export data to Chrome storage...');
-                await chrome.storage.local.set({ [exportId]: exportData });
-                console.log('✅ Export data saved to Chrome storage successfully');
-                if (window.debugLog) window.debugLog('✅ Export data saved to Chrome storage');
-            } catch (storageError) {
-                console.error('❌ Failed to save export data to Chrome storage:', storageError);
-                if (window.debugError) window.debugError(`Storage error: ${storageError.message}`);
-                this.showStatus(`Failed to save export data: ${storageError.message}`, 'error');
-                throw storageError;
-            }
-            
-            // Create export URL
+            // Create export URL with IndexedDB flag
             const exportUrl = chrome.runtime.getURL('pdf-export.html') + 
-                '?exportId=' + encodeURIComponent(exportId);
+                '?exportId=' + encodeURIComponent(exportId) + 
+                '&method=indexeddb';
             
-            console.log('🔗 Export URL created:', exportUrl);
+            console.log('🔗 IndexedDB export URL created:', exportUrl);
             
             // Open PDF export window
             try {
-                console.log('🪟 Creating PDF export window...');
+                console.log('🪟 Creating PDF export window (IndexedDB method)...');
                 const windowInfo = await chrome.windows.create({
                     url: exportUrl,
                     type: 'popup',
@@ -1340,42 +1326,206 @@ class ScreenshotAnnotator {
                     focused: true
                 });
                 
-                console.log('✅ PDF export window created:', windowInfo.id);
-                if (window.debugLog) window.debugLog(`✅ PDF export window opened: ${windowInfo.id}`);
+                console.log('✅ PDF export window created (IndexedDB method):', windowInfo.id);
+                if (window.debugLog) window.debugLog(`✅ PDF export window opened (IndexedDB): ${windowInfo.id}`);
                 
-                // Monitor PDF export completion
-                this.monitorPdfExportCompletion(exportId, windowInfo.id);
+                // Monitor PDF export completion (IndexedDB cleanup)
+                this.monitorIndexedDBPdfExportCompletion(exportId, windowInfo.id);
                 
-                this.showStatus('📄 PDF journal export opened with annotations!', 'success');
-                console.log('✅ PDF export process initiated successfully');
+                this.showStatus('📄 PDF journal export opened (Large Dataset - IndexedDB)!', 'success');
+                console.log('✅ IndexedDB PDF export process initiated successfully');
                 
             } catch (windowError) {
-                console.error('❌ Failed to create PDF export window:', windowError);
-                if (window.debugError) window.debugError(`Window creation error: ${windowError.message}`);
+                console.error('❌ Failed to create PDF export window (IndexedDB method):', windowError);
+                if (window.debugError) window.debugError(`IndexedDB window creation error: ${windowError.message}`);
                 this.showStatus(`Failed to open PDF export window: ${windowError.message}`, 'error');
                 
-                // Clean up storage data since window failed
+                // Clean up IndexedDB data since window failed
                 try {
-                    await chrome.storage.local.remove(exportId);
-                    console.log('🧹 Cleaned up export data after window creation failure');
+                    await this.tempStorage.deletePdfExportData(exportId);
+                    console.log('🧹 Cleaned up IndexedDB export data after window creation failure');
                 } catch (cleanupError) {
-                    console.error('❌ Failed to clean up after window error:', cleanupError);
+                    console.error('❌ Failed to clean up IndexedDB export data:', cleanupError);
                 }
                 
                 throw windowError;
             }
             
+            console.log('🗄️ === INDEXEDDB PDF EXPORT METHOD END ===');
+            
         } catch (error) {
-            console.error('❌ PDF export error:', error);
-            console.error('❌ Error stack:', error.stack);
-            if (window.debugError) {
-                window.debugError(`PDF export failed: ${error.message}`);
-                window.debugError('🔄 Debug continuity maintained despite error');
+            console.error('❌ IndexedDB PDF export error:', error);
+            if (window.debugError) window.debugError(`IndexedDB PDF export failed: ${error.message}`);
+            throw error;
+        }
+    }
+
+    // Original Chrome storage method - only for small datasets
+    async exportPdfJournalViaChrome(validScreenshots) {
+        console.log('📦 === CHROME STORAGE PDF EXPORT METHOD START ===');
+        
+        // Create annotated versions for PDF
+        const annotatedScreenshots = [];
+        console.log(`🎨 Processing ${validScreenshots.length} screenshots for Chrome storage PDF export...`);
+        
+        for (let i = 0; i < validScreenshots.length; i++) {
+            const screenshot = validScreenshots[i];
+            console.log(`🎨 Processing screenshot ${i + 1}/${validScreenshots.length}: ${screenshot.title}`);
+            
+            try {
+                const annotatedImageData = await this.createAnnotatedImageForPDF(screenshot);
+                
+                annotatedScreenshots.push({
+                    ...screenshot,
+                    imageData: annotatedImageData,
+                    originalImageData: screenshot.imageData
+                });
+                
+                console.log(`✅ Successfully processed screenshot ${i + 1}: ${screenshot.title} with ${screenshot.annotations?.length || 0} annotations`);
+                this.showStatus(`Processing annotations for PDF: ${i + 1}/${validScreenshots.length}`, 'info');
+                
+            } catch (imageError) {
+                console.error(`❌ Error processing screenshot ${i + 1}:`, imageError);
+                if (window.debugError) window.debugError(`Processing error: ${imageError.message}`);
+                
+                annotatedScreenshots.push({
+                    ...screenshot,
+                    imageData: screenshot.imageData,
+                    originalImageData: screenshot.imageData
+                });
+                
+                console.log(`⚠️ Added screenshot ${i + 1} without rendered annotations due to error`);
             }
-            this.showStatus(`Failed to export PDF journal: ${error.message}`, 'error');
         }
         
-        console.log('📄 === PDF EXPORT DEBUG END ===');
+        if (annotatedScreenshots.length === 0) {
+            throw new Error('No screenshots were successfully processed for Chrome storage export');
+        }
+        
+        // Create export data
+        const exportData = {
+            screenshots: annotatedScreenshots,
+            exportDate: new Date().toISOString(),
+            totalScreenshots: annotatedScreenshots.length,
+            totalAnnotations: annotatedScreenshots.reduce((sum, s) => sum + (s.annotations?.length || 0), 0),
+            exportMethod: 'Chrome'
+        };
+        
+        // CRITICAL: Check Chrome APIs before attempting window creation
+        if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.windows) {
+            throw new Error('Chrome extension APIs not available for PDF export window.');
+        }
+        
+        // Store export data temporarily in Chrome storage
+        const exportId = 'pdf_export_chrome_' + Date.now();
+        const exportDataStr = JSON.stringify(exportData);
+        const exportDataSize = exportDataStr.length;
+        
+        console.log('💾 Chrome export data size:', Math.round(exportDataSize / 1024 / 1024), 'MB');
+        
+        try {
+            console.log('💾 Saving export data to Chrome storage...');
+            await chrome.storage.local.set({ [exportId]: exportData });
+            console.log('✅ Export data saved to Chrome storage successfully');
+            if (window.debugLog) window.debugLog('✅ Export data saved to Chrome storage');
+        } catch (storageError) {
+            console.error('❌ Failed to save export data to Chrome storage:', storageError);
+            if (window.debugError) window.debugError(`Storage error: ${storageError.message}`);
+            this.showStatus(`Failed to save export data: ${storageError.message}`, 'error');
+            throw storageError;
+        }
+        
+        // Create export URL
+        const exportUrl = chrome.runtime.getURL('pdf-export.html') + 
+            '?exportId=' + encodeURIComponent(exportId);
+        
+        console.log('🔗 Chrome export URL created:', exportUrl);
+        
+        // Open PDF export window
+        try {
+            console.log('🪟 Creating PDF export window (Chrome storage method)...');
+            const windowInfo = await chrome.windows.create({
+                url: exportUrl,
+                type: 'popup',
+                width: 1200,
+                height: 800,
+                focused: true
+            });
+            
+            console.log('✅ PDF export window created (Chrome method):', windowInfo.id);
+            if (window.debugLog) window.debugLog(`✅ PDF export window opened (Chrome): ${windowInfo.id}`);
+            
+            // Monitor PDF export completion
+            this.monitorPdfExportCompletion(exportId, windowInfo.id);
+            
+            this.showStatus('📄 PDF journal export opened with annotations!', 'success');
+            console.log('✅ Chrome PDF export process initiated successfully');
+            
+        } catch (windowError) {
+            console.error('❌ Failed to create PDF export window (Chrome method):', windowError);
+            if (window.debugError) window.debugError(`Chrome window creation error: ${windowError.message}`);
+            this.showStatus(`Failed to open PDF export window: ${windowError.message}`, 'error');
+            
+            // Clean up storage data since window failed
+            try {
+                await chrome.storage.local.remove(exportId);
+                console.log('🧹 Cleaned up Chrome export data after window creation failure');
+            } catch (cleanupError) {
+                console.error('❌ Failed to clean up after Chrome window error:', cleanupError);
+            }
+            
+            throw windowError;
+        }
+        
+        console.log('📦 === CHROME STORAGE PDF EXPORT METHOD END ===');
+    }
+
+    // Monitor IndexedDB export completion
+    async monitorIndexedDBPdfExportCompletion(exportId, windowId) {
+        console.log('👀 Monitoring IndexedDB PDF export completion...');
+        
+        const checkInterval = setInterval(async () => {
+            try {
+                if (typeof chrome !== 'undefined' && chrome.windows) {
+                    const window = await chrome.windows.get(windowId);
+                    
+                    if (!window) {
+                        console.log('🧹 IndexedDB PDF export completed, cleaning up...');
+                        clearInterval(checkInterval);
+                        
+                        // Clean up IndexedDB export data
+                        try {
+                            if (this.tempStorage) {
+                                await this.tempStorage.deletePdfExportData(exportId);
+                                console.log('🧹 Cleaned up IndexedDB export data');
+                            }
+                        } catch (error) {
+                            console.warn('⚠️ Failed to clean up IndexedDB export data:', error);
+                        }
+                        
+                        console.log('🧹 IndexedDB post-export cleanup completed');
+                    }
+                }
+            } catch (error) {
+                // Window doesn't exist anymore, clean up
+                console.log('🧹 IndexedDB PDF export window closed, cleaning up...');
+                clearInterval(checkInterval);
+                
+                try {
+                    if (this.tempStorage) {
+                        await this.tempStorage.deletePdfExportData(exportId);
+                    }
+                } catch (cleanupError) {
+                    console.warn('⚠️ Failed IndexedDB cleanup after export:', cleanupError);
+                }
+            }
+        }, 2000); // Check every 2 seconds
+        
+        // Stop monitoring after 10 minutes max
+        setTimeout(() => {
+            clearInterval(checkInterval);
+            console.log('⏰ Stopped monitoring IndexedDB PDF export after 10 minutes');
+        }, 600000);
     }
   
   async monitorPdfExportCompletion(exportId, windowId) {
