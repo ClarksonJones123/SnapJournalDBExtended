@@ -323,20 +323,36 @@ class UniversalAnnotator {
             e.preventDefault();
             e.stopPropagation();
             
-            console.log('🎯 === SIMPLIFIED COORDINATE SYSTEM START ===');
+            console.log('🎯 === PRECISE COORDINATE DEBUGGING START ===');
             
             const rect = img.getBoundingClientRect();
             
-            // Get PRECISE click position relative to the displayed image
-            // Use Math.round to avoid sub-pixel positioning issues
-            const clickX = Math.round(e.clientX - rect.left);
-            const clickY = Math.round(e.clientY - rect.top);
+            // Get EXACT click position with detailed debugging
+            const rawClickX = e.clientX - rect.left;
+            const rawClickY = e.clientY - rect.top;
+            const clickX = Math.round(rawClickX);
+            const clickY = Math.round(rawClickY);
             
-            console.log('🖱️ PRECISE click coordinates (rounded):', { clickX, clickY });
-            console.log('📐 Image display info:', {
-                displaySize: `${img.offsetWidth}x${img.offsetHeight}`,
-                naturalSize: `${img.naturalWidth}x${img.naturalHeight}`,
-                boundingRect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height }
+            console.log('🖱️ DETAILED click analysis:', {
+                rawClick: { x: rawClickX, y: rawClickY },
+                roundedClick: { x: clickX, y: clickY },
+                clientCoords: { x: e.clientX, y: e.clientY },
+                imgRect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+                imgOffset: { width: img.offsetWidth, height: img.offsetHeight },
+                imgNatural: { width: img.naturalWidth, height: img.naturalHeight }
+            });
+            
+            // Check for any CSS transforms that might affect positioning
+            const computedStyle = window.getComputedStyle(img);
+            console.log('🔍 Image CSS analysis:', {
+                transform: computedStyle.transform,
+                position: computedStyle.position,
+                display: computedStyle.display,
+                objectFit: computedStyle.objectFit,
+                marginLeft: computedStyle.marginLeft,
+                marginTop: computedStyle.marginTop,
+                paddingLeft: computedStyle.paddingLeft,
+                paddingTop: computedStyle.paddingTop
             });
             
             let annotationText = this.pendingAnnotationText;
@@ -357,7 +373,7 @@ class UniversalAnnotator {
             const annotation = {
                 id: Date.now().toString(),
                 text: annotationText.trim(),
-                // Store PRECISE display coordinates (rounded to avoid sub-pixel issues)
+                // Store EXACT coordinates for precise positioning
                 x: clickX,
                 y: clickY,
                 textX: clickX + 60,  // Default text offset
@@ -370,7 +386,8 @@ class UniversalAnnotator {
                         clientY: e.clientY,
                         rectLeft: rect.left,
                         rectTop: rect.top,
-                        clickRelativeToImage: { x: clickX, y: clickY },
+                        rawClick: { x: rawClickX, y: rawClickY },
+                        finalClick: { x: clickX, y: clickY },
                         rounded: true
                     },
                     imageInfo: {
@@ -378,22 +395,28 @@ class UniversalAnnotator {
                         naturalSize: `${img.naturalWidth}x${img.naturalHeight}`,
                         coordinates: 'PRECISE_DISPLAY_RELATIVE'
                     },
+                    cssInfo: {
+                        transform: computedStyle.transform,
+                        position: computedStyle.position
+                    },
                     timestamp: new Date().toISOString()
                 }
             };
             
-            console.log('🎯 SIMPLIFIED ANNOTATION CREATED:', annotation);
-            console.log('🎯 === SIMPLIFIED COORDINATE SYSTEM END ===');
+            console.log('🎯 PRECISE ANNOTATION CREATED:', annotation);
+            console.log('🎯 === PRECISE COORDINATE DEBUGGING END ===');
             
             await this.addAnnotation(annotation, container, img);
             
             // Reset pending text
             this.pendingAnnotationText = null;
             const voiceBtn = document.getElementById('voiceBtn');
-            voiceBtn.textContent = '🎤 Voice';
-            voiceBtn.className = 'btn-voice';
+            if (voiceBtn) {
+                voiceBtn.textContent = '🎤 Voice';
+                voiceBtn.className = 'btn-voice';
+            }
             
-            this.updateStatus('✅ Annotation added! Drag text to reposition, drag large red dot for precise pointing. Click again to add more.');
+            this.updateStatus('✅ Annotation added! Red dot should be EXACTLY where you clicked. Drag text to reposition, drag red dot for precise pointing.');
         });
     }
     
