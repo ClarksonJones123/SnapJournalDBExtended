@@ -47,11 +47,36 @@ class ScreenshotAnnotator {
   }
   
   async init() {
-    console.log('Initializing Screenshot Annotator...');
-    await this.loadScreenshots();
-    this.setupEventListeners();
-    this.setupStorageListener();
-    this.updateUI();
+    console.log('🚀 Initializing ScreenshotAnnotator...');
+    
+    try {
+      // Wait for temporary storage to initialize
+      await this.initTempStorage();
+      
+      // 🧹 AUTO-FIX: Run automatic cleanup on initialization
+      console.log('🧹 Running automatic storage cleanup on startup...');
+      await this.automaticStorageCleanup();
+      
+      // Load existing screenshots
+      await this.loadScreenshots();
+      
+      // Setup event handlers
+      this.setupEventListeners();
+      this.setupStorageListener();
+      
+      // Update UI
+      this.updateUI();
+      
+      // 🧹 ROUTINE CLEANUP: Schedule periodic cleanup
+      this.schedulePeriodicCleanup();
+      
+      console.log('✅ ScreenshotAnnotator initialized successfully');
+      this.isInitialized = true;
+      
+    } catch (error) {
+      console.error('❌ ScreenshotAnnotator initialization failed:', error);
+      this.showStatus('Extension initialization failed. Please reload.', 'error');
+    }
   }
   
   setupStorageListener() {
