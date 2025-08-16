@@ -1135,12 +1135,61 @@ class ScreenshotAnnotator {
         return;
       }
       
-      // Create PDF export window
+      // Create annotated versions of ALL screenshots for PDF
+      const annotatedScreenshots = [];
+      console.log(`🎨 Processing ${validScreenshots.length} screenshots for PDF with annotations...`);
+      
+      for (let i = 0; i < validScreenshots.length; i++) {
+        const screenshot = validScreenshots[i];
+        console.log(`🎨 Processing screenshot ${i + 1}/${validScreenshots.length}: ${screenshot.title}`);
+        
+        try {
+          // Create annotated version for PDF
+          const annotatedImageData = await this.createAnnotatedImageForPDF(screenshot);
+          
+          annotatedScreenshots.push({
+            ...screenshot,
+            imageData: annotatedImageData, // Use annotated version for PDF
+            originalImageData: screenshot.imageData // Keep original as backup
+          });
+          
+          console.log(`✅ Successfully processed screenshot ${i + 1}: ${screenshot.title} with ${screenshot.annotations?.length || 0} annotations`);
+          
+          // Show progress
+          this.showStatus(`Processing annotations for PDF: ${i + 1}/${validScreenshots.length}`, 'info');
+          
+        } catch (imageError) {
+          console.error(`❌ Error processing screenshot ${i + 1}:`, imageError);
+          
+          // Add screenshot even if annotation processing fails
+          annotatedScreenshots.push({
+            ...screenshot,
+            imageData: screenshot.imageData, // Use original if annotation fails
+            originalImageData: screenshot.imageData
+          });
+          
+          console.log(`⚠️ Added screenshot ${i + 1} without rendered annotations due to error`);
+        }
+      }
+      
+      console.log('📊 Final export data summary:', {
+        totalScreenshotsProcessed: annotatedScreenshots.length,
+        originalScreenshotCount: this.screenshots.length,
+        totalAnnotations: annotatedScreenshots.reduce((sum, s) => sum + (s.annotations?.length || 0), 0)
+      });
+      
+      if (annotatedScreenshots.length === 0) {
+        console.error('❌ No screenshots were successfully processed for PDF');
+        this.showStatus('Failed to process any screenshots for PDF export', 'error');
+        return;
+      }
+      
+      // Create PDF export window with annotated screenshots
       const exportData = {
-        screenshots: validScreenshots,
+        screenshots: annotatedScreenshots, // Use annotated versions
         exportDate: new Date().toISOString(),
-        totalScreenshots: validScreenshots.length,
-        totalAnnotations: validScreenshots.reduce((sum, s) => sum + (s.annotations?.length || 0), 0)
+        totalScreenshots: annotatedScreenshots.length,
+        totalAnnotations: annotatedScreenshots.reduce((sum, s) => sum + (s.annotations?.length || 0), 0)
       };
       
       console.log('📊 Export data prepared:', {
