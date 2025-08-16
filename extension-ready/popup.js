@@ -479,39 +479,21 @@ class ScreenshotAnnotator {
           screenshot.annotations.forEach((annotation, index) => {
             console.log(`🎯 Annotation ${index + 1} - Investigating coordinate offset`);
             
-            // COORDINATE OFFSET CORRECTION SYSTEM
-            // User reports 0.38 inch offset (lower and right)
-            // This suggests a systematic coordinate transformation issue
-            
-            // Calculate correction based on image dimensions and DPI
-            const imageWidthInches = canvas.width / 96; // Assuming 96 DPI
-            const imageHeightInches = canvas.height / 96;
-            
-            // 0.38 inch offset as percentage of image size
-            const offsetPercentageX = 0.38 / imageWidthInches;
-            const offsetPercentageY = 0.38 / imageHeightInches;
-            
-            // Apply percentage-based correction
-            const offsetCorrectionX = -Math.round(canvas.width * offsetPercentageX);
-            const offsetCorrectionY = -Math.round(canvas.height * offsetPercentageY);
-            
-            console.log(`📍 Dynamic coordinate correction:`, {
-              imageSize: `${canvas.width}x${canvas.height}`,
-              imageSizeInches: `${imageWidthInches.toFixed(2)}"x${imageHeightInches.toFixed(2)}"`,
-              offsetPercentage: `${(offsetPercentageX*100).toFixed(2)}%x${(offsetPercentageY*100).toFixed(2)}%`,
-              offsetPixels: `${offsetCorrectionX}px, ${offsetCorrectionY}px`,
-              targetOffsetInches: "0.38 inch correction"
-            });
+          // Get coordinate correction for this image
+          const correction = this.getCoordinateCorrection(canvas.width, canvas.height);
+          
+          // Render each annotation with coordinate offset correction
+          screenshot.annotations.forEach((annotation, index) => {
+            console.log(`🎯 Annotation ${index + 1} - Applying coordinate correction`);
             
             // Apply correction to coordinates
-            const correctedX = annotation.x + offsetCorrectionX;
-            const correctedY = annotation.y + offsetCorrectionY;
+            const correctedX = annotation.x + correction.x;
+            const correctedY = annotation.y + correction.y;
             
             console.log(`📍 Coordinate correction applied:`, {
               original: `(${annotation.x}, ${annotation.y})`,
               corrected: `(${correctedX}, ${correctedY})`,
-              offset: `(${offsetCorrectionX}, ${offsetCorrectionY})`,
-              offsetInches: "0.38 inch correction"
+              correction: `(${correction.x}, ${correction.y})`
             });
             
             // Use corrected coordinates
@@ -521,8 +503,8 @@ class ScreenshotAnnotator {
             // Handle text positioning with correction
             let textX, textY;
             if (annotation.textX && annotation.textY) {
-              textX = annotation.textX + offsetCorrectionX;
-              textY = annotation.textY + offsetCorrectionY;
+              textX = annotation.textX + correction.x;
+              textY = annotation.textY + correction.y;
             } else {
               textX = x + 60;
               textY = y - 30;
