@@ -1334,6 +1334,9 @@ class ScreenshotAnnotator {
       console.log('✅ Updated screenshot count:', countElement.textContent);
     }
     
+    // Update session info
+    this.updateSessionInfo();
+    
     // Update screenshots list
     const listElement = document.getElementById('screenshotsList');
     if (!listElement) {
@@ -1345,7 +1348,11 @@ class ScreenshotAnnotator {
       console.log('📋 No screenshots - showing empty state');
       listElement.innerHTML = `
         <div class="empty-state">
-          No screenshots yet.<br>Click "Capture Current Page" to get started.
+          No screenshots in this session yet.<br>
+          Click "Capture Current Page" to add screenshots from any tab!<br>
+          <small style="color: #999; margin-top: 8px; display: block;">
+            💡 Tip: You can capture from different tabs and they'll all be saved in "${this.currentSessionName || 'this session'}"
+          </small>
         </div>`;
       
       // Disable PDF export when no screenshots
@@ -1412,6 +1419,12 @@ class ScreenshotAnnotator {
           annotationsList += '</div>';
         }
         
+        // Show tab info for multi-tab context
+        const tabInfo = screenshot.tabUrl ? `
+          <div style="font-size: 10px; color: #999; margin-top: 2px;">
+            🌐 ${new URL(screenshot.tabUrl).hostname}
+          </div>` : '';
+        
         html += `
           <div class="screenshot-item ${isSelected ? 'selected' : ''}" data-id="${screenshot.id}">
             <div class="screenshot-preview">
@@ -1431,6 +1444,7 @@ class ScreenshotAnnotator {
               <div class="timestamp-info">
                 <span class="capture-date">📅 ${screenshot.captureDate || new Date(screenshot.timestamp).toLocaleDateString()}</span>
                 <span class="capture-time">🕐 ${screenshot.captureTime || new Date(screenshot.timestamp).toLocaleTimeString()}</span>
+                ${tabInfo}
               </div>
               <div class="technical-info">
                 <span>${screenshot.displayWidth}×${screenshot.displayHeight}</span>
@@ -1444,25 +1458,12 @@ class ScreenshotAnnotator {
       
       // Add click handlers
       const screenshotItems = listElement.querySelectorAll('.screenshot-item');
-      const previewImages = listElement.querySelectorAll('.screenshot-preview-img');
-      
-      // Add image error handlers
-      previewImages.forEach((img) => {
-        img.addEventListener('error', (e) => {
-          const screenshotId = e.target.dataset.screenshotId;
-          console.log('📁 Attempting to restore image from temporary storage for:', screenshotId);
-          this.restoreImageForElement(screenshotId, e.target);
-        });
-      });
       
       screenshotItems.forEach((item) => {
         item.addEventListener('click', () => {
           const screenshotId = item.dataset.id;
           this.selectedScreenshot = this.screenshots.find(s => s.id === screenshotId);
           console.log('📸 Selected screenshot:', this.selectedScreenshot?.id);
-          
-          // Clean up unselected screenshots
-          this.cleanupUnselectedScreenshots(screenshotId);
           
           // Enable annotation button
           const annotateBtn = document.getElementById('annotateBtn');
