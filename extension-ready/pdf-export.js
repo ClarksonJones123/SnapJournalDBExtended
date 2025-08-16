@@ -45,22 +45,38 @@ class PDFJournalExporter {
                 this.currentExportId = exportId;
                 
                 try {
-                    // Initialize IndexedDB storage
+                    // Enhanced IndexedDB initialization for PDF export context
                     if (!window.tempStorage) {
                         console.log('🗄️ Initializing IndexedDB for PDF export data retrieval...');
-                        // Wait for temp storage to initialize
+                        
+                        // Create and initialize temp storage in PDF export context
+                        if (typeof TempStorageManager !== 'undefined') {
+                            window.tempStorage = new TempStorageManager();
+                            console.log('🗄️ TempStorageManager instance created');
+                            
+                            await window.tempStorage.init();
+                            console.log('✅ IndexedDB initialized in PDF export context');
+                        } else {
+                            throw new Error('TempStorageManager class not available in PDF export context');
+                        }
+                    }
+                    
+                    // Additional check to ensure database is ready
+                    if (!window.tempStorage.db || !window.tempStorage.isReady) {
+                        console.log('⚠️ Temp storage not fully ready, waiting...');
+                        
                         let attempts = 0;
-                        while (!window.tempStorage && attempts < 50) {
+                        while ((!window.tempStorage.db || !window.tempStorage.isReady) && attempts < 50) {
                             await new Promise(resolve => setTimeout(resolve, 100));
                             attempts++;
                         }
                         
-                        if (!window.tempStorage) {
-                            throw new Error('IndexedDB storage not available for large dataset export');
+                        if (!window.tempStorage.db || !window.tempStorage.isReady) {
+                            throw new Error('IndexedDB failed to initialize properly in PDF export context');
                         }
                     }
                     
-                    console.log('🗄️ Attempting to retrieve export data from IndexedDB...');
+                    console.log('🗄️ IndexedDB ready, attempting to retrieve export data...');
                     this.exportData = await window.tempStorage.getPdfExportData(exportId);
                     
                     if (!this.exportData) {
