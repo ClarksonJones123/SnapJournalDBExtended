@@ -80,6 +80,11 @@ class TempStorageManager {
     // 💾 Store large image data in IndexedDB
     async storeImage(id, imageDataUrl, metadata = {}) {
         try {
+            if (!this.db) {
+                console.error('❌ Database not initialized for storeImage');
+                return { id: id, stored: false, error: 'Database not initialized' };
+            }
+            
             console.log(`🗄️ Storing image ${id} in temporary storage...`);
             
             // Convert data URL to blob for efficient storage
