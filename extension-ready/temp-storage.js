@@ -14,11 +14,39 @@ class TempStorageManager {
     async init() {
         try {
             console.log('🗄️ Initializing temporary storage...');
+            
+            // Ensure we wait for the database to be ready
             this.db = await this.openDatabase();
+            
+            if (!this.db) {
+                throw new Error('Failed to open IndexedDB database');
+            }
+            
+            console.log('🗄️ Database opened successfully');
+            
+            // Test database functionality
+            await this.testDatabase();
+            
             await this.cleanOldTempFiles();
             console.log('✅ Temporary storage initialized successfully');
+            
         } catch (error) {
             console.error('❌ Failed to initialize temporary storage:', error);
+            // Don't throw - allow fallback to Chrome storage
+            this.db = null;
+        }
+    }
+    
+    // Test database functionality
+    async testDatabase() {
+        try {
+            const transaction = this.db.transaction(['images'], 'readonly');
+            const store = transaction.objectStore('images');
+            await this.promisifyRequest(store.count());
+            console.log('🗄️ Database test successful');
+        } catch (error) {
+            console.error('❌ Database test failed:', error);
+            throw error;
         }
     }
     
