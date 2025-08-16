@@ -88,10 +88,14 @@ class UniversalAnnotator {
     
     setupEventListeners() {
         const voiceBtn = document.getElementById('voiceBtn');
+        const settingsBtn = document.getElementById('settingsBtn');
         const closeBtn = document.getElementById('closeBtn');
         
         // Voice recognition setup
         this.setupSpeechRecognition(voiceBtn);
+        
+        // Settings panel setup
+        this.setupSettingsPanel(settingsBtn);
         
         // Close button
         closeBtn.addEventListener('click', () => {
@@ -101,7 +105,13 @@ class UniversalAnnotator {
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                window.close();
+                // Close settings panel if open, otherwise close window
+                const settingsPanel = document.getElementById('settingsPanel');
+                if (settingsPanel.style.display !== 'none') {
+                    settingsPanel.style.display = 'none';
+                } else {
+                    window.close();
+                }
             }
         });
     }
