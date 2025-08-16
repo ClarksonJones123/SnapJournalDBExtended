@@ -254,6 +254,19 @@ class ScreenshotAnnotator {
     if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
     return Math.round(bytes / (1024 * 1024)) + ' MB';
   }
+
+  async getImageDimensions(imageData) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        resolve({
+          width: img.width,
+          height: img.height
+        });
+      };
+      img.src = imageData;
+    });
+  }
   
   async compressImageData(imageData, quality = 1.0) {
     try {
