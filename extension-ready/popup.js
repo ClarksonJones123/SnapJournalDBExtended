@@ -1462,11 +1462,20 @@ class ScreenshotAnnotator {
             const totalSizeMB = Math.round(totalDataSize / 1024 / 1024);
             console.log('📊 Total image data size:', totalSizeMB, 'MB');
             
-            // CRITICAL FIX: Use IndexedDB for ANY dataset larger than 3MB to prevent quota issues
-            // Chrome storage limit is ~10MB, but we need headroom for metadata and other operations
-            if (totalDataSize > 3 * 1024 * 1024) { // Conservative 3MB threshold
-                console.log(`🚀 Dataset size ${totalSizeMB}MB exceeds 3MB threshold - using IndexedDB export method`);
-                if (window.debugLog) window.debugLog(`🚀 Large dataset: ${totalSizeMB}MB - switching to IndexedDB method to prevent quota errors`);
+            // ENHANCED LOGIC: Use IndexedDB for better reliability
+            // 1. Always use IndexedDB for datasets > 2MB (very conservative)
+            // 2. Always use IndexedDB for more than 3 screenshots (multiple images tend to cause issues)
+            // 3. Use Chrome storage only for single small screenshots
+            
+            const useIndexedDB = (
+                totalDataSize > 2 * 1024 * 1024 || // > 2MB
+                validScreenshots.length > 3 ||     // > 3 screenshots
+                totalSizeMB > 2                    // Another check for 2MB+ in different units
+            );
+            
+            if (useIndexedDB) {
+                console.log(`🚀 Using IndexedDB method - Size: ${totalSizeMB}MB, Count: ${validScreenshots.length} screenshots`);
+                if (window.debugLog) window.debugLog(`🚀 IndexedDB method selected - Size: ${totalSizeMB}MB, Count: ${validScreenshots.length} - safer for quota limits`);
                 
                 return await this.exportPdfJournalViaIndexedDB(validScreenshots);
             }
