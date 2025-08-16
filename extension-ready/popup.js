@@ -479,60 +479,35 @@ class ScreenshotAnnotator {
             coordinateReference: 'DIRECT_ORIGINAL_COORDINATES'
           });
           
-          // Configure text rendering
-          ctx.textAlign = 'left';
-          ctx.textBaseline = 'top';
-          
-          // Render each annotation with DIRECT coordinates (minimal scaling needed)
+          // Render each annotation with DIRECT coordinates (1:1 scale)
           screenshot.annotations.forEach((annotation, index) => {
-            console.log(`🎯 === ANNOTATION ${index + 1} PDF RENDERING DEBUG ===`);
-            console.log('📊 STORED ANNOTATION OBJECT:', annotation);
+            console.log(`🎯 Annotation ${index + 1} - Direct rendering (1:1 scale)`);
             
-            if (annotation.debug) {
-              console.log('🔍 DEBUG INFO AVAILABLE:');
-              console.log('  - Original click:', annotation.debug.originalClick);
-              console.log('  - Final red dot position:', annotation.debug.finalRedDotPosition);
-              console.log('  - Final stored coordinates:', annotation.debug.finalStoredCoordinates);
-              console.log('  - Coordinate history:', annotation.debug.coordinateHistory);
-            } else {
-              console.log('⚠️ NO DEBUG INFO AVAILABLE');
-            }
-            
-            console.log('📍 USING COORDINATES FOR PDF:', {
-              storedCoords: { x: annotation.x, y: annotation.y },
-              text: annotation.text.substring(0, 30) + (annotation.text.length > 30 ? '...' : ''),
-              annotationId: annotation.id
-            });
-            console.log(`🎯 === END ANNOTATION ${index + 1} DEBUG ===`);
-            
-            // Apply scaling (should be close to 1:1 now)
-            const x = annotation.x * scaleX;
-            const y = annotation.y * scaleY;
+            // Use coordinates directly (no scaling needed)
+            const x = annotation.x;
+            const y = annotation.y;
             
             // Handle text positioning
             let textX, textY;
             if (annotation.textX && annotation.textY) {
-              // Use stored text position if available
-              textX = annotation.textX * scaleX;
-              textY = annotation.textY * scaleY;
+              textX = annotation.textX;
+              textY = annotation.textY;
             } else {
-              // Default text position (offset from pinpoint)
-              textX = x + (60 * scaleX);
-              textY = y - (30 * scaleY);
+              textX = x + 60;
+              textY = y - 30;
             }
             
-            console.log(`📍 Final coordinates:`, { 
+            console.log(`📍 Direct coordinates (1:1):`, { 
               x: Math.round(x), 
               y: Math.round(y), 
               textX: Math.round(textX), 
-              textY: Math.round(textY),
-              scaleApplied: `${scaleX.toFixed(2)}x, ${scaleY.toFixed(2)}x`
+              textY: Math.round(textY)
             });
             
-            // Calculate appropriate sizes
-            const pinRadius = Math.max(10, 15 * Math.min(scaleX, scaleY));
-            const lineWidth = Math.max(3, 4 * Math.min(scaleX, scaleY));
-            const fontSize = Math.max(16, 20 * Math.min(scaleX, scaleY));
+            // Calculate sizes for original dimensions
+            const pinRadius = 15;
+            const lineWidth = 4;
+            const fontSize = 20;
             
             // Draw pinpoint circle
             ctx.beginPath();
