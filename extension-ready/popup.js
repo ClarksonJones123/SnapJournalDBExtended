@@ -176,9 +176,9 @@ class ScreenshotAnnotator {
     return Math.round(bytes / (1024 * 1024)) + ' MB';
   }
   
-  async compressImageData(imageData, quality = 0.95) {
+  async compressImageData(imageData, quality = 1.0) {
     try {
-      console.log('🗜️ Optimizing image data (minimal compression for quality)...');
+      console.log('🗜️ Processing image (quality preservation mode)...');
       console.log('📊 Original size:', this.formatMemorySize(imageData.length));
       
       return new Promise((resolve) => {
@@ -187,45 +187,52 @@ class ScreenshotAnnotator {
         const img = new Image();
         
         img.onload = () => {
-          // Minimal compression - preserve quality
-          const maxWidth = 1920;  // Full HD
-          const maxHeight = 1080; // Full HD
+          console.log('🖼️ Original image dimensions:', img.width, 'x', img.height);
           
+          // MINIMAL processing - preserve original dimensions when possible
           let { width, height } = img;
           
-          // Only resize if much larger than Full HD
-          if (width > maxWidth * 1.5) {
+          // Only resize if MASSIVELY larger than reasonable limits
+          const maxWidth = 2560;  // 2.5K width
+          const maxHeight = 1440; // 1440p height
+          
+          if (width > maxWidth * 2) {
+            console.log('⚠️ Image extremely wide, reducing width');
             height = (height * maxWidth) / width;
             width = maxWidth;
           }
           
-          if (height > maxHeight * 1.5) {
+          if (height > maxHeight * 2) {
+            console.log('⚠️ Image extremely tall, reducing height');
             width = (width * maxHeight) / height;
             height = maxHeight;
           }
           
+          console.log('🎯 Final dimensions:', width, 'x', height);
+          
           canvas.width = width;
           canvas.height = height;
           
-          // Highest quality settings
+          // Maximum quality settings
           ctx.imageSmoothingEnabled = true;
           ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(img, 0, 0, width, height);
           
-          // Very high quality compression (95%)
-          const optimizedData = canvas.toDataURL('image/png', quality);
+          // Use PNG with maximum quality (lossless)
+          const processedData = canvas.toDataURL('image/png', 1.0);
           
-          console.log('✅ Optimized size:', this.formatMemorySize(optimizedData.length));
-          console.log('📉 Size change:', Math.round((1 - optimizedData.length / imageData.length) * 100) + '%');
+          console.log('✅ Processed size:', this.formatMemorySize(processedData.length));
+          console.log('📏 Dimensions preserved:', width === img.width && height === img.height ? 'YES' : 'NO');
+          console.log('📊 Size change:', Math.round((processedData.length / imageData.length - 1) * 100) + '%');
           
-          resolve(optimizedData);
+          resolve(processedData);
         };
         
         img.src = imageData;
       });
       
     } catch (error) {
-      console.error('❌ Image optimization failed:', error);
+      console.error('❌ Image processing failed:', error);
       console.log('⚠️ Using original image data');
       return imageData; // Fallback to original
     }
