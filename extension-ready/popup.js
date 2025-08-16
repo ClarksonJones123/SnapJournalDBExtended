@@ -64,13 +64,18 @@ class ScreenshotAnnotator {
     try {
       console.log('💾 Saving screenshots to storage...');
       
+      // AGGRESSIVE PRE-SAVE CLEANUP
+      console.log('🧹 Pre-save cleanup to prevent quota issues...');
+      await this.aggressiveStorageCleanup();
+      
       // Check storage quota before saving
       const storageInfo = await this.checkStorageQuota();
-      console.log('📊 Storage info:', storageInfo);
+      console.log('📊 Storage info after cleanup:', storageInfo);
       
+      // If still over quota, force more aggressive cleanup
       if (storageInfo.quotaExceeded) {
-        console.log('⚠️ Storage quota exceeded, cleaning up old screenshots...');
-        await this.cleanupOldScreenshots();
+        console.log('⚠️ Still over quota after cleanup, emergency cleanup...');
+        await this.emergencyStorageCleanup();
       }
       
       await chrome.storage.local.set({ screenshots: this.screenshots });
@@ -94,19 +99,93 @@ class ScreenshotAnnotator {
       console.error('Error saving screenshots:', error);
       
       if (error.message && error.message.includes('quota')) {
-        console.log('🧹 Quota exceeded, attempting cleanup...');
-        await this.cleanupOldScreenshots();
+        console.log('🚨 QUOTA EXCEEDED - Emergency cleanup...');
+        await this.emergencyStorageCleanup();
         
-        // Try saving again with fewer screenshots
+        // Try saving again with much fewer screenshots
         try {
           await chrome.storage.local.set({ screenshots: this.screenshots });
-          this.showStatus('Screenshots saved after cleanup', 'success');
+          this.showStatus('Screenshots saved after emergency cleanup', 'success');
         } catch (retryError) {
-          this.showStatus('Storage quota exceeded. Please clear some screenshots.', 'error');
+          console.error('❌ Even emergency cleanup failed:', retryError);
+          this.showStatus('Storage full. Please clear screenshots manually.', 'error');
         }
       } else {
         this.showStatus('Error saving screenshots', 'error');
       }
+    }
+  }
+
+  async aggressiveStorageCleanup() {
+    try {
+      console.log('🧹 Aggressive storage cleanup...');
+      
+      if (this.screenshots.length <= 3) {
+        console.log('ℹ️ Only 3 or fewer screenshots, no cleanup needed');
+        return;
+      }
+      
+      // Keep only the 5 most recent screenshots
+      this.screenshots.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      const removedCount = this.screenshots.length - 5;
+      this.screenshots = this.screenshots.slice(0, 5);
+      
+      console.log(`✅ Aggressive cleanup: Removed ${removedCount} screenshots, kept ${this.screenshots.length}`);
+      
+      // Update selected screenshot if it was removed
+      if (this.selectedScreenshot && !this.screenshots.find(s => s.id === this.selectedScreenshot.id)) {
+        this.selectedScreenshot = this.screenshots[0] || null;
+      }
+      
+      // Clear any temporary export data
+      const storage = await chrome.storage.local.get();
+      const keysToRemove = [];
+      for (const key in storage) {
+        if (key.startsWith('pdf_export_')) {
+          keysToRemove.push(key);
+        }
+      }
+      
+      if (keysToRemove.length > 0) {
+        await chrome.storage.local.remove(keysToRemove);
+        console.log(`🧹 Removed ${keysToRemove.length} temporary export files`);
+      }
+      
+    } catch (error) {
+      console.error('Error during aggressive cleanup:', error);
+    }
+  }
+
+  async emergencyStorageCleanup() {
+    try {
+      console.log('🚨 EMERGENCY STORAGE CLEANUP...');
+      
+      // Keep only the 2 most recent screenshots
+      this.screenshots.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      const removedCount = this.screenshots.length - 2;
+      this.screenshots = this.screenshots.slice(0, 2);
+      
+      console.log(`🚨 Emergency cleanup: Removed ${removedCount} screenshots, kept ${this.screenshots.length}`);
+      
+      // Clear ALL other data from storage
+      const storage = await chrome.storage.local.get();
+      const keysToRemove = [];
+      for (const key in storage) {
+        if (key !== 'screenshots') {
+          keysToRemove.push(key);
+        }
+      }
+      
+      if (keysToRemove.length > 0) {
+        await chrome.storage.local.remove(keysToRemove);
+        console.log(`🚨 Emergency: Cleared ${keysToRemove.length} storage items`);
+      }
+      
+      // Update selected screenshot
+      this.selectedScreenshot = this.screenshots[0] || null;
+      
+    } catch (error) {
+      console.error('Error during emergency cleanup:', error);
     }
   }
   
