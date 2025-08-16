@@ -159,12 +159,21 @@ class PDFJournalExporter {
                 throw new Error('Invalid export data structure. Screenshots array is missing or invalid.');
             }
             
+            // Validate export data structure with null checks
+            if (!this.exportData || typeof this.exportData !== 'object') {
+                throw new Error('Export data is missing or invalid structure');
+            }
+            
+            if (!this.exportData.screenshots || !Array.isArray(this.exportData.screenshots)) {
+                throw new Error('Export data missing screenshots array or invalid format');
+            }
+            
             this.screenshots = this.exportData.screenshots;
             
             console.log('✅ Export data validation complete:', {
                 screenshots: this.screenshots.length,
-                totalAnnotations: this.exportData.totalAnnotations,
-                exportDate: this.exportData.exportDate,
+                totalAnnotations: this.exportData.totalAnnotations || 0,
+                exportDate: this.exportData.exportDate || 'Unknown',
                 exportMethod: this.exportData.exportMethod || 'Chrome',
                 dataStructureValid: true
             });
