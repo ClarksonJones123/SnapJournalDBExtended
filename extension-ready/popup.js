@@ -674,19 +674,77 @@ class ScreenshotAnnotator {
     console.log('✅ Periodic cleanup scheduled (every 10 minutes)');
   }
   
+  // Enhanced memory usage calculation with detailed breakdown
   calculateMemoryUsage() {
     this.memoryUsage = 0;
+    let imageDataSize = 0;
+    let annotationDataSize = 0;
+    let metadataSize = 0;
+    
     this.screenshots.forEach(screenshot => {
       if (screenshot.imageData) {
-        this.memoryUsage += screenshot.imageData.length * 0.75;
+        const imageSize = screenshot.imageData.length * 0.75; // Base64 overhead
+        imageDataSize += imageSize;
+        this.memoryUsage += imageSize;
       }
+      
       if (screenshot.annotations) {
         screenshot.annotations.forEach(annotation => {
-          this.memoryUsage += JSON.stringify(annotation).length;
+          const annotationSize = JSON.stringify(annotation).length;
+          annotationDataSize += annotationSize;
+          this.memoryUsage += annotationSize;
         });
       }
+      
+      // Calculate metadata size (excluding imageData and annotations)
+      const metadata = { ...screenshot };
+      delete metadata.imageData;
+      delete metadata.annotations;
+      const metaSize = JSON.stringify(metadata).length;
+      metadataSize += metaSize;
+      this.memoryUsage += metaSize;
     });
-    console.log('Memory usage calculated:', this.formatMemorySize(this.memoryUsage));
+    
+    console.log('📊 DETAILED MEMORY BREAKDOWN:');
+    console.log(`  📸 Images: ${this.formatMemorySize(imageDataSize)} (${Math.round(imageDataSize/this.memoryUsage*100)}%)`);
+    console.log(`  📝 Annotations: ${this.formatMemorySize(annotationDataSize)} (${Math.round(annotationDataSize/this.memoryUsage*100)}%)`);
+    console.log(`  📋 Metadata: ${this.formatMemorySize(metadataSize)} (${Math.round(metadataSize/this.memoryUsage*100)}%)`);
+    console.log(`  💾 Total: ${this.formatMemorySize(this.memoryUsage)}`);
+    
+    // Memory pressure warning
+    if (this.memoryUsage > 200 * 1024 * 1024) { // 200MB threshold
+      console.warn(`⚠️ HIGH MEMORY USAGE: ${this.formatMemorySize(this.memoryUsage)}`);
+      console.warn('💡 Consider running: window.screenshotAnnotator.aggressiveMemoryOptimization()');
+    }
+    
+    // Update UI with enhanced memory info
+    this.updateMemoryUI(imageDataSize, annotationDataSize, metadataSize);
+  }
+  
+  updateMemoryUI(imageDataSize, annotationDataSize, metadataSize) {
+    const memoryElement = document.getElementById('memoryUsage');
+    if (memoryElement) {
+      const totalMB = Math.round(this.memoryUsage / (1024 * 1024));
+      const isHighUsage = this.memoryUsage > 200 * 1024 * 1024; // 200MB
+      
+      memoryElement.textContent = this.formatMemorySize(this.memoryUsage);
+      
+      // Add visual warning for high memory usage
+      if (isHighUsage) {
+        memoryElement.style.color = '#dc3545'; // Red color for high usage
+        memoryElement.title = `HIGH MEMORY: ${totalMB}MB - Click to optimize`;
+        memoryElement.style.cursor = 'pointer';
+        
+        // Make it clickable for quick optimization
+        memoryElement.onclick = () => {
+          this.aggressiveMemoryOptimization();
+        };
+      } else {
+        memoryElement.style.color = ''; // Reset color
+        memoryElement.title = `Images: ${Math.round(imageDataSize/1024/1024)}MB, Annotations: ${Math.round(annotationDataSize/1024)}KB`;
+        memoryElement.onclick = null;
+      }
+    }
   }
   
   formatMemorySize(bytes) {
