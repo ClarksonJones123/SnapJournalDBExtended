@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Extension Error Diagnostic</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            background: #f5f5f5; 
+        }
+        .test-section { 
+            background: white; 
+            padding: 20px; 
+            margin: 10px 0; 
+            border-radius: 8px; 
+            border: 1px solid #ddd; 
+        }
+        .error { color: #d32f2f; }
+        .success { color: #388e3c; }
+        .info { color: #1976d2; }
+        pre { 
+            background: #f8f9fa; 
+            padding: 10px; 
+            border-radius: 4px; 
+            overflow-x: auto; 
+        }
+        .log-container {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background: #fafafa;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Extension Error Diagnostic</h1>
+    
+    <div class="test-section">
+        <h2>Chrome Extension API Status</h2>
+        <div id="chrome-api-status"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Console Error Log</h2>
+        <div id="error-log" class="log-container">
+            <div class="info">Capturing errors...</div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Annotation Interface</h2>
+        <button onclick="testAnnotationWindow()">Open Test Annotation Window</button>
+        <div id="test-results"></div>
+    </div>
+
+    <script>
+        // Capture console errors
+        const errorLog = document.getElementById('error-log');
+        const originalConsoleError = console.error;
+        const originalConsoleWarn = console.warn;
+        
+        console.error = function(...args) {
+            originalConsoleError.apply(console, args);
+            
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.textContent = `❌ ERROR: ${args.join(' ')}`;
+            errorLog.appendChild(errorDiv);
+            errorLog.scrollTop = errorLog.scrollHeight;
+        };
+        
+        console.warn = function(...args) {
+            originalConsoleWarn.apply(console, args);
+            
+            const warnDiv = document.createElement('div');
+            warnDiv.className = 'info';
+            warnDiv.textContent = `⚠️ WARNING: ${args.join(' ')}`;
+            errorLog.appendChild(errorDiv);
+            errorLog.scrollTop = errorLog.scrollHeight;
+        };
+        
+        // Check Chrome API availability
+        function checkChromeAPIs() {
+            const statusDiv = document.getElementById('chrome-api-status');
+            let html = '';
+            
+            const apis = [
+                { name: 'chrome', check: () => typeof chrome !== 'undefined' },
+                { name: 'chrome.storage', check: () => chrome && chrome.storage },
+                { name: 'chrome.storage.local', check: () => chrome && chrome.storage && chrome.storage.local },
+                { name: 'chrome.runtime', check: () => chrome && chrome.runtime },
+                { name: 'chrome.windows', check: () => chrome && chrome.windows },
+                { name: 'Speech Recognition', check: () => 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window },
+                { name: 'IndexedDB', check: () => !!window.indexedDB }
+            ];
+            
+            apis.forEach(api => {
+                try {
+                    const available = api.check();
+                    html += `<div class="${available ? 'success' : 'error'}">
+                        ${available ? '✅' : '❌'} ${api.name}: ${available ? 'Available' : 'Not Available'}
+                    </div>`;
+                } catch (error) {
+                    html += `<div class="error">❌ ${api.name}: Error checking - ${error.message}</div>`;
+                }
+            });
+            
+            statusDiv.innerHTML = html;
+        }
+        
+        // Test annotation window
+        function testAnnotationWindow() {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '<div class="info">Testing annotation window...</div>';
+            
+            try {
+                // Create a mock screenshot object
+                const mockScreenshot = {
+                    id: 'test-' + Date.now(),
+                    imageData: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==',
+                    title: 'Test Screenshot',
+                    displayWidth: 100,
+                    displayHeight: 100,
+                    annotations: []
+                };
+                
+                // Create annotation URL
+                const annotationUrl = '../annotation.html?screenshot=' + encodeURIComponent(JSON.stringify(mockScreenshot));
+                
+                // Try to open annotation window
+                const testWindow = window.open(annotationUrl, 'test-annotation', 'width=800,height=600');
+                
+                if (testWindow) {
+                    resultsDiv.innerHTML = '<div class="success">✅ Annotation window opened successfully</div>';
+                    
+                    // Check if window closes due to errors
+                    setTimeout(() => {
+                        if (testWindow.closed) {
+                            resultsDiv.innerHTML += '<div class="error">❌ Annotation window closed unexpectedly</div>';
+                        } else {
+                            resultsDiv.innerHTML += '<div class="info">ℹ️ Annotation window is still open</div>';
+                        }
+                    }, 3000);
+                } else {
+                    resultsDiv.innerHTML = '<div class="error">❌ Failed to open annotation window (popup blocked?)</div>';
+                }
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">❌ Error testing annotation window: ${error.message}</div>`;
+                console.error('Annotation window test error:', error);
+            }
+        }
+        
+        // Run checks on load
+        window.onload = function() {
+            checkChromeAPIs();
+            
+            // Log that diagnostic started
+            const startDiv = document.createElement('div');
+            startDiv.className = 'success';
+            startDiv.textContent = '✅ Diagnostic started - watching for errors...';
+            errorLog.appendChild(startDiv);
+        };
+    </script>
+</body>
+</html>
