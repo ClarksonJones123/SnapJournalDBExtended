@@ -264,29 +264,21 @@ class UniversalAnnotator {
     
     createAnnotationMarker(container, img, annotation, index) {
         console.log(`🔧 Creating annotation ${index + 1} with text: "${annotation.text}"`);
-        console.log('🔍 MARKER COORDINATE DEBUG:', {
-            storedCoords: `(${annotation.x}, ${annotation.y})`,
-            storedTextPos: `(${annotation.textX}, ${annotation.textY})`,
-            imgDisplaySize: `${img.offsetWidth}x${img.offsetHeight}`,
-            originalCaptureSize: `${this.screenshot.originalCaptureWidth}x${this.screenshot.originalCaptureHeight}`,
-            coordinateReference: 'ORIGINAL_CAPTURE_DIMENSIONS'
+        console.log('🔍 SIMPLIFIED MARKER CREATION:', {
+            displayCoords: `(${annotation.x}, ${annotation.y})`,
+            textPos: `(${annotation.textX}, ${annotation.textY})`,
+            coordinateSystem: 'DISPLAY_RELATIVE'
         });
         
-        // FIXED: Calculate display scale factors using ORIGINAL CAPTURE dimensions
-        const displayScaleX = img.offsetWidth / this.screenshot.originalCaptureWidth;
-        const displayScaleY = img.offsetHeight / this.screenshot.originalCaptureHeight;
+        // SIMPLIFIED: Use coordinates directly since they're already display-relative
+        const displayX = annotation.x;
+        const displayY = annotation.y;
+        const displayTextX = annotation.textX || (annotation.x + 60);
+        const displayTextY = annotation.textY || (annotation.y - 30);
         
-        // Convert stored coordinates (relative to original capture) back to display coordinates
-        const displayX = annotation.x * displayScaleX;
-        const displayY = annotation.y * displayScaleY;
-        const displayTextX = (annotation.textX || (annotation.x + 60)) * displayScaleX;
-        const displayTextY = (annotation.textY || (annotation.y - 30)) * displayScaleY;
-        
-        console.log('🔧 CORRECTED DISPLAY COORDINATES:', {
-            displayScale: `${displayScaleX.toFixed(3)}x, ${displayScaleY.toFixed(3)}`,
-            displayCoords: `(${displayX.toFixed(1)}, ${displayY.toFixed(1)})`,
-            displayTextPos: `(${displayTextX.toFixed(1)}, ${displayTextY.toFixed(1)})`,
-            referenceSystem: 'ORIGINAL_CAPTURE_TO_CURRENT_DISPLAY'
+        console.log('🔧 Final display coordinates:', {
+            pinpoint: `(${displayX.toFixed(1)}, ${displayY.toFixed(1)})`,
+            textLabel: `(${displayTextX.toFixed(1)}, ${displayTextY.toFixed(1)})`
         });
         
         // Create annotation system container
