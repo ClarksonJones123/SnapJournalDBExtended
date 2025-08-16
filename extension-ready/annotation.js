@@ -620,13 +620,35 @@ class UniversalAnnotator {
                     storedTextPos: `(${storedTextX.toFixed(1)}, ${storedTextY.toFixed(1)})`
                 });
                 
-                return {
+                // Create annotation with debug info
+                const annotationWithDebug = {
                     ...annotation,
                     x: storedX,           // FINAL RED DOT POSITION (converted to storage coords)
                     y: storedY,           // FINAL RED DOT POSITION (converted to storage coords)
                     textX: storedTextX,   // FINAL TEXT POSITION (converted to storage coords)
                     textY: storedTextY    // FINAL TEXT POSITION (converted to storage coords)
                 };
+                
+                // 🔍 ENHANCE DEBUG INFO with save-time data
+                if (annotationWithDebug.debug) {
+                    annotationWithDebug.debug.coordinateHistory.push({
+                        event: 'SAVE_TO_STORAGE',
+                        displayCoords: { x: annotation.x, y: annotation.y },
+                        storedCoords: { x: storedX, y: storedY },
+                        storageScale: { x: storageScaleX, y: storageScaleY },
+                        timestamp: new Date().toISOString()
+                    });
+                    
+                    annotationWithDebug.debug.finalStoredCoordinates = {
+                        x: storedX,
+                        y: storedY,
+                        textX: storedTextX,  
+                        textY: storedTextY,
+                        timestamp: new Date().toISOString()
+                    };
+                }
+                
+                return annotationWithDebug;
             });
             
             // Update the screenshot object with converted coordinates
