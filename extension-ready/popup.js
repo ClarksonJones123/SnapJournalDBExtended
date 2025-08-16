@@ -273,6 +273,33 @@ class ScreenshotAnnotator {
     }
   }
 
+  // 📁 Restore image for a specific element
+  async restoreImageForElement(screenshotId, imgElement) {
+    try {
+      const screenshot = this.screenshots.find(s => s.id === screenshotId);
+      if (!screenshot || !screenshot.isInTempStorage || !this.tempStorage) {
+        return;
+      }
+      
+      console.log('📁 Restoring image for element:', screenshotId);
+      
+      const restoredScreenshot = await this.tempStorage.restoreFullScreenshot(screenshot);
+      if (restoredScreenshot && restoredScreenshot.imageData) {
+        imgElement.src = restoredScreenshot.imageData;
+        
+        // Update the screenshot in our array
+        const index = this.screenshots.findIndex(s => s.id === screenshotId);
+        if (index !== -1) {
+          this.screenshots[index] = restoredScreenshot;
+        }
+        
+        console.log('✅ Image restored for element:', screenshotId);
+      }
+    } catch (error) {
+      console.error('❌ Failed to restore image for element:', error);
+    }
+  }
+
   async aggressiveStorageCleanup() {
     try {
       console.log('🧹 Aggressive storage cleanup...');
