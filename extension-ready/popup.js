@@ -985,124 +985,209 @@ class ScreenshotAnnotator {
     }
   }
   
-  async exportPdfJournal() {
-    if (this.screenshots.length === 0) {
-      this.showStatus('No screenshots to export', 'info');
-      return;
-    }
-    
-    try {
-      console.log('🔄 Starting PDF journal export...');
-      this.showStatus('Generating PDF journal with annotations...', 'info');
-      
-      // All screenshots are already in memory since we're using IndexedDB as primary
-      const validScreenshots = this.screenshots.filter(s => s.imageData);
-      console.log(`📊 Valid screenshots for PDF: ${validScreenshots.length}/${this.screenshots.length}`);
-      
-      if (validScreenshots.length === 0) {
-        console.error('❌ No valid screenshots for PDF export');
-        this.showStatus('No images available for PDF export', 'error');
-        return;
-      }
-      
-      // Create annotated versions of ALL screenshots for PDF
-      const annotatedScreenshots = [];
-      console.log(`🎨 Processing ${validScreenshots.length} screenshots for PDF with annotations...`);
-      
-      for (let i = 0; i < validScreenshots.length; i++) {
-        const screenshot = validScreenshots[i];
-        console.log(`🎨 Processing screenshot ${i + 1}/${validScreenshots.length}: ${screenshot.title}`);
+    async exportPdfJournal() {
+        console.log('📄 === PDF EXPORT DEBUG START ===');
+        
+        if (this.screenshots.length === 0) {
+            console.log('❌ No screenshots available for PDF export');
+            this.showStatus('No screenshots to export', 'info');
+            return;
+        }
         
         try {
-          // Create annotated version for PDF
-          const annotatedImageData = await this.createAnnotatedImageForPDF(screenshot);
-          
-          annotatedScreenshots.push({
-            ...screenshot,
-            imageData: annotatedImageData, // Use annotated version for PDF
-            originalImageData: screenshot.imageData // Keep original as backup
-          });
-          
-          console.log(`✅ Successfully processed screenshot ${i + 1}: ${screenshot.title} with ${screenshot.annotations?.length || 0} annotations`);
-          
-          // Show progress
-          this.showStatus(`Processing annotations for PDF: ${i + 1}/${validScreenshots.length}`, 'info');
-          
-        } catch (imageError) {
-          console.error(`❌ Error processing screenshot ${i + 1}:`, imageError);
-          
-          // Add screenshot even if annotation processing fails
-          annotatedScreenshots.push({
-            ...screenshot,
-            imageData: screenshot.imageData, // Use original if annotation fails
-            originalImageData: screenshot.imageData
-          });
-          
-          console.log(`⚠️ Added screenshot ${i + 1} without rendered annotations due to error`);
+            console.log('🔄 Starting PDF journal export...');
+            console.log('📊 Total screenshots available:', this.screenshots.length);
+            
+            // Log to persistent debug system
+            if (window.debugLog) {
+                window.debugLog('📄 PDF export initiated');
+                window.debugLog(`📊 Exporting ${this.screenshots.length} screenshots`);
+            }
+            
+            this.showStatus('Generating PDF journal with annotations...', 'info');
+            
+            // Validate screenshots have image data
+            const validScreenshots = this.screenshots.filter(s => s.imageData);
+            console.log(`📊 Valid screenshots for PDF: ${validScreenshots.length}/${this.screenshots.length}`);
+            
+            if (validScreenshots.length === 0) {
+                console.error('❌ No valid screenshots with image data for PDF export');
+                if (window.debugError) window.debugError('No valid screenshots with image data');
+                this.showStatus('No images available for PDF export', 'error');
+                return;
+            }
+            
+            // Calculate data size for debugging
+            let totalDataSize = 0;
+            validScreenshots.forEach(s => {
+                if (s.imageData) totalDataSize += s.imageData.length;
+            });
+            console.log('📊 Total image data size:', Math.round(totalDataSize / 1024 / 1024), 'MB');
+            
+            // WARNING: Check if data might be too large for Chrome storage
+            if (totalDataSize > 5 * 1024 * 1024) { // 5MB threshold
+                console.warn('⚠️ Large dataset detected - may cause Chrome storage issues');
+                if (window.debugLog) window.debugLog(`⚠️ Large dataset: ${Math.round(totalDataSize / 1024 / 1024)}MB`);
+            }
+            
+            // Create annotated versions for PDF
+            const annotatedScreenshots = [];
+            console.log(`🎨 Processing ${validScreenshots.length} screenshots for PDF with annotations...`);
+            
+            for (let i = 0; i < validScreenshots.length; i++) {
+                const screenshot = validScreenshots[i];
+                console.log(`🎨 Processing screenshot ${i + 1}/${validScreenshots.length}: ${screenshot.title}`);
+                
+                try {
+                    // Create annotated version for PDF (this is where issues might occur)
+                    const annotatedImageData = await this.createAnnotatedImageForPDF(screenshot);
+                    
+                    annotatedScreenshots.push({
+                        ...screenshot,
+                        imageData: annotatedImageData,
+                        originalImageData: screenshot.imageData
+                    });
+                    
+                    console.log(`✅ Successfully processed screenshot ${i + 1}: ${screenshot.title} with ${screenshot.annotations?.length || 0} annotations`);
+                    this.showStatus(`Processing annotations for PDF: ${i + 1}/${validScreenshots.length}`, 'info');
+                    
+                } catch (imageError) {
+                    console.error(`❌ Error processing screenshot ${i + 1}:`, imageError);
+                    if (window.debugError) window.debugError(`Processing error: ${imageError.message}`);
+                    
+                    // Add original screenshot without annotations as fallback
+                    annotatedScreenshots.push({
+                        ...screenshot,
+                        imageData: screenshot.imageData,
+                        originalImageData: screenshot.imageData
+                    });
+                    
+                    console.log(`⚠️ Added screenshot ${i + 1} without rendered annotations due to error`);
+                }
+            }
+            
+            console.log('📊 Final export data summary:', {
+                totalScreenshotsProcessed: annotatedScreenshots.length,
+                originalScreenshotCount: this.screenshots.length,
+                totalAnnotations: annotatedScreenshots.reduce((sum, s) => sum + (s.annotations?.length || 0), 0)
+            });
+            
+            if (annotatedScreenshots.length === 0) {
+                console.error('❌ No screenshots were successfully processed for PDF');
+                if (window.debugError) window.debugError('No screenshots successfully processed');
+                this.showStatus('Failed to process any screenshots for PDF export', 'error');
+                return;
+            }
+            
+            // Create export data
+            const exportData = {
+                screenshots: annotatedScreenshots,
+                exportDate: new Date().toISOString(),
+                totalScreenshots: annotatedScreenshots.length,
+                totalAnnotations: annotatedScreenshots.reduce((sum, s) => sum + (s.annotations?.length || 0), 0)
+            };
+            
+            console.log('📊 Export data prepared:', {
+                screenshots: exportData.screenshots.length,
+                totalAnnotations: exportData.totalAnnotations
+            });
+            
+            // CRITICAL: Check Chrome APIs before attempting window creation
+            if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.windows) {
+                console.error('❌ Chrome extension APIs not available for PDF export');
+                if (window.debugError) window.debugError('Chrome APIs not available for PDF export');
+                this.showStatus('Chrome extension APIs not available. Please ensure extension is properly loaded.', 'error');
+                throw new Error('Chrome extension APIs not available for PDF export window.');
+            }
+            
+            console.log('✅ Chrome APIs verified for PDF export');
+            
+            // Store export data temporarily - with size check
+            const exportId = 'pdf_export_' + Date.now();
+            const exportDataStr = JSON.stringify(exportData);
+            const exportDataSize = exportDataStr.length;
+            
+            console.log('💾 Export data size:', Math.round(exportDataSize / 1024 / 1024), 'MB');
+            
+            // Chrome storage has ~10MB limit - warn if approaching
+            if (exportDataSize > 8 * 1024 * 1024) { // 8MB warning threshold
+                console.warn('⚠️ Export data approaching Chrome storage limit');
+                if (window.debugError) window.debugError(`Large export data: ${Math.round(exportDataSize / 1024 / 1024)}MB`);
+                this.showStatus('Warning: Large dataset may cause export issues', 'error');
+                
+                // Offer user option to continue or cancel
+                if (!confirm('Large dataset detected. PDF export may fail due to Chrome storage limits. Continue anyway?')) {
+                    console.log('👤 User cancelled PDF export due to size warning');
+                    return;
+                }
+            }
+            
+            try {
+                console.log('💾 Saving export data to Chrome storage...');
+                await chrome.storage.local.set({ [exportId]: exportData });
+                console.log('✅ Export data saved to Chrome storage successfully');
+                if (window.debugLog) window.debugLog('✅ Export data saved to Chrome storage');
+            } catch (storageError) {
+                console.error('❌ Failed to save export data to Chrome storage:', storageError);
+                if (window.debugError) window.debugError(`Storage error: ${storageError.message}`);
+                this.showStatus(`Failed to save export data: ${storageError.message}`, 'error');
+                throw storageError;
+            }
+            
+            // Create export URL
+            const exportUrl = chrome.runtime.getURL('pdf-export.html') + 
+                '?exportId=' + encodeURIComponent(exportId);
+            
+            console.log('🔗 Export URL created:', exportUrl);
+            
+            // Open PDF export window
+            try {
+                console.log('🪟 Creating PDF export window...');
+                const windowInfo = await chrome.windows.create({
+                    url: exportUrl,
+                    type: 'popup',
+                    width: 1200,
+                    height: 800,
+                    focused: true
+                });
+                
+                console.log('✅ PDF export window created:', windowInfo.id);
+                if (window.debugLog) window.debugLog(`✅ PDF export window opened: ${windowInfo.id}`);
+                
+                // Monitor PDF export completion
+                this.monitorPdfExportCompletion(exportId, windowInfo.id);
+                
+                this.showStatus('📄 PDF journal export opened with annotations!', 'success');
+                console.log('✅ PDF export process initiated successfully');
+                
+            } catch (windowError) {
+                console.error('❌ Failed to create PDF export window:', windowError);
+                if (window.debugError) window.debugError(`Window creation error: ${windowError.message}`);
+                this.showStatus(`Failed to open PDF export window: ${windowError.message}`, 'error');
+                
+                // Clean up storage data since window failed
+                try {
+                    await chrome.storage.local.remove(exportId);
+                    console.log('🧹 Cleaned up export data after window creation failure');
+                } catch (cleanupError) {
+                    console.error('❌ Failed to clean up after window error:', cleanupError);
+                }
+                
+                throw windowError;
+            }
+            
+        } catch (error) {
+            console.error('❌ PDF export error:', error);
+            console.error('❌ Error stack:', error.stack);
+            if (window.debugError) {
+                window.debugError(`PDF export failed: ${error.message}`);
+                window.debugError('🔄 Debug continuity maintained despite error');
+            }
+            this.showStatus(`Failed to export PDF journal: ${error.message}`, 'error');
         }
-      }
-      
-      console.log('📊 Final export data summary:', {
-        totalScreenshotsProcessed: annotatedScreenshots.length,
-        originalScreenshotCount: this.screenshots.length,
-        totalAnnotations: annotatedScreenshots.reduce((sum, s) => sum + (s.annotations?.length || 0), 0)
-      });
-      
-      if (annotatedScreenshots.length === 0) {
-        console.error('❌ No screenshots were successfully processed for PDF');
-        this.showStatus('Failed to process any screenshots for PDF export', 'error');
-        return;
-      }
-      
-      // Create PDF export window with annotated screenshots
-      const exportData = {
-        screenshots: annotatedScreenshots, // Use annotated versions
-        exportDate: new Date().toISOString(),
-        totalScreenshots: annotatedScreenshots.length,
-        totalAnnotations: annotatedScreenshots.reduce((sum, s) => sum + (s.annotations?.length || 0), 0)
-      };
-      
-      console.log('📊 Export data prepared:', {
-        screenshots: exportData.screenshots.length,
-        totalAnnotations: exportData.totalAnnotations
-      });
-      
-      // Check if Chrome APIs are available for window creation
-      if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.windows) {
-        throw new Error('Chrome extension APIs not available for PDF export window.');
-      }
-      
-      // Store data in chrome storage temporarily
-      const exportId = 'pdf_export_' + Date.now();
-      await chrome.storage.local.set({ [exportId]: exportData });
-      
-      const exportUrl = chrome.runtime.getURL('pdf-export.html') + 
-        '?exportId=' + encodeURIComponent(exportId);
-      
-      console.log('🔗 Export URL created:', exportUrl);
-      
-      // Open PDF export in new window
-      const windowInfo = await chrome.windows.create({
-        url: exportUrl,
-        type: 'popup',
-        width: 1200,
-        height: 800,
-        focused: true
-      });
-      
-      console.log('🪟 Export window created:', windowInfo.id);
-      
-      // Monitor PDF export completion
-      this.monitorPdfExportCompletion(exportId, windowInfo.id);
-      
-      this.showStatus('📄 PDF journal export opened with annotations!', 'success');
-      console.log('✅ PDF export window opened successfully');
-      
-    } catch (error) {
-      console.error('❌ PDF export error:', error);
-      this.showStatus(`Failed to export PDF journal: ${error.message}`, 'error');
+        
+        console.log('📄 === PDF EXPORT DEBUG END ===');
     }
-  }
   
   async monitorPdfExportCompletion(exportId, windowId) {
     console.log('👀 Monitoring PDF export completion...');
