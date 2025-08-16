@@ -230,6 +230,11 @@ class PDFJournalExporter {
         pdf.setFont('helvetica', 'normal');
         pdf.text('Annotated Screenshot Documentation', centerX, 80, { align: 'center' });
         
+        // Enhancement note
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'italic');
+        pdf.text('Images include annotations with pinpoints and labels', centerX, 95, { align: 'center' });
+        
         // Date and stats
         pdf.setFontSize(12);
         const exportDate = new Date().toLocaleDateString('en-US', {
