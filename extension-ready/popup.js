@@ -225,34 +225,37 @@ class ScreenshotAnnotator {
     try {
       console.log('🚨 EMERGENCY STORAGE CLEANUP...');
       
-      // Keep only the 1 most recent screenshot to maximize free space
+      // Keep only the 3 most recent screenshots (less aggressive)
       this.screenshots.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-      const removedCount = this.screenshots.length - 1;
-      this.screenshots = this.screenshots.slice(0, 1);
+      const removedCount = Math.max(0, this.screenshots.length - 3);
+      this.screenshots = this.screenshots.slice(0, 3);
       
       console.log(`🚨 Emergency cleanup: Removed ${removedCount} screenshots, kept ${this.screenshots.length}`);
       
-      // Clear ALL other data from storage except the most recent screenshot
+      // Clear temporary data from storage
       const storage = await chrome.storage.local.get();
       const keysToRemove = [];
       for (const key in storage) {
-        if (key !== 'screenshots') {
+        if (key.startsWith('pdf_export_') || key.startsWith('temp_')) {
           keysToRemove.push(key);
         }
       }
       
       if (keysToRemove.length > 0) {
         await chrome.storage.local.remove(keysToRemove);
-        console.log(`🚨 Emergency: Cleared ${keysToRemove.length} storage items`);
+        console.log(`🚨 Emergency: Cleared ${keysToRemove.length} temporary storage items`);
       }
       
-      // Update selected screenshot
-      this.selectedScreenshot = this.screenshots[0] || null;
+      // Update selected screenshot if it was removed
+      if (this.selectedScreenshot && !this.screenshots.find(s => s.id === this.selectedScreenshot.id)) {
+        this.selectedScreenshot = this.screenshots[0] || null;
+      }
       
       // Force memory cleanup
       this.memoryUsage = 0;
+      this.calculateMemoryUsage();
       
-      console.log('🚨 Emergency cleanup completed - maximum space freed');
+      console.log('🚨 Emergency cleanup completed - kept 3 most recent screenshots');
       
     } catch (error) {
       console.error('Error during emergency cleanup:', error);
