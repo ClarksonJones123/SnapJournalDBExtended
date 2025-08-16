@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Annotation Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .error { color: red; font-weight: bold; }
+        .success { color: green; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Annotation.js Syntax Test</h1>
+    <div id="status">Testing...</div>
+    
+    <script>
+        console.log('Testing annotation.js syntax...');
+        
+        try {
+            // Try to load annotation.js
+            const script = document.createElement('script');
+            script.src = 'annotation.js';
+            script.onerror = function() {
+                document.getElementById('status').innerHTML = '<div class="error">❌ Error loading annotation.js</div>';
+                console.error('Failed to load annotation.js');
+            };
+            script.onload = function() {
+                document.getElementById('status').innerHTML = '<div class="success">✅ annotation.js loaded successfully - no syntax errors</div>';
+                console.log('✅ annotation.js loaded successfully');
+            };
+            document.head.appendChild(script);
+        } catch (error) {
+            document.getElementById('status').innerHTML = '<div class="error">❌ JavaScript error: ' + error.message + '</div>';
+            console.error('JavaScript error:', error);
+        }
+    </script>
+</body>
+</html>
