@@ -243,7 +243,7 @@ frontend:
         - agent: "main"
         - comment: "FIXED: Completely redesigned coordinate system to use display-relative coordinates instead of complex scaling system. This should resolve red dot coordinate precision issues."
 
-  - task: "Automatic memory cleanup on PDF export completion"
+  - task: "PDF journal formatting with no borders"
     implemented: true
     working: "NA"
     file: "/app/extension-ready/pdf-export.js"
@@ -253,7 +253,7 @@ frontend:
     status_history:
         - working: "implemented"
         - agent: "main"
-        - comment: "ADDED: PDF export now triggers automatic memory cleanup when export is completed. Added monitoring system and cleanup messaging."
+        - comment: "IMPLEMENTED: Completely redesigned PDF export to have no borders, no margins, no headers, no text formatting. PDF pages are now custom-sized to fit images perfectly with 0mm margins. Removed title page and all formatting - pure image journal."
 
 metadata:
   created_by: "testing_agent"
