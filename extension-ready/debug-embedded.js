@@ -1,8 +1,39 @@
-// EMBEDDED DEBUG SYSTEM - RUNS AUTOMATICALLY WITH PERSISTENCE
+// EMBEDDED DEBUG SYSTEM - PERSISTENT ACROSS ALL OPERATIONS
 let debugOutput = [];
 let debugVisible = true;
+let debugInitialized = false;
 const STORAGE_KEY = 'annotator_debug_history';
-const MAX_HISTORY_ENTRIES = 100;
+const MAX_HISTORY_ENTRIES = 200; // Increased for better continuity
+
+// Immediately load debug history before any other operations
+function initializeDebugSystem() {
+    if (debugInitialized) return; // Prevent multiple initializations
+    debugInitialized = true;
+    
+    try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+            const history = JSON.parse(stored);
+            const timeSinceLastEntry = Date.now() - history.timestamp;
+            
+            // Keep debug history for 4 hours (much longer)
+            if (timeSinceLastEntry < 14400000) {
+                debugOutput = [...(history.entries || [])];
+                console.log('🔄 Debug history restored:', debugOutput.length, 'entries');
+                return true;
+            }
+        }
+    } catch (error) {
+        console.warn('Debug history load failed:', error);
+    }
+    
+    // Only start fresh if no valid history found
+    debugOutput = [];
+    return false;
+}
+
+// Initialize immediately
+initializeDebugSystem();
 
 function debugLog(message, data = null) {
     const timestamp = new Date().toLocaleTimeString();
