@@ -407,21 +407,66 @@ class ScreenshotAnnotator {
     try {
       console.log('🧹 MANUAL STORAGE CLEAR - Removing all data...');
       
-      // Clear all screenshots
+      // Clear all screenshots and temp storage
       this.screenshots = [];
       this.selectedScreenshot = null;
       this.memoryUsage = 0;
       
-      // Clear all storage
+      // Clear Chrome storage
       await chrome.storage.local.clear();
-      console.log('✅ All storage cleared');
+      console.log('✅ Chrome storage cleared');
+      
+      // Clear temporary storage if available
+      if (this.tempStorage && this.tempStorage.db) {
+        await this.tempStorage.clearAll();
+        console.log('✅ Temporary storage cleared');
+      }
       
       // Update UI
       this.updateUI();
-      this.showStatus('All storage cleared - ready for PDF export', 'success');
+      this.showStatus('All storage cleared - ready for fresh start', 'success');
       
     } catch (error) {
       console.error('❌ Error clearing storage:', error);
+    }
+  }
+
+  // 🔧 FIX CORRUPTED SCREENSHOTS - Call from console
+  async fixCorruptedScreenshots() {
+    try {
+      console.log('🔧 Fixing corrupted screenshots...');
+      
+      const result = await chrome.storage.local.get('screenshots');
+      const screenshots = result.screenshots || [];
+      
+      console.log(`🔧 Found ${screenshots.length} screenshots to check`);
+      
+      // Remove screenshots without imageData and not in temp storage
+      const validScreenshots = screenshots.filter(screenshot => {
+        if (screenshot.imageData) {
+          return true; // Has image data - keep it
+        }
+        
+        if (screenshot.isInTempStorage && screenshot.tempImageId) {
+          return true; // In temp storage - keep it
+        }
+        
+        console.log(`🗑️ Removing corrupted screenshot: ${screenshot.id} (${screenshot.title})`);
+        return false; // No image data and not in temp storage - remove it
+      });
+      
+      console.log(`🔧 Keeping ${validScreenshots.length} valid screenshots`);
+      
+      // Save cleaned screenshots
+      await chrome.storage.local.set({ screenshots: validScreenshots });
+      
+      // Reload in UI
+      await this.loadScreenshots();
+      
+      this.showStatus(`Fixed: Removed ${screenshots.length - validScreenshots.length} corrupted screenshots`, 'success');
+      
+    } catch (error) {
+      console.error('❌ Error fixing corrupted screenshots:', error);
     }
   }
 
