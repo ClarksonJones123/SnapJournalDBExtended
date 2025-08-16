@@ -555,6 +555,21 @@ class UniversalAnnotator {
                         elementId: annotation.id,
                         text: annotation.text
                     });
+                    
+                    // 🔍 DEBUG: Record final red dot position
+                    if (annotation.debug) {
+                        annotation.debug.coordinateHistory.push({
+                            event: 'RED_DOT_FINAL_POSITION',
+                            displayCoords: { x: annotation.x, y: annotation.y },
+                            timestamp: new Date().toISOString()
+                        });
+                        
+                        annotation.debug.finalRedDotPosition = { 
+                            x: annotation.x, 
+                            y: annotation.y,
+                            timestamp: new Date().toISOString()
+                        };
+                    }
                 }
                 
                 this.saveAnnotationsToStorage();
