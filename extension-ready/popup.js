@@ -198,6 +198,29 @@ class ScreenshotAnnotator {
     }
   }
 
+  // 🧹 MANUAL STORAGE CLEAR METHOD - Call from console
+  async manualStorageClear() {
+    try {
+      console.log('🧹 MANUAL STORAGE CLEAR - Removing all data...');
+      
+      // Clear all screenshots
+      this.screenshots = [];
+      this.selectedScreenshot = null;
+      this.memoryUsage = 0;
+      
+      // Clear all storage
+      await chrome.storage.local.clear();
+      console.log('✅ All storage cleared');
+      
+      // Update UI
+      this.updateUI();
+      this.showStatus('All storage cleared - ready for PDF export', 'success');
+      
+    } catch (error) {
+      console.error('❌ Error clearing storage:', error);
+    }
+  }
+
   async emergencyStorageCleanup() {
     try {
       console.log('🚨 EMERGENCY STORAGE CLEANUP...');
