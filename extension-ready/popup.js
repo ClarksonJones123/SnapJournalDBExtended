@@ -599,14 +599,15 @@ class ScreenshotAnnotator {
           annotations: []
         };
         
-        console.log('📸 Screenshot object created:', {
+        console.log('✅ Screenshot object created:', {
           id: screenshot.id,
           originalWidth: screenshot.originalWidth,
           originalHeight: screenshot.originalHeight,
           displayWidth: screenshot.displayWidth,
           displayHeight: screenshot.displayHeight,
           imageDataSize: screenshot.imageData.length,
-          title: screenshot.title.substring(0, 50) + '...'
+          title: screenshot.title.substring(0, 50) + '...',
+          actualImageDimensions: actualDimensions
         });
         
         console.log('Created screenshot object:', screenshot.id);
