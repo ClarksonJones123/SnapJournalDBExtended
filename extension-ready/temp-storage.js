@@ -256,12 +256,13 @@ class TempStorageManager {
             
             const createdStores = [...this.db.objectStoreNames];
             console.log('✅ Database successfully recreated with automatic repair');
-            console.log('📊 New database details:', {
+            console.log('📊 New database details:');
+            console.log(JSON.stringify({
               name: this.dbName,
               version: this.db.version,
               stores: createdStores,
               isReady: this.isReady
-            });
+            }, null, 2));
             
             // Verify all required stores are present
             const requiredStores = ['screenshots', 'sessions', 'tempImages', 'pdfExports'];
