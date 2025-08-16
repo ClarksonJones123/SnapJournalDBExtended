@@ -686,16 +686,31 @@ class UniversalAnnotator {
             
             console.log('💾 ANNOTATIONS CONVERTED USING NATURAL DIMENSIONS:', annotationsForStorage);
             
-            // Save to Chrome storage
-            const result = await chrome.storage.local.get('screenshots');
-            const screenshots = result.screenshots || [];
-            const index = screenshots.findIndex(s => s.id === this.screenshot.id);
-            
-            if (index !== -1) {
-                screenshots[index].annotations = annotationsForStorage;
-                await chrome.storage.local.set({ screenshots: screenshots });
-                console.log('✅ Annotations saved with corrected coordinate system');
-                console.log('💾 === SAVE COMPLETE ===');
+            // Save to Chrome storage with error handling
+            try {
+                if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                    const result = await chrome.storage.local.get('screenshots');
+                    const screenshots = result.screenshots || [];
+                    const index = screenshots.findIndex(s => s.id === this.screenshot.id);
+                    
+                    if (index !== -1) {
+                        screenshots[index].annotations = annotationsForStorage;
+                        await chrome.storage.local.set({ screenshots: screenshots });
+                        console.log('✅ Annotations saved with corrected coordinate system');
+                        console.log('💾 === SAVE COMPLETE ===');
+                        
+                        this.updateStatus('✅ Annotations saved successfully!');
+                    } else {
+                        console.warn('⚠️ Screenshot not found in storage for annotation save');
+                        this.updateStatus('⚠️ Screenshot not found - annotations may not persist');
+                    }
+                } else {
+                    console.warn('⚠️ Chrome storage API not available - annotations saved locally only');
+                    this.updateStatus('⚠️ Annotations saved locally (storage API unavailable)');
+                }
+            } catch (storageError) {
+                console.error('❌ Error saving to Chrome storage:', storageError);
+                this.updateStatus('⚠️ Failed to save to storage - annotations saved locally');
             }
         } catch (error) {
             console.error('❌ Error saving annotations:', error);
