@@ -439,15 +439,9 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Extension popup interface loading and initialization"
-    - "Storage quota management system"
-    - "Screenshot capture functionality"
-    - "Screenshot list display and management"
-    - "Image compression aspect ratio preservation"
-    - "Simplified coordinate system for annotation precision"
-    - "Automatic memory cleanup on PDF export completion"
-    - "Remove annotation numbering system"
-    - "PDF journal formatting with no borders"
+    - "IndexedDB diagnostic tool functionality"
+    - "Chrome extension PDF export functionality"
+    - "IndexedDB pdfExports object store creation and management"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
