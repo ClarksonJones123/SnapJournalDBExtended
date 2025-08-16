@@ -119,6 +119,13 @@ class TempStorageManager {
     // 📁 Retrieve image data from IndexedDB
     async retrieveImage(id) {
         try {
+            if (!this.db) {
+                console.error('❌ Database not initialized for retrieveImage');
+                return null;
+            }
+            
+            console.log(`🗄️ Retrieving image ${id} from temporary storage...`);
+            
             const transaction = this.db.transaction(['images'], 'readonly');
             const store = transaction.objectStore('images');
             const result = await this.promisifyRequest(store.get(id));
