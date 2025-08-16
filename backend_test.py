@@ -32,7 +32,7 @@ def get_backend_url():
                     return f"{base_url}/api"
     except Exception as e:
         print(f"Error reading frontend .env: {e}")
-    return "https://medannotate.preview.emergentagent.com/api"
+    return "https://autofix-annotate.preview.emergentagent.com/api"
 
 BACKEND_URL = get_backend_url()
 
