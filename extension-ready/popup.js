@@ -179,71 +179,35 @@ class ScreenshotAnnotator {
   
   async saveScreenshots() {
     try {
-      console.log('💾 === SAVE SCREENSHOTS START ===');
+      console.log('💾 === SAVE SCREENSHOTS START (PRIMARY STORAGE) ===');
       console.log('💾 Screenshots to save:', this.screenshots.length);
       console.log('💾 Screenshot IDs:', this.screenshots.map(s => s.id));
       
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        console.log('💾 Chrome storage available, proceeding with save...');
-        
-        // Check storage quota before saving
-        console.log('📊 Checking storage quota...');
-        const storageCheck = await this.checkStorageQuota();
-        console.log('📊 Storage status:', storageCheck);
-        
-        if (storageCheck.quotaExceeded) {
-          console.log('🚨 Storage quota exceeded, running emergency cleanup...');
-          await this.emergencyStorageCleanup();
-        }
-        
-        // Try to save, if it fails due to quota, migrate to temp storage
-        try {
-          console.log('💾 Attempting to save to Chrome storage...');
-          await chrome.storage.local.set({ screenshots: this.screenshots });
-          console.log(`✅ Successfully saved ${this.screenshots.length} screenshots to Chrome storage`);
-          
-          // Verify the save by reading back
-          console.log('🔍 Verifying save by reading back...');
-          const verification = await chrome.storage.local.get('screenshots');
-          const savedCount = verification.screenshots ? verification.screenshots.length : 0;
-          console.log('✅ Verification: Found', savedCount, 'screenshots in storage');
-          
-          if (savedCount !== this.screenshots.length) {
-            console.warn('⚠️ Storage verification mismatch!', {
-              expected: this.screenshots.length,
-              actual: savedCount
-            });
-          }
-          
-        } catch (storageError) {
-          console.error('❌ Storage error details:', storageError);
-          
-          if (storageError.message.includes('quota') || storageError.message.includes('QUOTA')) {
-            console.log('🚨 Storage quota exceeded during save, migrating large images...');
-            await this.forceTemporaryStorageMigration();
-            
-            // Try saving again after migration
-            try {
-              console.log('💾 Retrying save after migration...');
-              await chrome.storage.local.set({ screenshots: this.screenshots });
-              console.log(`✅ Saved ${this.screenshots.length} screenshots after migration`);
-            } catch (secondError) {
-              console.error('❌ Failed to save even after migration:', secondError);
-              await this.extremeEmergencyCleanup();
-            }
-          } else {
-            throw storageError;
-          }
-        }
-        
-      } else {
-        console.warn('⚠️ Chrome storage not available for saving - screenshots stored in memory only');
+      if (!this.tempStorage || !this.tempStorage.isReady) {
+        console.error('❌ PRIMARY storage not available');
+        throw new Error('Primary storage not initialized');
       }
       
+      console.log('💾 Saving to PRIMARY STORAGE (IndexedDB unlimited)...');
+      
+      // Save each screenshot to IndexedDB
+      for (let i = 0; i < this.screenshots.length; i++) {
+        const screenshot = this.screenshots[i];
+        
+        try {
+          console.log(`💾 Saving screenshot ${i + 1}/${this.screenshots.length}: ${screenshot.id}`);
+          await this.tempStorage.saveScreenshot(screenshot);
+        } catch (saveError) {
+          console.error(`❌ Failed to save screenshot ${i + 1}:`, saveError);
+          // Continue with other screenshots
+        }
+      }
+      
+      console.log(`✅ Successfully saved ${this.screenshots.length} screenshots to PRIMARY storage`);
       console.log('💾 === SAVE SCREENSHOTS END ===');
       
     } catch (error) {
-      console.error('❌ Error saving screenshots:', error);
+      console.error('❌ Error saving screenshots to PRIMARY storage:', error);
       console.error('❌ Save error stack:', error.stack);
     }
   }
