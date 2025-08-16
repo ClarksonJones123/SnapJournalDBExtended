@@ -964,6 +964,41 @@ class ScreenshotAnnotator {
       console.log('📊 Export starting with screenshots:', this.screenshots.length);
       this.showStatus('Generating PDF journal with annotations...', 'info');
       
+      // 📁 First, restore all images from temporary storage if needed
+      console.log('📁 Restoring images from temporary storage for PDF export...');
+      
+      for (let i = 0; i < this.screenshots.length; i++) {
+        const screenshot = this.screenshots[i];
+        
+        if (screenshot.isInTempStorage && this.tempStorage) {
+          console.log(`📁 Restoring screenshot ${i + 1}/${this.screenshots.length} from temp storage...`);
+          
+          try {
+            const restoredScreenshot = await this.tempStorage.restoreFullScreenshot(screenshot);
+            if (restoredScreenshot && restoredScreenshot.imageData) {
+              this.screenshots[i] = restoredScreenshot;
+              console.log(`✅ Restored screenshot ${i + 1} for PDF export`);
+            } else {
+              console.warn(`⚠️ Failed to restore screenshot ${i + 1}, will skip in PDF`);
+            }
+          } catch (error) {
+            console.error(`❌ Error restoring screenshot ${i + 1}:`, error);
+          }
+        }
+        
+        this.showStatus(`Restoring images: ${i + 1}/${this.screenshots.length}`, 'info');
+      }
+      
+      // Filter out screenshots that don't have image data
+      const validScreenshots = this.screenshots.filter(s => s.imageData);
+      console.log(`📊 Valid screenshots for PDF: ${validScreenshots.length}/${this.screenshots.length}`);
+      
+      if (validScreenshots.length === 0) {
+        console.error('❌ No valid screenshots for PDF export');
+        this.showStatus('No images available for PDF export', 'error');
+        return;
+      }
+      
       // 🧹 MINIMAL CLEANUP: Only clear temporary data, keep all screenshots
       console.log('🧹 Pre-export cleanup of temporary data only...');
       
@@ -986,13 +1021,13 @@ class ScreenshotAnnotator {
         window.gc();
       }
       
-      // Create annotated versions of ALL screenshots for PDF
+      // Create annotated versions of ALL valid screenshots for PDF
       const annotatedScreenshots = [];
-      console.log(`🎨 Processing ${this.screenshots.length} screenshots for PDF...`);
+      console.log(`🎨 Processing ${validScreenshots.length} valid screenshots for PDF...`);
       
-      for (let i = 0; i < this.screenshots.length; i++) {
-        const screenshot = this.screenshots[i];
-        console.log(`🎨 Processing screenshot ${i + 1}/${this.screenshots.length}: ${screenshot.title}`);
+      for (let i = 0; i < validScreenshots.length; i++) {
+        const screenshot = validScreenshots[i];
+        console.log(`🎨 Processing screenshot ${i + 1}/${validScreenshots.length}: ${screenshot.title}`);
         
         try {
           // Create annotated version without modifying original
@@ -1007,7 +1042,7 @@ class ScreenshotAnnotator {
           console.log(`✅ Successfully processed screenshot ${i + 1}: ${screenshot.title}`);
           
           // Show progress
-          this.showStatus(`Processing images for PDF: ${i + 1}/${this.screenshots.length}`, 'info');
+          this.showStatus(`Processing images for PDF: ${i + 1}/${validScreenshots.length}`, 'info');
           
         } catch (imageError) {
           console.error(`❌ Error processing screenshot ${i + 1}:`, imageError);
