@@ -543,7 +543,7 @@ class ScreenshotAnnotator {
             ctx.textAlign = 'left';
             ctx.textBaseline = 'top';
             const textMetrics = ctx.measureText(annotation.text);
-            const textWidth = textMetrics.width + (24 * scaleX);
+            const textWidth = textMetrics.width + 24;
             const textHeight = fontSize * 1.6;
             
             // Ensure text stays within canvas bounds
@@ -552,29 +552,29 @@ class ScreenshotAnnotator {
             
             // Background with shadow
             ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-            ctx.fillRect(finalTextX - (8 * scaleX), finalTextY - (4 * scaleY), textWidth, textHeight);
+            ctx.fillRect(finalTextX - 8, finalTextY - 4, textWidth, textHeight);
             
             // Main background
             ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-            ctx.fillRect(finalTextX - (12 * scaleX), finalTextY - (8 * scaleY), textWidth, textHeight);
+            ctx.fillRect(finalTextX - 12, finalTextY - 8, textWidth, textHeight);
             
             // Border
             ctx.strokeStyle = '#ff4444';
             ctx.lineWidth = lineWidth;
-            ctx.strokeRect(finalTextX - (12 * scaleX), finalTextY - (8 * scaleY), textWidth, textHeight);
+            ctx.strokeRect(finalTextX - 12, finalTextY - 8, textWidth, textHeight);
             
             // Text
             ctx.fillStyle = '#333333';
             ctx.fillText(annotation.text, finalTextX, finalTextY);
           });
           
-          // Return high-quality annotated image for PDF
+          // Return original quality annotated image
           const annotatedImage = canvas.toDataURL('image/png', 1.0);
-          console.log('✅ High-quality annotated image created for PDF with ACTUAL dimensions');
+          console.log('✅ Original quality annotated image created (100%)');
           resolve(annotatedImage);
         };
         
-        img.src = highQualityImageData;
+        img.src = screenshot.imageData; // Use original image data directly
       });
       
     } catch (error) {
