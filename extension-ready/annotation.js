@@ -656,6 +656,23 @@ class UniversalAnnotator {
             
             console.log('💾 FINAL ANNOTATIONS FOR STORAGE:', annotationsWithStoredCoords);
             
+            // 🔍 DEBUG: Print complete coordinate tracking for each annotation
+            annotationsWithStoredCoords.forEach((annotation, index) => {
+                console.log(`🔍 === COMPLETE DEBUG REPORT FOR ANNOTATION ${index + 1} ===`);
+                console.log('📝 Text:', annotation.text);
+                console.log('🎯 Final Stored Coordinates:', `(${annotation.x.toFixed(1)}, ${annotation.y.toFixed(1)})`);
+                if (annotation.debug) {
+                    console.log('📊 Debug Information Available:', {
+                        originalClick: annotation.debug.originalClick,
+                        finalRedDotPosition: annotation.debug.finalRedDotPosition,
+                        finalStoredCoordinates: annotation.debug.finalStoredCoordinates,
+                        coordinateHistoryLength: annotation.debug.coordinateHistory.length
+                    });
+                    console.log('📈 Complete Coordinate History:', annotation.debug.coordinateHistory);
+                }
+                console.log(`🔍 === END DEBUG REPORT FOR ANNOTATION ${index + 1} ===`);
+            });
+            
             // Save to Chrome storage
             const result = await chrome.storage.local.get('screenshots');
             const screenshots = result.screenshots || [];
