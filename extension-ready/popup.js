@@ -715,6 +715,12 @@ class ScreenshotAnnotator {
   
   async captureScreenshot() {
     try {
+      // Log to persistent debug system
+      if (window.debugLog) {
+        window.debugLog('📸 Screenshot capture initiated');
+        window.debugLog('🔄 Debug continuity maintained across capture operation');
+      }
+      
       this.showStatus('Capturing screenshot...', 'info');
       console.log('🔄 Starting screenshot capture...');
       
@@ -722,10 +728,12 @@ class ScreenshotAnnotator {
       if (typeof chrome === 'undefined' || !chrome.tabs || !chrome.runtime) {
         const errorMsg = 'Chrome extension APIs not available. Please install as Chrome extension.';
         console.error('❌', errorMsg);
+        if (window.debugError) window.debugError('Chrome APIs not available for capture');
         this.showStatus(errorMsg, 'error');
         throw new Error(errorMsg);
       }
       
+      if (window.debugLog) window.debugLog('✅ Chrome APIs confirmed available for capture');
       console.log('✅ Chrome APIs available');
       
       // Get current tab info
@@ -735,8 +743,14 @@ class ScreenshotAnnotator {
       if (!tab) {
         const errorMsg = 'No active tab found';
         console.error('❌', errorMsg);
+        if (window.debugError) window.debugError('No active tab found');
         this.showStatus(errorMsg, 'error');
         throw new Error(errorMsg);
+      }
+      
+      if (window.debugLog) {
+        window.debugLog(`📱 Capturing from tab: ${tab.title}`);
+        window.debugLog(`🌐 Tab URL: ${new URL(tab.url).hostname}`);
       }
       
       console.log('✅ Current tab found:', {
@@ -747,6 +761,7 @@ class ScreenshotAnnotator {
       
       // Capture screenshot via background script
       console.log('📸 Sending capture message to background script...');
+      if (window.debugLog) window.debugLog('📸 Requesting screenshot from background script');
       
       const response = await new Promise((resolve) => {
         chrome.runtime.sendMessage({ 
@@ -754,6 +769,7 @@ class ScreenshotAnnotator {
         }, (response) => {
           if (chrome.runtime.lastError) {
             console.error('❌ Runtime error:', chrome.runtime.lastError);
+            if (window.debugError) window.debugError(`Runtime error: ${chrome.runtime.lastError.message}`);
             resolve({ error: chrome.runtime.lastError.message });
           } else {
             console.log('✅ Background script response received:', {
@@ -762,6 +778,9 @@ class ScreenshotAnnotator {
               imageDataSize: response?.imageData?.length,
               error: response?.error
             });
+            if (window.debugLog && response?.success) {
+              window.debugLog(`✅ Screenshot captured successfully (${response.imageData?.length} chars)`);
+            }
             resolve(response);
           }
         });
@@ -779,6 +798,7 @@ class ScreenshotAnnotator {
       if (!response) {
         const errorMsg = 'No response from background script';
         console.error('❌', errorMsg);
+        if (window.debugError) window.debugError('No response from background script');
         this.showStatus(errorMsg, 'error');
         throw new Error(errorMsg);
       }
@@ -786,6 +806,7 @@ class ScreenshotAnnotator {
       if (response.error) {
         const errorMsg = `Capture failed: ${response.error}`;
         console.error('❌', errorMsg);
+        if (window.debugError) window.debugError(errorMsg);
         this.showStatus(errorMsg, 'error');
         throw new Error(errorMsg);
       }
@@ -793,12 +814,14 @@ class ScreenshotAnnotator {
       if (!response.success || !response.imageData) {
         const errorMsg = 'Invalid response from background script';
         console.error('❌', errorMsg, { response });
+        if (window.debugError) window.debugError(`Invalid response: ${JSON.stringify(response)}`);
         this.showStatus(errorMsg, 'error');
         throw new Error(errorMsg);
       }
       
       console.log('✅ Screenshot data received successfully');
       console.log('📏 Image data size:', response.imageData.length, 'characters');
+      if (window.debugLog) window.debugLog(`✅ Screenshot data validated (${Math.round(response.imageData.length/1024)}KB)`);
       
       // Create screenshot object with detailed timestamp
       const now = new Date();
@@ -808,6 +831,7 @@ class ScreenshotAnnotator {
       // Get original dimensions
       const originalDimensions = await this.getImageDimensions(response.imageData);
       console.log('✅ Original capture dimensions (100% quality):', originalDimensions);
+      if (window.debugLog) window.debugLog(`📐 Screenshot dimensions: ${originalDimensions.width}x${originalDimensions.height}`);
       
       const screenshot = {
         id: Date.now().toString(),
@@ -845,6 +869,11 @@ class ScreenshotAnnotator {
         tabId: screenshot.tabId
       });
       
+      if (window.debugLog) {
+        window.debugLog(`📊 Screenshot #${screenshot.id} created: "${screenshot.title.substring(0, 30)}..."`);
+        window.debugLog('💾 Saving to unlimited IndexedDB storage');
+      }
+      
       console.log('💾 Adding screenshot to array (current count:', this.screenshots.length, ')');
       this.screenshots.push(screenshot);
       
@@ -865,6 +894,12 @@ class ScreenshotAnnotator {
       this.updateUI();
       
       this.showStatus('Screenshot captured! Starting annotation mode...', 'success');
+      if (window.debugLog) {
+        window.debugLog('✅ Screenshot capture completed successfully');
+        window.debugLog(`📊 Total screenshots: ${this.screenshots.length}`);
+        window.debugLog('🎯 Debug continuity maintained - ready for annotation');
+      }
+      
       console.log('✅ Screenshot capture completed successfully');
       console.log('📊 Total screenshots now:', this.screenshots.length);
       
@@ -877,6 +912,10 @@ class ScreenshotAnnotator {
     } catch (error) {
       console.error('❌ Capture error details:', error);
       console.error('❌ Error stack:', error.stack);
+      if (window.debugError) {
+        window.debugError(`Capture failed: ${error.message}`);
+        window.debugError('🔄 Debug continuity maintained despite error');
+      }
       this.showStatus(`Failed to capture: ${error.message}`, 'error');
     }
   }
