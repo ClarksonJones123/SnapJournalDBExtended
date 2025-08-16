@@ -1094,6 +1094,10 @@ class ScreenshotAnnotator {
           this.selectedScreenshot = this.screenshots.find(s => s.id === screenshotId);
           console.log('📸 Selected screenshot:', this.selectedScreenshot?.id);
           
+          // 🧹 AUTOMATIC MEMORY CLEARING: When screenshot is selected for journal
+          console.log('🧹 Screenshot selected for journal - performing targeted cleanup...');
+          this.cleanupUnselectedScreenshots(screenshotId);
+          
           // Enable annotation button
           const annotateBtn = document.getElementById('annotateBtn');
           if (annotateBtn) {
