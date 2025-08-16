@@ -1643,7 +1643,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const annotator = new ScreenshotAnnotator();
   window.screenshotAnnotator = annotator;
   
-  // Expose manual cleanup methods for console access
+  // Expose enhanced memory management methods for console access
   window.clearExtensionStorage = () => {
     annotator.manualStorageClear();
   };
@@ -1656,10 +1656,39 @@ document.addEventListener('DOMContentLoaded', () => {
     annotator.fixCorruptedScreenshots();
   };
   
-  console.log('💡 Storage management commands available:');
-  console.log('  clearExtensionStorage() - Clear all data');
-  console.log('  extremeCleanup() - Keep only 1 screenshot');
-  console.log('  fixCorruptedScreenshots() - Remove corrupted screenshots');
+  // NEW: Enhanced memory optimization commands
+  window.optimizeMemory = () => {
+    annotator.aggressiveMemoryOptimization();
+  };
+  
+  window.clearImageCache = () => {
+    annotator.clearCachedImageElements();
+  };
+  
+  window.memoryStatus = async () => {
+    if (annotator.tempStorage) {
+      const stats = await annotator.tempStorage.getStorageStats();
+      console.log('📊 CURRENT MEMORY STATUS:');
+      console.log(`  📸 Screenshots: ${stats.totalScreenshots}`);
+      console.log(`  💾 Total Size: ${stats.totalSizeMB}MB`);
+      console.log(`  📈 Usage vs Chrome Limit: ${stats.currentUsage}`);
+      console.log(`  🚀 Storage Type: ${stats.capacity}`);
+      
+      if (stats.totalSizeMB > 100) {
+        console.log('💡 RECOMMENDATION: Run optimizeMemory() to free up space');
+      }
+      
+      return stats;
+    }
+  };
+  
+  console.log('💡 ENHANCED Storage management commands available:');
+  console.log('  📊 memoryStatus() - Show detailed memory breakdown');
+  console.log('  🧠 optimizeMemory() - Aggressive memory optimization');
+  console.log('  🗑️ clearImageCache() - Clear DOM image cache');
+  console.log('  🧹 clearExtensionStorage() - Clear all data');
+  console.log('  ⚡ extremeCleanup() - Keep only 1 screenshot');
+  console.log('  🔧 fixCorruptedScreenshots() - Remove corrupted screenshots');
 });
 
 // Refresh UI when popup becomes visible
