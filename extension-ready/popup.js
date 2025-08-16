@@ -456,18 +456,32 @@ class ScreenshotAnnotator {
     }
   }
 
-  // 🔧 FIX CORRUPTED SCREENSHOTS - Call from console
-  async fixCorruptedScreenshots() {
+  // 🧹 AUTOMATIC STORAGE CLEANUP - Runs on startup and periodically
+  async automaticStorageCleanup() {
     try {
-      console.log('🔧 Fixing corrupted screenshots...');
+      console.log('🧹 === AUTOMATIC STORAGE CLEANUP START ===');
       
+      // Check storage quota first
+      const storageInfo = await this.checkStorageQuota();
+      console.log('📊 Storage status:', {
+        usage: `${storageInfo.usagePercent}%`,
+        quotaExceeded: storageInfo.quotaExceeded
+      });
+      
+      // Get current screenshots from storage
       const result = await chrome.storage.local.get('screenshots');
       const screenshots = result.screenshots || [];
       
-      console.log(`🔧 Found ${screenshots.length} screenshots to check`);
+      console.log(`🔍 Found ${screenshots.length} screenshots to analyze`);
       
-      // Remove screenshots without imageData and not in temp storage
-      const validScreenshots = screenshots.filter(screenshot => {
+      let cleanupActions = {
+        corruptedRemoved: 0,
+        tempStorageMigrated: 0,
+        oldScreenshotsRemoved: 0
+      };
+      
+      // Step 1: Remove corrupted screenshots (no imageData and no temp reference)
+      const validScreenshots = screenshots.filter((screenshot, index) => {
         if (screenshot.imageData) {
           return true; // Has image data - keep it
         }
@@ -476,23 +490,107 @@ class ScreenshotAnnotator {
           return true; // In temp storage - keep it
         }
         
-        console.log(`🗑️ Removing corrupted screenshot: ${screenshot.id} (${screenshot.title})`);
+        console.log(`🗑️ Removing corrupted screenshot ${index}: ${screenshot.id} (${screenshot.title || 'No title'})`);
+        cleanupActions.corruptedRemoved++;
         return false; // No image data and not in temp storage - remove it
       });
       
-      console.log(`🔧 Keeping ${validScreenshots.length} valid screenshots`);
+      // Step 2: If quota is exceeded, migrate large images to temp storage
+      if (storageInfo.quotaExceeded && this.tempStorage && this.tempStorage.db) {
+        console.log('📁 Quota exceeded - migrating large images to temp storage...');
+        
+        for (let i = 0; i < validScreenshots.length; i++) {
+          const screenshot = validScreenshots[i];
+          
+          if (screenshot.imageData && screenshot.imageData.length > 500000 && !screenshot.isInTempStorage) {
+            console.log(`📁 Migrating large screenshot ${screenshot.id} to temp storage...`);
+            
+            const tempId = `auto_cleanup_${screenshot.id}_${Date.now()}`;
+            const storeResult = await this.tempStorage.storeImage(tempId, screenshot.imageData, {
+              screenshotId: screenshot.id,
+              title: screenshot.title,
+              cleanupMigration: true
+            });
+            
+            if (storeResult.stored) {
+              validScreenshots[i] = this.tempStorage.createLightweightScreenshot(screenshot, tempId);
+              cleanupActions.tempStorageMigrated++;
+              console.log(`✅ Migrated screenshot ${screenshot.id} to temp storage`);
+            }
+          }
+        }
+      }
       
-      // Save cleaned screenshots
-      await chrome.storage.local.set({ screenshots: validScreenshots });
+      // Step 3: If still too many screenshots, remove oldest ones
+      const maxScreenshots = storageInfo.quotaExceeded ? 5 : 15;
+      if (validScreenshots.length > maxScreenshots) {
+        console.log(`📉 Too many screenshots (${validScreenshots.length}), keeping only ${maxScreenshots} newest...`);
+        
+        validScreenshots.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        const removedCount = validScreenshots.length - maxScreenshots;
+        validScreenshots.splice(maxScreenshots);
+        cleanupActions.oldScreenshotsRemoved = removedCount;
+        
+        console.log(`🗑️ Removed ${removedCount} old screenshots`);
+      }
       
-      // Reload in UI
-      await this.loadScreenshots();
+      // Step 4: Save cleaned screenshots if any changes were made
+      const totalChanges = cleanupActions.corruptedRemoved + cleanupActions.tempStorageMigrated + cleanupActions.oldScreenshotsRemoved;
       
-      this.showStatus(`Fixed: Removed ${screenshots.length - validScreenshots.length} corrupted screenshots`, 'success');
+      if (totalChanges > 0) {
+        await chrome.storage.local.set({ screenshots: validScreenshots });
+        
+        console.log('✅ Automatic cleanup completed:', cleanupActions);
+        console.log(`📊 Final result: ${validScreenshots.length} valid screenshots remaining`);
+        
+        // Update local array
+        this.screenshots = validScreenshots;
+      } else {
+        console.log('ℹ️ No cleanup needed - storage is already clean');
+      }
+      
+      // Step 5: Clean up orphaned temporary storage files
+      if (this.tempStorage && this.tempStorage.db) {
+        await this.tempStorage.cleanOldTempFiles();
+      }
+      
+      console.log('🧹 === AUTOMATIC STORAGE CLEANUP COMPLETE ===');
       
     } catch (error) {
-      console.error('❌ Error fixing corrupted screenshots:', error);
+      console.error('❌ Automatic storage cleanup failed:', error);
+      // Don't throw - allow extension to continue working
     }
+  }
+
+  // 🔄 PERIODIC CLEANUP SCHEDULER
+  schedulePeriodicCleanup() {
+    console.log('⏰ Scheduling periodic cleanup...');
+    
+    // Run cleanup every 5 minutes
+    setInterval(async () => {
+      console.log('⏰ Running scheduled cleanup...');
+      await this.automaticStorageCleanup();
+    }, 5 * 60 * 1000); // 5 minutes
+    
+    // Also run cleanup when storage gets full
+    this.setupStorageQuotaMonitoring();
+  }
+
+  // 📊 STORAGE QUOTA MONITORING
+  setupStorageQuotaMonitoring() {
+    // Monitor storage quota before each save operation
+    const originalSaveScreenshots = this.saveScreenshots.bind(this);
+    
+    this.saveScreenshots = async function() {
+      const storageInfo = await this.checkStorageQuota();
+      
+      if (storageInfo.quotaExceeded) {
+        console.log('🚨 Storage quota exceeded before save - running emergency cleanup...');
+        await this.automaticStorageCleanup();
+      }
+      
+      return originalSaveScreenshots();
+    };
   }
 
   // 🚨 EXTREME EMERGENCY - Only when storage is completely full
