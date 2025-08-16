@@ -1501,9 +1501,14 @@ document.addEventListener('DOMContentLoaded', () => {
     annotator.extremeEmergencyCleanup();
   };
   
+  window.fixCorruptedScreenshots = () => {
+    annotator.fixCorruptedScreenshots();
+  };
+  
   console.log('💡 Storage management commands:');
   console.log('  clearExtensionStorage() - Clear all data');
   console.log('  extremeCleanup() - Keep only 1 screenshot');
+  console.log('  fixCorruptedScreenshots() - Remove corrupted screenshots');
 });
 
 // Also refresh UI when popup becomes visible (handles popup lifecycle)
