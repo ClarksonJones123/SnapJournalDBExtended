@@ -248,11 +248,21 @@ class PDFJournalExporter {
                             <li>Reload the extension and try again</li>
                         </ol>
                     </div>
-                    <button onclick="window.close()" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    <button id="closeErrorBtn" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
                         Close Window
                     </button>
                 </div>
             `;
+            
+            // Add event listener for close button (CSP compliant)
+            setTimeout(() => {
+                const closeBtn = document.getElementById('closeErrorBtn');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', () => {
+                        window.close();
+                    });
+                }
+            }, 100);
             
             throw error;
         }
