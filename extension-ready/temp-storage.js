@@ -377,6 +377,11 @@ class TempStorageManager {
       console.error('❌ Error cleaning up old PDF exports:', error);
     }
   }
+  
+  async clearAllStorage() {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
     
     try {
       console.log('🧹 Clearing ALL PRIMARY storage...');
