@@ -98,27 +98,44 @@ function updateDebugDisplay() {
 
 // AUTO-RUN DIAGNOSTICS
 document.addEventListener('DOMContentLoaded', () => {
-    // Load previous debug history for continuity
-    const hasHistory = loadDebugHistory();
+    // Always initialize debug system first
+    const hasHistory = initializeDebugSystem();
     
-    if (!hasHistory) {
-        debugLog('🔍 Starting embedded diagnostics...');
-    }
-    
-    // Log current session info
-    debugLog(`🚀 Popup opened at ${new Date().toLocaleString()}`);
-    debugLog('📊 Previous screenshots and annotations should persist');
-    
-    // Check environment
-    debugLog('Checking Chrome APIs...');
-    if (typeof chrome !== 'undefined') {
-        debugLog('✅ Chrome APIs available');
-        if (chrome.storage) debugLog('✅ Chrome storage available');
-        if (chrome.runtime) debugLog('✅ Chrome runtime available');
-        if (chrome.tabs) debugLog('✅ Chrome tabs available');
+    if (hasHistory) {
+        debugLog(`🔄 Debug session resumed - ${debugOutput.length} entries maintained`);
     } else {
-        debugError('❌ Chrome APIs not available');
+        debugLog('🔍 Starting new debug session...');
     }
+    
+    // Log current operation
+    debugLog(`📱 Popup activity at ${new Date().toLocaleString()}`);
+    debugLog('🔄 Debug continuity SHOULD persist across captures and annotations');
+    
+    // Check environment (but don't spam if already logged)
+    const lastEntry = debugOutput[debugOutput.length - 2]; // Check second to last entry
+    if (!lastEntry || !lastEntry.includes('Chrome APIs available')) {
+        debugLog('Checking Chrome APIs...');
+        if (typeof chrome !== 'undefined') {
+            debugLog('✅ Chrome APIs available');
+            if (chrome.storage) debugLog('✅ Chrome storage available');
+            if (chrome.runtime) debugLog('✅ Chrome runtime available');
+            if (chrome.tabs) debugLog('✅ Chrome tabs available');
+        } else {
+            debugError('❌ Chrome APIs not available');
+        }
+    }
+    
+    // Expose global debug functions for manual testing
+    window.debugLog = debugLog;
+    window.debugError = debugError;
+    window.clearDebugHistory = () => {
+        localStorage.removeItem(STORAGE_KEY);
+        debugOutput = [];
+        debugLog('🧹 Debug history manually cleared');
+    };
+    
+    debugLog('✅ Persistent debug system loaded - use window.debugLog() or window.debugError() for manual testing');
+});
     
     // Check DOM elements
     debugLog('Checking DOM elements...');
