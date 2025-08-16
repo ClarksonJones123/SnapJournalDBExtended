@@ -579,7 +579,11 @@ class PDFJournalExporter {
     
     updateProgress(percentage) {
         const progressFill = document.getElementById('progressFill');
-        progressFill.style.width = `${percentage}%`;
+        if (progressFill) {
+            progressFill.style.width = `${percentage}%`;
+        } else {
+            console.warn('⚠️ Progress fill element not found');
+        }
     }
     
     showStatus(message, type) {
