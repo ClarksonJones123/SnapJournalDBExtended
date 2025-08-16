@@ -29,16 +29,59 @@ class PDFJournalExporter {
             const urlParams = new URLSearchParams(window.location.search);
             let exportDataStr = urlParams.get('data');
             const exportId = urlParams.get('exportId');
+            const method = urlParams.get('method'); // 'indexeddb' or undefined (chrome storage)
             
             console.log('🔍 URL params analysis:', { 
                 hasExportDataStr: !!exportDataStr,
                 hasExportId: !!exportId,
                 exportIdValue: exportId,
+                method: method || 'chrome',
                 fullURL: window.location.href
             });
             
-            if (exportId) {
-                // Load from chrome storage (preferred method for large datasets)
+            if (exportId && method === 'indexeddb') {
+                // NEW: Load from IndexedDB (for large datasets)
+                console.log('🗄️ Loading export data from IndexedDB:', exportId);
+                this.currentExportId = exportId;
+                
+                try {
+                    // Initialize IndexedDB storage
+                    if (!window.tempStorage) {
+                        console.log('🗄️ Initializing IndexedDB for PDF export data retrieval...');
+                        // Wait for temp storage to initialize
+                        let attempts = 0;
+                        while (!window.tempStorage && attempts < 50) {
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                            attempts++;
+                        }
+                        
+                        if (!window.tempStorage) {
+                            throw new Error('IndexedDB storage not available for large dataset export');
+                        }
+                    }
+                    
+                    console.log('🗄️ Attempting to retrieve export data from IndexedDB...');
+                    this.exportData = await window.tempStorage.getPdfExportData(exportId);
+                    
+                    if (!this.exportData) {
+                        console.error('❌ Export data not found in IndexedDB');
+                        throw new Error(`Export data not found in IndexedDB for ID: ${exportId}. The data may have expired or been cleared.`);
+                    }
+                    
+                    console.log('✅ Export data loaded from IndexedDB:', {
+                        screenshots: this.exportData.screenshots?.length || 0,
+                        totalAnnotations: this.exportData.totalAnnotations,
+                        exportDate: this.exportData.exportDate,
+                        method: this.exportData.exportMethod
+                    });
+                    
+                } catch (indexedDBError) {
+                    console.error('❌ IndexedDB error:', indexedDBError);
+                    throw new Error(`Failed to load export data from IndexedDB: ${indexedDBError.message}. Please try exporting again.`);
+                }
+                
+            } else if (exportId) {
+                // Original: Load from Chrome storage (for small datasets)
                 console.log('📦 Loading export data from Chrome storage:', exportId);
                 this.currentExportId = exportId;
                 
@@ -77,7 +120,7 @@ class PDFJournalExporter {
                 }
                 
             } else if (exportDataStr) {
-                // Legacy URL parameter method (for small datasets)
+                // Legacy URL parameter method (for very small datasets)
                 console.log('🔗 Loading export data from URL parameters (legacy method)');
                 console.log('🔍 Export data length:', exportDataStr.length);
                 
@@ -106,6 +149,7 @@ class PDFJournalExporter {
                 screenshots: this.screenshots.length,
                 totalAnnotations: this.exportData.totalAnnotations,
                 exportDate: this.exportData.exportDate,
+                exportMethod: this.exportData.exportMethod || 'Chrome',
                 dataStructureValid: true
             });
             
