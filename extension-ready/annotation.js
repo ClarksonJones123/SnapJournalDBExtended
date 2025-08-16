@@ -116,6 +116,134 @@ class UniversalAnnotator {
         });
     }
     
+    // 🎨 SETTINGS PANEL FUNCTIONALITY
+    setupSettingsPanel(settingsBtn) {
+        const settingsPanel = document.getElementById('settingsPanel');
+        const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+        const resetBtn = document.getElementById('resetSettings');
+        const applyBtn = document.getElementById('applySettings');
+        
+        // Open settings panel
+        settingsBtn.addEventListener('click', () => {
+            settingsPanel.style.display = 'block';
+            this.loadSettingsUI();
+        });
+        
+        // Close settings panel
+        closeSettingsBtn.addEventListener('click', () => {
+            settingsPanel.style.display = 'none';
+        });
+        
+        // Reset to defaults
+        resetBtn.addEventListener('click', () => {
+            this.resetSettings();
+            this.loadSettingsUI();
+        });
+        
+        // Apply settings
+        applyBtn.addEventListener('click', () => {
+            this.saveSettingsFromUI();
+            this.applySettings();
+            settingsPanel.style.display = 'none';
+            this.updateStatus('✅ Settings applied to all annotations!');
+        });
+        
+        // Real-time color updates
+        document.getElementById('annotationColor').addEventListener('input', (e) => {
+            document.getElementById('annotationColorText').value = e.target.value;
+        });
+        
+        document.getElementById('annotationColorText').addEventListener('input', (e) => {
+            const color = e.target.value;
+            if (color.match(/^#[0-9A-F]{6}$/i)) {
+                document.getElementById('annotationColor').value = color;
+            }
+        });
+        
+        document.getElementById('textColor').addEventListener('input', (e) => {
+            document.getElementById('textColorText').value = e.target.value;
+        });
+        
+        document.getElementById('textColorText').addEventListener('input', (e) => {
+            const color = e.target.value;
+            if (color.match(/^#[0-9A-F]{6}$/i)) {
+                document.getElementById('textColor').value = color;
+            }
+        });
+        
+        // Real-time slider updates
+        document.getElementById('textBgOpacity').addEventListener('input', (e) => {
+            document.getElementById('opacityValue').textContent = e.target.value;
+        });
+        
+        document.getElementById('fontSize').addEventListener('input', (e) => {
+            document.getElementById('fontSizeValue').textContent = e.target.value;
+        });
+    }
+    
+    loadSettingsUI() {
+        document.getElementById('annotationColor').value = this.settings.annotationColor;
+        document.getElementById('annotationColorText').value = this.settings.annotationColor;
+        document.getElementById('textColor').value = this.settings.textColor;
+        document.getElementById('textColorText').value = this.settings.textColor;
+        document.getElementById('textBgColor').value = this.settings.textBgColor;
+        document.getElementById('textBgOpacity').value = this.settings.textBgOpacity;
+        document.getElementById('opacityValue').textContent = this.settings.textBgOpacity;
+        document.getElementById('fontSize').value = this.settings.fontSize;
+        document.getElementById('fontSizeValue').textContent = this.settings.fontSize;
+        document.getElementById('fontWeight').value = this.settings.fontWeight;
+        document.getElementById('fontFamily').value = this.settings.fontFamily;
+    }
+    
+    saveSettingsFromUI() {
+        this.settings.annotationColor = document.getElementById('annotationColor').value;
+        this.settings.textColor = document.getElementById('textColor').value;
+        this.settings.textBgColor = document.getElementById('textBgColor').value;
+        this.settings.textBgOpacity = parseInt(document.getElementById('textBgOpacity').value);
+        this.settings.fontSize = parseInt(document.getElementById('fontSize').value);
+        this.settings.fontWeight = document.getElementById('fontWeight').value;
+        this.settings.fontFamily = document.getElementById('fontFamily').value;
+    }
+    
+    resetSettings() {
+        this.settings = {
+            annotationColor: '#ff4444',
+            textColor: '#333333',
+            textBgColor: '#ffffff',
+            textBgOpacity: 95,
+            fontSize: 14,
+            fontWeight: 'bold',
+            fontFamily: 'Arial, sans-serif'
+        };
+    }
+    
+    applySettings() {
+        // Apply CSS custom properties
+        const root = document.documentElement;
+        root.style.setProperty('--annotation-color', this.settings.annotationColor);
+        root.style.setProperty('--text-color', this.settings.textColor);
+        
+        // Convert hex to rgba for background
+        const bgColor = this.hexToRgba(this.settings.textBgColor, this.settings.textBgOpacity / 100);
+        root.style.setProperty('--text-bg-color', bgColor);
+        root.style.setProperty('--text-size', this.settings.fontSize + 'px');
+        root.style.setProperty('--text-weight', this.settings.fontWeight);
+        root.style.setProperty('--text-font', this.settings.fontFamily);
+        
+        console.log('🎨 Settings applied:', this.settings);
+    }
+    
+    hexToRgba(hex, alpha) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        if (result) {
+            const r = parseInt(result[1], 16);
+            const g = parseInt(result[2], 16);
+            const b = parseInt(result[3], 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+        return hex;
+    }
+
     setupSpeechRecognition(voiceBtn) {
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
