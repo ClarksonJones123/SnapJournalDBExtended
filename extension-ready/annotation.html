@@ -171,23 +171,34 @@
 
         .annotation-text-label {
             position: absolute;
-            background: rgba(0, 0, 0, 0.85);
-            color: white;
+            background: var(--text-bg-color, rgba(255, 255, 255, 0.95));
+            color: var(--text-color, #333333);
             padding: 8px 12px;
             border-radius: 6px;
-            font-size: 12px;
-            font-weight: 500;
-            max-width: 200px;
-            min-width: 80px;
-            word-wrap: break-word;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.4);
-            border: 2px solid rgba(255,255,255,0.3);
-            pointer-events: auto;
+            border: 2px solid var(--annotation-color, #ff4444);
+            font-family: var(--text-font, Arial, sans-serif);
+            font-size: var(--text-size, 14px);
+            font-weight: var(--text-weight, bold);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
             cursor: move;
-            user-select: none;
-            z-index: 1003;
+            pointer-events: auto;
             transform: translate(-50%, -50%);
+            z-index: 1002;
+            min-width: 60px;
+            text-align: center;
             transition: all 0.2s ease;
+        }
+        
+        .annotation-text-label:hover {
+            transform: translate(-50%, -50%) scale(1.05);
+            box-shadow: 0 3px 12px rgba(0,0,0,0.3);
+            z-index: 1003;
+        }
+        
+        .annotation-text-label.dragging {
+            transform: translate(-50%, -50%) scale(1.1);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            z-index: 1004;
         }
 
         .annotation-text-label:hover {
