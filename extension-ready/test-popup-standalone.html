@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Extension Popup Test</title>
+  <style>
+    body {
+      width: 400px;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      background: #f8f9fa;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    
+    .header h1 {
+      font-size: 18px;
+      color: #333;
+      margin: 0 0 8px 0;
+    }
+    
+    .memory-info {
+      background: #e3f2fd;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #1565c0;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    
+    button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    .btn-primary {
+      background: #1976d2;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: #1565c0;
+    }
+    
+    .btn-primary:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .btn-success {
+      background: #388e3c;
+      color: white;
+    }
+    
+    .btn-success:hover {
+      background: #2e7d32;
+    }
+    
+    .btn-danger {
+      background: #d32f2f;
+      color: white;
+    }
+    
+    .btn-export {
+      background: #9c27b0;
+      color: white;
+    }
+    
+    .btn-export:hover {
+      background: #7b1fa2;
+    }
+    
+    .btn-export:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .btn-danger:hover {
+      background: #c62828;
+    }
+    
+    .screenshots-section {
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      background: white;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .screenshots-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e0e0e0;
+      font-weight: 600;
+      color: #333;
+      background: #f5f5f5;
+    }
+    
+    .screenshots-list {
+      min-height: 80px;
+    }
+    
+    .empty-state {
+      padding: 32px 16px;
+      text-align: center;
+      color: #999;
+      font-size: 13px;
+    }
+    
+    .status {
+      padding: 8px 12px;
+      border-radius: 4px;
+      margin: 8px 0;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .status.success {
+      background: #e8f5e8;
+      color: #2e7d32;
+      border: 1px solid #c8e6c9;
+    }
+    
+    .status.error {
+      background: #ffebee;
+      color: #c62828;
+      border: 1px solid #ffcdd2;
+    }
+    
+    .status.info {
+      background: #e3f2fd;
+      color: #1565c0;
+      border: 1px solid #bbdefb;
+    }
+    
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📸 Screenshot Annotator</h1>
+    <div class="memory-info">
+      Memory: <span id="memoryUsage">0 KB</span> • Screenshots: <span id="screenshotCount">0</span>
+    </div>
+  </div>
+
+  <div id="status" class="status hidden"></div>
+
+  <div class="controls">
+    <button id="captureBtn" class="btn-primary">
+      📷 Capture & Annotate (ANY PAGE!)
+    </button>
+    
+    <button id="annotateBtn" class="btn-success" disabled>
+      ✏️ Start Annotating
+    </button>
+    
+    <button id="exportPdfBtn" class="btn-export" disabled>
+      📄 Export PDF Journal
+    </button>
+    
+    <button id="clearBtn" class="btn-danger">
+      🗑️ Clear All Screenshots
+    </button>
+  </div>
+
+  <div class="screenshots-section">
+    <div class="screenshots-header">
+      Screenshots
+    </div>
+    <div id="screenshotsList" class="screenshots-list">
+      <div class="empty-state">
+        No screenshots yet.<br>Click "Capture Current Page" to get started.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Mock Chrome APIs for testing
+    window.chrome = {
+      storage: {
+        local: {
+          get: function(key) {
+            return Promise.resolve({});
+          },
+          set: function(data) {
+            return Promise.resolve();
+          }
+        }
+      },
+      runtime: {
+        sendMessage: function(message) {
+          return Promise.resolve({ success: false, error: 'Mock API - not functional' });
+        }
+      }
+    };
+    
+    // Test initialization
+    console.log('🧪 Test popup loaded');
+    console.log('🧪 Chrome APIs mocked:', typeof chrome !== 'undefined');
+    
+    // Test button clicks
+    document.getElementById('captureBtn').addEventListener('click', function() {
+      console.log('🧪 Capture button clicked');
+      document.getElementById('status').textContent = 'Capture clicked (test mode)';
+      document.getElementById('status').className = 'status info';
+      document.getElementById('status').classList.remove('hidden');
+    });
+    
+    document.getElementById('clearBtn').addEventListener('click', function() {
+      console.log('🧪 Clear button clicked');
+      document.getElementById('status').textContent = 'Clear clicked (test mode)';
+      document.getElementById('status').className = 'status info';
+      document.getElementById('status').classList.remove('hidden');
+    });
+    
+    // Test automatic cleanup simulation
+    console.log('🧹 Running automatic storage cleanup on startup...');
+    console.log('✅ Temporary storage initialized successfully');
+    console.log('🧹 === AUTOMATIC STORAGE CLEANUP START ===');
+    console.log('🧹 === AUTOMATIC STORAGE CLEANUP COMPLETE ===');
+    
+    // Expose test methods
+    window.debugExtension = {
+      runFullDiagnostic: function() {
+        console.log('🧪 Running full diagnostic...');
+        return 'Diagnostic complete';
+      }
+    };
+    
+    window.clearExtensionStorage = function() {
+      console.log('🧪 Clear extension storage called');
+    };
+    
+    window.fixCorruptedScreenshots = function() {
+      console.log('🧪 Fix corrupted screenshots called');
+    };
+    
+    console.log('🧪 Test methods exposed');
+  </script>
+</body>
+</html>
