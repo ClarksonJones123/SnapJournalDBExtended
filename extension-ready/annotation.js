@@ -466,9 +466,9 @@ class UniversalAnnotator {
                 element.style.cursor = type === 'text' ? 'move' : 'crosshair';
                 element.style.transform = 'translate(-50%, -50%) scale(1)';
                 
-                console.log(`✅ ${type === 'text' ? 'Text' : 'Red dot'} final position:`, {
-                    x: (type === 'text' ? annotation.textX : annotation.x).toFixed(1),
-                    y: (type === 'text' ? annotation.textY : annotation.y).toFixed(1)
+                console.log(`✅ ${type === 'text' ? 'Text' : 'Red dot'} final position (precise):`, {
+                    x: (type === 'text' ? annotation.textX : annotation.x),
+                    y: (type === 'text' ? annotation.textY : annotation.y)
                 });
                 
                 this.saveAnnotationsToStorage();
