@@ -582,18 +582,26 @@ class ScreenshotAnnotator {
         // 🔧 STORAGE-OPTIMIZED COMPRESSION (JPEG 75% quality)
         const processedImageData = await this.compressImageData(response.imageData, 0.75);
         
-        // 🔧 GET ACTUAL IMAGE DIMENSIONS from processed image
-        const actualDimensions = await this.getImageDimensions(processedImageData);
-        console.log('📐 Actual processed image dimensions:', actualDimensions);
+        // 🔧 GET ORIGINAL CAPTURE DIMENSIONS (before compression)
+        const originalDimensions = await this.getImageDimensions(response.imageData);
+        console.log('📐 Original capture dimensions:', originalDimensions);
+        
+        // 🔧 GET COMPRESSED DIMENSIONS (after compression) 
+        const compressedDimensions = await this.getImageDimensions(processedImageData);
+        console.log('📐 Compressed storage dimensions:', compressedDimensions);
         
         const screenshot = {
           id: Date.now().toString(),
           imageData: processedImageData,
-          // Store ACTUAL dimensions, not assumed ones
-          originalWidth: actualDimensions.width,
-          originalHeight: actualDimensions.height,
-          displayWidth: actualDimensions.width,  // Use actual width for annotations
-          displayHeight: actualDimensions.height, // Use actual height for annotations
+          // Store ORIGINAL capture dimensions as coordinate reference
+          originalCaptureWidth: originalDimensions.width,   // COORDINATE REFERENCE
+          originalCaptureHeight: originalDimensions.height, // COORDINATE REFERENCE
+          // Store compressed dimensions for display/storage info
+          storageWidth: compressedDimensions.width,
+          storageHeight: compressedDimensions.height,
+          // Use ORIGINAL dimensions for annotation coordinate system
+          displayWidth: originalDimensions.width,   // FOR ANNOTATION SCALING
+          displayHeight: originalDimensions.height, // FOR ANNOTATION SCALING
           url: tab.url,
           title: tab.title,
           timestamp: now.toISOString(),
