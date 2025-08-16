@@ -644,13 +644,13 @@ class ScreenshotAnnotator {
         // 🔧 100% ORIGINAL QUALITY - NO COMPRESSION
         const processedImageData = response.imageData; // Keep original image data unchanged
         
-        // 🔧 GET ORIGINAL CAPTURE DIMENSIONS (before compression)
+        // 🔧 GET ORIGINAL DIMENSIONS (no compression applied)
         const originalDimensions = await this.getImageDimensions(response.imageData);
-        console.log('📐 Original capture dimensions:', originalDimensions);
+        console.log('📐 Original capture dimensions (100% quality):', originalDimensions);
         
-        // 🔧 GET COMPRESSED DIMENSIONS (after compression) 
-        const compressedDimensions = await this.getImageDimensions(processedImageData);
-        console.log('📐 Compressed storage dimensions:', compressedDimensions);
+        // 🔧 SAME DIMENSIONS (no compression applied) 
+        const finalDimensions = originalDimensions;
+        console.log('📐 Final storage dimensions (100% quality):', finalDimensions);
         
         const screenshot = {
           id: Date.now().toString(),
