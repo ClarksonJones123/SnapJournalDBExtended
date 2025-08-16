@@ -234,6 +234,13 @@ class ScreenshotAnnotator {
   async createAnnotatedImageForPDF(screenshot) {
     try {
       console.log('🎨 Creating annotated image for PDF...');
+      console.log('📊 Screenshot info:', {
+        displayWidth: screenshot.displayWidth,
+        displayHeight: screenshot.displayHeight,
+        originalWidth: screenshot.originalWidth,
+        originalHeight: screenshot.originalHeight,
+        annotations: screenshot.annotations?.length || 0
+      });
       
       if (!screenshot.annotations || screenshot.annotations.length === 0) {
         console.log('ℹ️ No annotations to render');
@@ -246,70 +253,89 @@ class ScreenshotAnnotator {
         const img = new Image();
         
         img.onload = () => {
-          // Use original image dimensions for PDF (high quality)
+          console.log('🖼️ Image loaded - actual dimensions:', img.width, 'x', img.height);
+          
+          // Use actual image dimensions (no scaling)
           canvas.width = img.width;
           canvas.height = img.height;
           
           // Draw the original image
           ctx.drawImage(img, 0, 0);
           
+          // Calculate scaling factors based on actual image vs display size
+          const scaleX = img.width / screenshot.displayWidth;
+          const scaleY = img.height / screenshot.displayHeight;
+          
+          console.log('📏 Scaling factors:', { scaleX, scaleY });
+          
           // Configure text rendering
           ctx.textAlign = 'left';
           ctx.textBaseline = 'top';
-          ctx.font = 'bold 16px Arial, sans-serif';
           
           // Render each annotation
           screenshot.annotations.forEach((annotation, index) => {
-            const x = annotation.x * (img.width / screenshot.displayWidth);
-            const y = annotation.y * (img.height / screenshot.displayHeight);
-            const textX = (annotation.textX || annotation.x + 60) * (img.width / screenshot.displayWidth);
-            const textY = (annotation.textY || annotation.y - 30) * (img.height / screenshot.displayHeight);
+            console.log(`🎯 Rendering annotation ${index + 1}:`, {
+              originalCoords: { x: annotation.x, y: annotation.y },
+              text: annotation.text
+            });
             
-            // Draw pinpoint circle
+            // Scale coordinates properly
+            const x = annotation.x * scaleX;
+            const y = annotation.y * scaleY;
+            const textX = (annotation.textX || annotation.x + 60) * scaleX;
+            const textY = (annotation.textY || annotation.y - 30) * scaleY;
+            
+            console.log(`📍 Scaled coordinates:`, { x, y, textX, textY });
+            
+            // Draw pinpoint circle (larger for better visibility)
             ctx.beginPath();
-            ctx.arc(x, y, 8, 0, 2 * Math.PI);
+            ctx.arc(x, y, 12, 0, 2 * Math.PI);
             ctx.fillStyle = '#ff4444';
             ctx.fill();
             ctx.strokeStyle = 'white';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 3;
             ctx.stroke();
             
             // Draw number badge
             ctx.fillStyle = 'white';
-            ctx.font = 'bold 12px Arial';
+            ctx.font = 'bold 16px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText((index + 1).toString(), x, y);
             
-            // Draw connecting line
+            // Draw connecting line (if text is far enough)
             const distance = Math.sqrt((textX - x) ** 2 + (textY - y) ** 2);
-            if (distance > 30) {
+            if (distance > 40) {
               ctx.beginPath();
               ctx.moveTo(x, y);
               ctx.lineTo(textX, textY);
               ctx.strokeStyle = '#ff4444';
-              ctx.lineWidth = 2;
-              ctx.setLineDash([5, 5]);
+              ctx.lineWidth = 3;
+              ctx.setLineDash([8, 8]);
               ctx.stroke();
               ctx.setLineDash([]);
             }
             
-            // Draw text background
-            ctx.font = 'bold 14px Arial, sans-serif';
+            // Draw text background (larger and more visible)
+            ctx.font = 'bold 18px Arial, sans-serif';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'top';
             const textMetrics = ctx.measureText(annotation.text);
-            const textWidth = textMetrics.width + 16;
-            const textHeight = 24;
+            const textWidth = textMetrics.width + 20;
+            const textHeight = 30;
             
-            // Background
+            // Background with shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fillRect(textX - 7, textY - 3, textWidth, textHeight);
+            
+            // Main background
             ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-            ctx.fillRect(textX - 8, textY - 4, textWidth, textHeight);
+            ctx.fillRect(textX - 10, textY - 6, textWidth, textHeight);
             
             // Border
             ctx.strokeStyle = '#ff4444';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(textX - 8, textY - 4, textWidth, textHeight);
+            ctx.lineWidth = 3;
+            ctx.strokeRect(textX - 10, textY - 6, textWidth, textHeight);
             
             // Text
             ctx.fillStyle = '#333333';
