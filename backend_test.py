@@ -20,7 +20,7 @@ def get_backend_url():
                     return f"{base_url}/api"
     except Exception as e:
         print(f"Error reading frontend .env: {e}")
-    return "https://snapdoc.preview.emergentagent.com/api"
+    return "https://docushot.preview.emergentagent.com/api"
 
 BACKEND_URL = get_backend_url()
 print(f"Testing backend at: {BACKEND_URL}")
