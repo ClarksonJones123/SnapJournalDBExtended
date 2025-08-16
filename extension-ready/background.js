@@ -15,7 +15,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     
     chrome.tabs.captureVisibleTab(
       null,
-      { format: 'png', quality: 90 },
+      { format: 'png', quality: 100 },
       (dataUrl) => {
         if (chrome.runtime.lastError) {
           console.error('Capture error:', chrome.runtime.lastError);
