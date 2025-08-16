@@ -757,6 +757,10 @@ class ScreenshotAnnotator {
       console.log('🔄 Starting PDF journal export with annotated images...');
       this.showStatus('Generating PDF journal with annotations...', 'info');
       
+      // 🧹 CLEAR MEMORY: First, clean up storage before processing
+      console.log('🧹 Pre-export storage cleanup...');
+      await this.aggressiveStorageCleanup();
+      
       // Create annotated versions of all screenshots for PDF
       const annotatedScreenshots = [];
       for (let i = 0; i < this.screenshots.length; i++) {
@@ -773,6 +777,12 @@ class ScreenshotAnnotator {
         
         // Show progress
         this.showStatus(`Processing images for PDF: ${i + 1}/${this.screenshots.length}`, 'info');
+        
+        // 🧹 CLEAR MEMORY: Clear original image data after processing to free memory
+        if (screenshot.imageData && screenshot.imageData !== annotatedImageData) {
+          console.log(`🧹 Clearing original image data for screenshot ${i + 1} after processing`);
+          screenshot.imageData = null; // Free memory immediately
+        }
       }
       
       // Create PDF export window with annotated screenshots
@@ -815,6 +825,9 @@ class ScreenshotAnnotator {
       
       console.log('🪟 Export window created:', windowInfo.id);
       
+      // 🧹 CLEAR MEMORY: Monitor PDF export completion and clean up when done
+      this.monitorPdfExportCompletion(exportId, windowInfo.id);
+      
       // If export window fails, offer debug option
       setTimeout(async () => {
         try {
@@ -844,20 +857,61 @@ class ScreenshotAnnotator {
       this.showStatus('📄 PDF journal export opened with annotated images!', 'success');
       console.log('✅ PDF export window opened successfully with annotations');
       
-      // Clean up stored data after a delay
-      setTimeout(async () => {
-        try {
-          await chrome.storage.local.remove(exportId);
-          console.log('🧹 Cleaned up temporary export data');
-        } catch (error) {
-          console.warn('⚠️ Failed to clean up export data:', error);
-        }
-      }, 300000); // 5 minutes
-      
     } catch (error) {
       console.error('❌ PDF export error:', error);
       this.showStatus(`Failed to export PDF journal: ${error.message}`, 'error');
     }
+  }
+
+  // 🧹 NEW METHOD: Monitor PDF export completion and clean up memory
+  async monitorPdfExportCompletion(exportId, windowId) {
+    console.log('👀 Monitoring PDF export completion...');
+    
+    const checkInterval = setInterval(async () => {
+      try {
+        // Check if export window still exists
+        const window = await chrome.windows.get(windowId);
+        
+        if (!window) {
+          // Window closed - PDF export is done, clean up memory
+          console.log('🧹 PDF export completed, cleaning up memory...');
+          clearInterval(checkInterval);
+          
+          // Clean up temporary export data
+          try {
+            await chrome.storage.local.remove(exportId);
+            console.log('🧹 Cleaned up temporary export data');
+          } catch (error) {
+            console.warn('⚠️ Failed to clean up export data:', error);
+          }
+          
+          // Aggressive memory cleanup after PDF export
+          await this.aggressiveStorageCleanup();
+          console.log('🧹 Post-export memory cleanup completed');
+          
+          // Update UI to reflect changes
+          this.updateUI();
+        }
+      } catch (error) {
+        // Window doesn't exist anymore, clean up
+        console.log('🧹 PDF export window closed, cleaning up...');
+        clearInterval(checkInterval);
+        
+        try {
+          await chrome.storage.local.remove(exportId);
+          await this.aggressiveStorageCleanup();
+          this.updateUI();
+        } catch (cleanupError) {
+          console.warn('⚠️ Failed cleanup after export:', cleanupError);
+        }
+      }
+    }, 2000); // Check every 2 seconds
+    
+    // Stop monitoring after 10 minutes max
+    setTimeout(() => {
+      clearInterval(checkInterval);
+      console.log('⏰ Stopped monitoring PDF export after 10 minutes');
+    }, 600000);
   }
   
   renderAnnotationsList(screenshot) {
