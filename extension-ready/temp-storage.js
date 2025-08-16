@@ -31,14 +31,15 @@ class TempStorageManager {
           // Only run after initialization is complete
           try {
             const validationResult = await this.validateAndFixSchema();
-            this.isInitializing = false; // Clear flag after validation complete
-            this.isReady = true;
             console.log('✅ Schema validation completed:', validationResult.message);
             resolve();
           } catch (validationError) {
             console.error('❌ Schema validation failed:', validationError);
             this.isInitializing = false; // Clear flag even on error
             reject(validationError);
+          } finally {
+            this.isInitializing = false; // Always clear flag
+            this.isReady = true; // Set ready state
           }
         };
         
