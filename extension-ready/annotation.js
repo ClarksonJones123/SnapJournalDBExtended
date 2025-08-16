@@ -177,7 +177,40 @@ class UniversalAnnotator {
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
             
-            console.log(`📍 Image clicked at (${x}, ${y}) for precise pinpoint`);
+            console.log('🔍 === COORDINATE DEBUG START ===');
+            console.log(`📍 RAW CLICK COORDINATES: (${x}, ${y})`);
+            console.log('🖼️ IMAGE ELEMENT INFO:', {
+                offsetWidth: img.offsetWidth,
+                offsetHeight: img.offsetHeight,
+                naturalWidth: img.naturalWidth,
+                naturalHeight: img.naturalHeight,
+                clientWidth: img.clientWidth,
+                clientHeight: img.clientHeight
+            });
+            console.log('📊 SCREENSHOT STORED DIMENSIONS:', {
+                displayWidth: this.screenshot.displayWidth,
+                displayHeight: this.screenshot.displayHeight,
+                originalWidth: this.screenshot.originalWidth,
+                originalHeight: this.screenshot.originalHeight
+            });
+            console.log('📐 BROWSER RECTS:', {
+                imgRect: rect,
+                containerRect: containerRect
+            });
+            
+            // Calculate what the coordinates should be relative to the stored image
+            const scaleFactorX = this.screenshot.displayWidth / img.offsetWidth;
+            const scaleFactorY = this.screenshot.displayHeight / img.offsetHeight;
+            
+            const scaledX = x * scaleFactorX;
+            const scaledY = y * scaleFactorY;
+            
+            console.log('🔢 SCALE CALCULATIONS:', {
+                scaleFactorX: scaleFactorX.toFixed(3),
+                scaleFactorY: scaleFactorY.toFixed(3),
+                clickedAt: `(${x}, ${y})`,
+                scaledTo: `(${scaledX.toFixed(1)}, ${scaledY.toFixed(1)})`
+            });
             
             let annotationText = this.pendingAnnotationText;
             console.log('🔍 Pending annotation text:', annotationText);
