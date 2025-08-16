@@ -357,60 +357,79 @@ class UniversalAnnotator {
             e.preventDefault();
             e.stopPropagation();
             
-            console.log('🎯 === COORDINATE OFFSET CORRECTION START ===');
+            console.log('🎯 === PIXEL-PERFECT COORDINATE SYSTEM START ===');
             
-            const rect = img.getBoundingClientRect();
+            // Get ALL positioning factors
+            const imgRect = img.getBoundingClientRect();
             const containerRect = container.getBoundingClientRect();
             
-            // Get EXACT click position with detailed debugging
-            const rawClickX = e.clientX - rect.left;
-            const rawClickY = e.clientY - rect.top;
-            const clickX = Math.round(rawClickX);
-            const clickY = Math.round(rawClickY);
+            // Calculate RAW click position relative to image
+            const rawClickX = e.clientX - imgRect.left;
+            const rawClickY = e.clientY - imgRect.top;
             
-            // CRITICAL FIX: Account for container padding (20px from CSS)
-            // The image-container has padding: 20px which affects positioning
+            // CRITICAL: Check for any border/padding on the image itself
+            const imgStyle = window.getComputedStyle(img);
+            const imgBorderLeft = parseFloat(imgStyle.borderLeftWidth) || 0;
+            const imgBorderTop = parseFloat(imgStyle.borderTopWidth) || 0;
+            const imgPaddingLeft = parseFloat(imgStyle.paddingLeft) || 0;
+            const imgPaddingTop = parseFloat(imgStyle.paddingTop) || 0;
+            
+            // CRITICAL: Check container positioning
             const containerStyle = window.getComputedStyle(container);
-            const paddingLeft = parseFloat(containerStyle.paddingLeft) || 0;
-            const paddingTop = parseFloat(containerStyle.paddingTop) || 0;
+            const containerBorderLeft = parseFloat(containerStyle.borderLeftWidth) || 0;
+            const containerBorderTop = parseFloat(containerStyle.borderTopWidth) || 0;
+            const containerPaddingLeft = parseFloat(containerStyle.paddingLeft) || 0;
+            const containerPaddingTop = parseFloat(containerStyle.paddingTop) || 0;
             
-            console.log('🔍 CONTAINER PADDING ANALYSIS:', {
-                containerPaddingLeft: paddingLeft + 'px',
-                containerPaddingTop: paddingTop + 'px',
+            // Account for ALL positioning offsets
+            const totalOffsetX = imgBorderLeft + imgPaddingLeft;
+            const totalOffsetY = imgBorderTop + imgPaddingTop;
+            
+            // Final precise coordinates
+            const preciseSClickX = Math.round(rawClickX - totalOffsetX);
+            const preciseClickY = Math.round(rawClickY - totalOffsetY);
+            
+            console.log('🔍 COMPLETE POSITIONING ANALYSIS:', {
                 rawClick: { x: rawClickX, y: rawClickY },
-                clickWithoutPadding: { x: clickX, y: clickY },
-                note: 'Container padding affects annotation positioning'
-            });
-            
-            console.log('🖱️ DETAILED click analysis:', {
                 clientCoords: { x: e.clientX, y: e.clientY },
-                imgRect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
-                containerRect: { left: containerRect.left, top: containerRect.top },
-                imgOffset: { width: img.offsetWidth, height: img.offsetHeight },
-                imgNatural: { width: img.naturalWidth, height: img.naturalHeight },
-                containerPadding: { left: paddingLeft, top: paddingTop }
-            });
-            
-            // Check for any CSS transforms that might affect positioning
-            const computedStyle = window.getComputedStyle(img);
-            console.log('🔍 Image CSS analysis:', {
-                transform: computedStyle.transform,
-                position: computedStyle.position,
-                display: computedStyle.display,
-                objectFit: computedStyle.objectFit,
-                marginLeft: computedStyle.marginLeft,
-                marginTop: computedStyle.marginTop
+                imgRect: { 
+                    left: imgRect.left, 
+                    top: imgRect.top, 
+                    width: imgRect.width, 
+                    height: imgRect.height 
+                },
+                containerRect: {
+                    left: containerRect.left,
+                    top: containerRect.top,
+                    width: containerRect.width,
+                    height: containerRect.height
+                },
+                imgBorderAndPadding: {
+                    borderLeft: imgBorderLeft + 'px',
+                    borderTop: imgBorderTop + 'px', 
+                    paddingLeft: imgPaddingLeft + 'px',
+                    paddingTop: imgPaddingTop + 'px'
+                },
+                containerBorderAndPadding: {
+                    borderLeft: containerBorderLeft + 'px',
+                    borderTop: containerBorderTop + 'px',
+                    paddingLeft: containerPaddingLeft + 'px',
+                    paddingTop: containerPaddingTop + 'px'
+                },
+                totalOffset: {
+                    x: totalOffsetX + 'px',
+                    y: totalOffsetY + 'px'
+                },
+                finalCoordinates: {
+                    x: preciseSClickX,
+                    y: preciseClickY
+                }
             });
             
             let annotationText = this.pendingAnnotationText;
-            console.log('🔍 Pending annotation text:', annotationText);
             
-            // If no speech text captured, prompt for text input
             if (!annotationText) {
-                console.log('📝 No pending text, prompting user...');
                 annotationText = prompt('Enter annotation text:');
-                console.log('📝 User entered:', annotationText);
-                
                 if (!annotationText || !annotationText.trim()) {
                     console.log('❌ User cancelled or entered empty text');
                     return;
@@ -420,48 +439,29 @@ class UniversalAnnotator {
             const annotation = {
                 id: Date.now().toString(),
                 text: annotationText.trim(),
-                // Store EXACT coordinates (no padding adjustment needed for display)
-                // The red dot will be positioned relative to the image, not the container
-                x: clickX,
-                y: clickY,
-                textX: clickX + 60,  // Default text offset
-                textY: clickY - 30,  // Default text offset
+                // Use the precisely calculated coordinates
+                x: preciseSClickX,
+                y: preciseClickY,
+                textX: preciseSClickX + 60,
+                textY: preciseClickY - 30,
                 timestamp: new Date().toISOString(),
-                // Enhanced debug information
                 debug: {
-                    clickEvent: {
-                        clientX: e.clientX,
-                        clientY: e.clientY,
-                        rectLeft: rect.left,
-                        rectTop: rect.top,
-                        rawClick: { x: rawClickX, y: rawClickY },
-                        finalClick: { x: clickX, y: clickY },
-                        rounded: true
+                    rawClick: { x: rawClickX, y: rawClickY },
+                    adjustedClick: { x: preciseSClickX, y: preciseClickY },
+                    offsets: {
+                        imgBorder: { x: imgBorderLeft, y: imgBorderTop },
+                        imgPadding: { x: imgPaddingLeft, y: imgPaddingTop },
+                        total: { x: totalOffsetX, y: totalOffsetY }
                     },
-                    containerInfo: {
-                        paddingLeft: paddingLeft,
-                        paddingTop: paddingTop,
-                        containerRect: containerRect
-                    },
-                    imageInfo: {
-                        displaySize: `${img.offsetWidth}x${img.offsetHeight}`,
-                        naturalSize: `${img.naturalWidth}x${img.naturalHeight}`,
-                        coordinates: 'EXACT_IMAGE_RELATIVE'
-                    },
-                    cssInfo: {
-                        transform: computedStyle.transform,
-                        position: computedStyle.position
-                    },
-                    timestamp: new Date().toISOString()
+                    coordinateSystem: 'PIXEL_PERFECT_WITH_ALL_OFFSETS'
                 }
             };
             
-            console.log('🎯 CORRECTED ANNOTATION CREATED:', annotation);
-            console.log('🎯 === COORDINATE OFFSET CORRECTION END ===');
+            console.log('🎯 PIXEL-PERFECT ANNOTATION CREATED:', annotation);
+            console.log('🎯 === PIXEL-PERFECT COORDINATE SYSTEM END ===');
             
             await this.addAnnotation(annotation, container, img);
             
-            // Reset pending text
             this.pendingAnnotationText = null;
             const voiceBtn = document.getElementById('voiceBtn');
             if (voiceBtn) {
@@ -469,7 +469,7 @@ class UniversalAnnotator {
                 voiceBtn.className = 'btn-voice';
             }
             
-            this.updateStatus('✅ Annotation added with PADDING CORRECTION! Red dot should be EXACTLY where you clicked.');
+            this.updateStatus('✅ PIXEL-PERFECT coordinates applied! Red dot should be EXACTLY at click point.');
         });
     }
     
