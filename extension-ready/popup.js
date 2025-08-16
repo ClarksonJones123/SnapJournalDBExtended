@@ -407,59 +407,53 @@ class ScreenshotAnnotator {
     try {
       console.log('🧹 === AUTOMATIC STORAGE CLEANUP START ===');
       
-      // Check storage quota
-      const storageInfo = await this.checkStorageQuota();
-      console.log('📊 Storage info:', storageInfo);
-      
-      if (storageInfo.quotaExceeded) {
-        console.log('🚨 Storage quota exceeded, running emergency cleanup...');
-        await this.emergencyStorageCleanup();
+      if (!this.tempStorage) {
+        console.log('⚠️ PRIMARY storage not available, skipping cleanup');
         return;
       }
       
-      // Remove corrupted screenshots
-      const originalCount = this.screenshots.length;
-      this.screenshots = this.screenshots.filter(screenshot => {
-        // Keep screenshots with image data
-        if (screenshot.imageData) {
-          return true;
-        }
-        
-        // Keep screenshots that are properly stored in temp storage
-        if (screenshot.isInTempStorage && screenshot.tempImageId) {
-          return true;
-        }
-        
-        // Remove corrupted screenshots (no image data and not in temp storage)
-        console.log('🗑️ Removing corrupted screenshot:', screenshot.id);
-        return false;
-      });
+      // Get current session screenshots
+      const currentSessionId = await this.tempStorage.getCurrentSessionId();
+      this.screenshots = await this.tempStorage.getAllScreenshots(currentSessionId);
       
+      console.log(`📊 Found ${this.screenshots.length} screenshots in current session`);
+      
+      // Remove corrupted screenshots (those without imageData)
+      const originalCount = this.screenshots.length;
+      const validScreenshots = [];
+      
+      for (const screenshot of this.screenshots) {
+        if (screenshot.imageData) {
+          validScreenshots.push(screenshot);
+        } else {
+          console.log('🗑️ Removing corrupted screenshot:', screenshot.id);
+          // Delete from IndexedDB
+          await this.tempStorage.deleteScreenshot(screenshot.id);
+        }
+      }
+      
+      this.screenshots = validScreenshots;
       const removedCorrupted = originalCount - this.screenshots.length;
       if (removedCorrupted > 0) {
         console.log(`🗑️ Removed ${removedCorrupted} corrupted screenshots`);
       }
       
-      // If we have too many screenshots, clean up old ones
-      if (this.screenshots.length > 10) {
-        console.log('📊 Too many screenshots, cleaning up old ones...');
+      // If we have too many screenshots in current session, clean up old ones
+      if (this.screenshots.length > 20) {
+        console.log('📊 Too many screenshots in session, cleaning up old ones...');
         
         // Sort by timestamp (newest first)
         this.screenshots.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         
-        const toKeep = this.screenshots.slice(0, 10);
-        const toRemove = this.screenshots.slice(10);
+        const toKeep = this.screenshots.slice(0, 20);
+        const toRemove = this.screenshots.slice(20);
         
-        // Remove old screenshots from temp storage
-        if (this.tempStorage) {
-          for (const screenshot of toRemove) {
-            if (screenshot.isInTempStorage && screenshot.tempImageId) {
-              try {
-                await this.tempStorage.deleteImage(screenshot.tempImageId);
-              } catch (error) {
-                console.error('Error deleting old temp image:', error);
-              }
-            }
+        // Remove old screenshots from IndexedDB
+        for (const screenshot of toRemove) {
+          try {
+            await this.tempStorage.deleteScreenshot(screenshot.id);
+          } catch (error) {
+            console.error('Error deleting old screenshot:', error);
           }
         }
         
@@ -467,43 +461,8 @@ class ScreenshotAnnotator {
         console.log(`🗑️ Removed ${toRemove.length} old screenshots, kept ${toKeep.length}`);
       }
       
-      // Migrate large images to temp storage if available
-      if (this.tempStorage && storageInfo.usagePercent > 70) {
-        console.log('📁 Storage usage high, migrating large images to temporary storage...');
-        
-        for (const screenshot of this.screenshots) {
-          if (screenshot.imageData && !screenshot.isInTempStorage) {
-            const imageSize = screenshot.imageData.length;
-            
-            if (imageSize > 1048576) { // 1MB threshold
-              try {
-                const tempId = 'temp_' + screenshot.id + '_' + Date.now();
-                const storeResult = await this.tempStorage.storeImage(tempId, screenshot.imageData, {
-                  screenshotId: screenshot.id,
-                  cleanupDate: new Date().toISOString()
-                });
-                
-                if (storeResult.stored) {
-                  screenshot.isInTempStorage = true;
-                  screenshot.tempImageId = tempId;
-                  delete screenshot.imageData;
-                  console.log(`📁 Migrated large image to temporary storage (${imageSize} bytes)`);
-                }
-              } catch (error) {
-                console.error('Error migrating large image:', error);
-              }
-            }
-          }
-        }
-      }
-      
-      // Clean old temporary files
-      if (this.tempStorage) {
-        await this.tempStorage.cleanOldTempFiles();
-      }
-      
-      // Save cleaned up screenshots
-      await this.saveScreenshots();
+      // Update session stats
+      await this.tempStorage.updateSessionStats(currentSessionId);
       
       // Update memory usage calculation
       this.calculateMemoryUsage();
