@@ -16,51 +16,133 @@ class PDFJournalExporter {
     }
     
     async init() {
+        console.log('🚀 === PDF EXPORT INITIALIZATION START ===');
         console.log('🚀 Initializing PDF journal exporter...');
         
         try {
-            // Wait for jsPDF to load
+            // Enhanced jsPDF loading with better error handling
+            console.log('📚 Loading jsPDF library...');
             await this.waitForJsPDF();
             console.log('✅ jsPDF loaded successfully');
             
-            // Get export data from URL parameters or chrome storage
+            // Get export data with enhanced debugging
             const urlParams = new URLSearchParams(window.location.search);
             let exportDataStr = urlParams.get('data');
             const exportId = urlParams.get('exportId');
             
-            console.log('🔍 URL params found:', !!exportDataStr || !!exportId);
+            console.log('🔍 URL params analysis:', { 
+                hasExportDataStr: !!exportDataStr,
+                hasExportId: !!exportId,
+                exportIdValue: exportId,
+                fullURL: window.location.href
+            });
             
             if (exportId) {
-                // Load from chrome storage (for large datasets)
-                console.log('📦 Loading export data from storage:', exportId);
-                this.currentExportId = exportId; // Store for cleanup
-                const result = await chrome.storage.local.get(exportId);
-                this.exportData = result[exportId];
+                // Load from chrome storage (preferred method for large datasets)
+                console.log('📦 Loading export data from Chrome storage:', exportId);
+                this.currentExportId = exportId;
                 
-                if (!this.exportData) {
-                    throw new Error('Export data not found in storage. Please try exporting again.');
+                try {
+                    // Enhanced Chrome storage check
+                    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
+                        throw new Error('Chrome storage API not available');
+                    }
+                    
+                    console.log('💾 Attempting to retrieve export data from Chrome storage...');
+                    const result = await chrome.storage.local.get(exportId);
+                    
+                    console.log('💾 Chrome storage result:', {
+                        hasResult: !!result,
+                        hasExportData: !!result[exportId],
+                        resultKeys: Object.keys(result)
+                    });
+                    
+                    this.exportData = result[exportId];
+                    
+                    if (!this.exportData) {
+                        console.error('❌ Export data not found in Chrome storage');
+                        console.log('🔍 Available storage keys:', Object.keys(result));
+                        throw new Error(`Export data not found in storage for ID: ${exportId}. The data may have expired or been cleared.`);
+                    }
+                    
+                    console.log('✅ Export data loaded from Chrome storage:', {
+                        screenshots: this.exportData.screenshots?.length || 0,
+                        totalAnnotations: this.exportData.totalAnnotations,
+                        exportDate: this.exportData.exportDate
+                    });
+                    
+                } catch (storageError) {
+                    console.error('❌ Chrome storage error:', storageError);
+                    throw new Error(`Failed to load export data from storage: ${storageError.message}. Please try exporting again.`);
                 }
+                
             } else if (exportDataStr) {
-                // Load from URL parameters (legacy method)
-                console.log('🔗 Loading export data from URL parameters');
+                // Legacy URL parameter method (for small datasets)
+                console.log('🔗 Loading export data from URL parameters (legacy method)');
                 console.log('🔍 Export data length:', exportDataStr.length);
-                this.exportData = JSON.parse(decodeURIComponent(exportDataStr));
+                
+                try {
+                    this.exportData = JSON.parse(decodeURIComponent(exportDataStr));
+                    console.log('✅ Export data parsed from URL parameters');
+                } catch (parseError) {
+                    console.error('❌ Failed to parse export data from URL:', parseError);
+                    throw new Error(`Invalid export data format: ${parseError.message}`);
+                }
+                
             } else {
-                throw new Error('No export data provided. Please try exporting again.');
+                console.error('❌ No export data provided in URL');
+                throw new Error('No export data provided. Please ensure you accessed this page through the PDF export function.');
             }
             
-            this.screenshots = this.exportData.screenshots || [];
+            // Validate export data structure
+            if (!this.exportData.screenshots || !Array.isArray(this.exportData.screenshots)) {
+                console.error('❌ Invalid export data structure:', this.exportData);
+                throw new Error('Invalid export data structure. Screenshots array is missing or invalid.');
+            }
             
-            console.log('✅ Export data loaded:', {
+            this.screenshots = this.exportData.screenshots;
+            
+            console.log('✅ Export data validation complete:', {
                 screenshots: this.screenshots.length,
                 totalAnnotations: this.exportData.totalAnnotations,
-                exportDate: this.exportData.exportDate
+                exportDate: this.exportData.exportDate,
+                dataStructureValid: true
             });
             
             if (this.screenshots.length === 0) {
-                throw new Error('No screenshots found in export data');
+                console.error('❌ No screenshots found in export data');
+                throw new Error('No screenshots found in export data. Please ensure you have captured screenshots before exporting.');
             }
             
+            // Validate screenshot data
+            let validScreenshots = 0;
+            let corruptedScreenshots = 0;
+            
+            this.screenshots.forEach((screenshot, index) => {
+                if (screenshot.imageData && screenshot.imageData.startsWith('data:image/')) {
+                    validScreenshots++;
+                } else {
+                    corruptedScreenshots++;
+                    console.warn(`⚠️ Screenshot ${index + 1} has invalid or missing image data`);
+                }
+            });
+            
+            console.log('📊 Screenshot validation results:', {
+                total: this.screenshots.length,
+                valid: validScreenshots,
+                corrupted: corruptedScreenshots
+            });
+            
+            if (validScreenshots === 0) {
+                throw new Error('No valid screenshot images found. All screenshot data appears to be corrupted.');
+            }
+            
+            if (corruptedScreenshots > 0) {
+                console.warn(`⚠️ ${corruptedScreenshots} corrupted screenshots detected - PDF will include only valid screenshots`);
+            }
+            
+            // Setup interface and event listeners
+            console.log('🎛️ Setting up PDF export interface...');
             this.setupInterface();
             this.setupEventListeners();
             
@@ -71,9 +153,38 @@ class PDFJournalExporter {
                 if (status) status.style.display = 'none';
             }, 2000);
             
+            console.log('✅ PDF journal exporter initialized successfully');
+            console.log('🚀 === PDF EXPORT INITIALIZATION END ===');
+            
         } catch (error) {
-            console.error('❌ Error during initialization:', error);
-            this.showStatus(`Error: ${error.message}`, 'error');
+            console.error('❌ PDF export initialization failed:', error);
+            console.error('❌ Error stack:', error.stack);
+            console.log('🚀 === PDF EXPORT INITIALIZATION END (ERROR) ===');
+            
+            this.showStatus(`Initialization Error: ${error.message}`, 'error');
+            
+            // Show detailed error information to help with debugging
+            document.body.innerHTML = `
+                <div style="padding: 20px; font-family: Arial, sans-serif;">
+                    <h1 style="color: #d32f2f;">PDF Export Failed</h1>
+                    <div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 4px; margin: 20px 0;">
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                    <div style="background: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; border-radius: 4px; margin: 20px 0;">
+                        <strong>Troubleshooting Steps:</strong>
+                        <ol>
+                            <li>Go back to the main extension and try exporting again</li>
+                            <li>If you have many screenshots, try clearing some old ones first</li>
+                            <li>Check that the extension is properly installed and enabled</li>
+                            <li>Reload the extension and try again</li>
+                        </ol>
+                    </div>
+                    <button onclick="window.close()" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Close Window
+                    </button>
+                </div>
+            `;
+            
             throw error;
         }
     }
