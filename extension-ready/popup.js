@@ -2021,17 +2021,47 @@ class ScreenshotAnnotator {
   }
   
   showStatus(message, type = 'info') {
-    console.log('Status:', type, message);
-    const statusEl = document.getElementById('status');
-    if (statusEl) {
-      statusEl.textContent = message;
-      statusEl.className = `status ${type}`;
-      statusEl.classList.remove('hidden');
+    const statusElement = document.getElementById('status');
+    if (statusElement) {
+      statusElement.textContent = message;
       
-      setTimeout(() => {
-        statusEl.classList.add('hidden');
-      }, 3000);
+      // Remove existing status classes
+      statusElement.classList.remove('status-success', 'status-error', 'status-info', 'status-warning');
+      
+      // Add appropriate class based on type
+      switch (type) {
+        case 'success':
+          statusElement.classList.add('status-success');
+          console.log('✅ STATUS SUCCESS:', message);
+          break;
+        case 'error':
+          statusElement.classList.add('status-error');
+          console.error('❌ STATUS ERROR:', message);
+          break;
+        case 'warning':
+          statusElement.classList.add('status-warning');
+          console.warn('⚠️ STATUS WARNING:', message);
+          break;
+        case 'info':
+        default:
+          statusElement.classList.add('status-info');
+          console.log('ℹ️ STATUS INFO:', message);
+          break;
+      }
+      
+      // Auto-clear success/info messages after delay
+      if (type === 'success' || type === 'info') {
+        setTimeout(() => {
+          if (statusElement.textContent === message) {
+            statusElement.textContent = '';
+            statusElement.classList.remove('status-success', 'status-error', 'status-info', 'status-warning');
+          }
+        }, type === 'success' ? 4000 : 3000); // Success messages stay longer
+      }
     }
+    
+    // Also log to console for debugging
+    console.log(`📢 [${type.toUpperCase()}] ${message}`);
   }
 }
 
