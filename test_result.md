@@ -480,7 +480,7 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Chrome storage quota prevention system for PDF export"
+    - "PDF export CSP compliance and DOM access protection fixes"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
