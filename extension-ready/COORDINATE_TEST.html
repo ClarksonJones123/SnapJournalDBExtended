@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Coordinate Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-container { border: 2px solid #333; position: relative; margin: 20px 0; }
+        .test-image { width: 800px; height: 600px; background: linear-gradient(45deg, #f0f0f0 25%, transparent 25%), 
+                     linear-gradient(-45deg, #f0f0f0 25%, transparent 25%), 
+                     linear-gradient(45deg, transparent 75%, #f0f0f0 75%), 
+                     linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+                     background-size: 20px 20px; cursor: crosshair; }
+        .debug-info { background: #f9f9f9; padding: 15px; margin: 10px 0; border-left: 4px solid #2196F3; }
+        .red-dot { position: absolute; width: 20px; height: 20px; background: red; border: 2px solid white; 
+                   border-radius: 50%; transform: translate(-50%, -50%); cursor: move; z-index: 10; }
+        .coordinate-display { position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.8); 
+                            color: white; padding: 10px; border-radius: 5px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Coordinate Debug Test</h1>
+    <p>This test will help us debug coordinate accuracy issues.</p>
+    
+    <div class="debug-info">
+        <strong>Instructions:</strong>
+        <ol>
+            <li>Click anywhere on the grid below</li>
+            <li>A red dot will appear - drag it to different positions</li>
+            <li>Check the coordinate display (top-right corner)</li>
+            <li>All coordinates will be logged to console</li>
+        </ol>
+    </div>
+
+    <div class="coordinate-display" id="coordDisplay">
+        Click on grid to start
+    </div>
+
+    <div class="test-container">
+        <div class="test-image" id="testImage"></div>
+    </div>
+
+    <div class="debug-info" id="debugOutput">
+        <strong>Debug Output:</strong><br>
+        <div id="debugLog">No clicks yet...</div>
+    </div>
+
+    <script>
+        console.log('🔍 Coordinate Debug Test Started');
+        
+        const testImage = document.getElementById('testImage');
+        const coordDisplay = document.getElementById('coordDisplay');
+        const debugLog = document.getElementById('debugLog');
+        let redDot = null;
+        let isDragging = false;
+        let clickCount = 0;
+
+        function updateCoordDisplay(x, y, event = '') {
+            coordDisplay.innerHTML = `
+                ${event}<br>
+                Click: (${x}, ${y})<br>
+                Image: ${testImage.offsetWidth}x${testImage.offsetHeight}
+            `;
+        }
+
+        function logToDebug(message) {
+            console.log(message);
+            debugLog.innerHTML += message + '<br>';
+        }
+
+        function createRedDot(x, y) {
+            if (redDot) redDot.remove();
+            
+            redDot = document.createElement('div');
+            redDot.className = 'red-dot';
+            redDot.style.left = x + 'px';
+            redDot.style.top = y + 'px';
+            testImage.appendChild(redDot);
+
+            // Make draggable
+            redDot.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                isDragging = true;
+                redDot.style.cursor = 'grabbing';
+                
+                logToDebug(`🔴 RED DOT DRAG START: (${x}, ${y})`);
+            });
+        }
+
+        testImage.addEventListener('click', (e) => {
+            if (isDragging) return;
+            
+            clickCount++;
+            const rect = testImage.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            console.log('🔍 === CLICK EVENT DEBUG ===');
+            console.log('📍 Raw Click Coordinates:', { x, y });
+            console.log('📐 Image Element Info:', {
+                offsetWidth: testImage.offsetWidth,
+                offsetHeight: testImage.offsetHeight,
+                clientWidth: testImage.clientWidth,
+                clientHeight: testImage.clientHeight
+            });
+            console.log('📊 Browser Rect:', rect);
+
+            updateCoordDisplay(x, y, `Click #${clickCount}`);
+            logToDebug(`📍 CLICK #${clickCount}: (${x.toFixed(1)}, ${y.toFixed(1)})`);
+            
+            createRedDot(x, y);
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging && redDot) {
+                const rect = testImage.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                redDot.style.left = x + 'px';
+                redDot.style.top = y + 'px';
+
+                updateCoordDisplay(x, y, 'Dragging...');
+            }
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            if (isDragging && redDot) {
+                isDragging = false;
+                redDot.style.cursor = 'move';
+                
+                const rect = testImage.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                console.log('🔴 RED DOT FINAL POSITION:', { x, y });
+                logToDebug(`🔴 RED DOT FINAL: (${x.toFixed(1)}, ${y.toFixed(1)})`);
+                updateCoordDisplay(x, y, 'Final Position');
+            }
+        });
+    </script>
+</body>
+</html>
