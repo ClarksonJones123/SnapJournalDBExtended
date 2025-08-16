@@ -254,6 +254,7 @@ class ScreenshotAnnotator {
         
         img.onload = () => {
           console.log('🖼️ Image loaded - actual dimensions:', img.width, 'x', img.height);
+          console.log('📏 Display dimensions used for annotations:', screenshot.displayWidth, 'x', screenshot.displayHeight);
           
           // Use actual image dimensions (no scaling)
           canvas.width = img.width;
@@ -262,89 +263,126 @@ class ScreenshotAnnotator {
           // Draw the original image
           ctx.drawImage(img, 0, 0);
           
-          // Calculate scaling factors based on actual image vs display size
+          // CRITICAL FIX: Calculate scaling factors properly
+          // Annotations were created based on displayWidth/displayHeight
+          // We need to scale them to the actual image dimensions
           const scaleX = img.width / screenshot.displayWidth;
           const scaleY = img.height / screenshot.displayHeight;
           
-          console.log('📏 Scaling factors:', { scaleX, scaleY });
+          console.log('📏 Correct scaling factors:', { 
+            scaleX: scaleX.toFixed(3), 
+            scaleY: scaleY.toFixed(3),
+            imageSize: `${img.width}x${img.height}`,
+            displaySize: `${screenshot.displayWidth}x${screenshot.displayHeight}`
+          });
           
           // Configure text rendering
           ctx.textAlign = 'left';
           ctx.textBaseline = 'top';
           
-          // Render each annotation
+          // Render each annotation with CORRECTED scaling
           screenshot.annotations.forEach((annotation, index) => {
             console.log(`🎯 Rendering annotation ${index + 1}:`, {
               originalCoords: { x: annotation.x, y: annotation.y },
-              text: annotation.text
+              text: annotation.text.substring(0, 30) + (annotation.text.length > 30 ? '...' : '')
             });
             
-            // Scale coordinates properly
+            // Apply correct scaling to annotation coordinates
             const x = annotation.x * scaleX;
             const y = annotation.y * scaleY;
-            const textX = (annotation.textX || annotation.x + 60) * scaleX;
-            const textY = (annotation.textY || annotation.y - 30) * scaleY;
             
-            console.log(`📍 Scaled coordinates:`, { x, y, textX, textY });
+            // Handle text positioning (with proper scaling)
+            let textX, textY;
+            if (annotation.textX && annotation.textY) {
+              // Use stored text position if available
+              textX = annotation.textX * scaleX;
+              textY = annotation.textY * scaleY;
+            } else {
+              // Default text position (offset from pinpoint)
+              textX = x + (60 * scaleX); // Scale the offset too
+              textY = y - (30 * scaleY); // Scale the offset too
+            }
             
-            // Draw pinpoint circle (larger for better visibility)
+            console.log(`📍 Scaled coordinates:`, { 
+              x: Math.round(x), 
+              y: Math.round(y), 
+              textX: Math.round(textX), 
+              textY: Math.round(textY)
+            });
+            
+            // Calculate appropriate sizes based on scale
+            const pinRadius = Math.max(8, 12 * Math.min(scaleX, scaleY));
+            const lineWidth = Math.max(2, 3 * Math.min(scaleX, scaleY));
+            const fontSize = Math.max(12, 18 * Math.min(scaleX, scaleY));
+            
+            console.log(`🎨 Scaled element sizes:`, { 
+              pinRadius: pinRadius.toFixed(1), 
+              lineWidth: lineWidth.toFixed(1), 
+              fontSize: fontSize.toFixed(1)
+            });
+            
+            // Draw pinpoint circle (scaled appropriately)
             ctx.beginPath();
-            ctx.arc(x, y, 12, 0, 2 * Math.PI);
+            ctx.arc(x, y, pinRadius, 0, 2 * Math.PI);
             ctx.fillStyle = '#ff4444';
             ctx.fill();
             ctx.strokeStyle = 'white';
-            ctx.lineWidth = 3;
+            ctx.lineWidth = lineWidth;
             ctx.stroke();
             
-            // Draw number badge
+            // Draw number badge (scaled font)
             ctx.fillStyle = 'white';
-            ctx.font = 'bold 16px Arial';
+            ctx.font = `bold ${Math.round(fontSize * 0.8)}px Arial`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText((index + 1).toString(), x, y);
             
             // Draw connecting line (if text is far enough)
             const distance = Math.sqrt((textX - x) ** 2 + (textY - y) ** 2);
-            if (distance > 40) {
+            if (distance > pinRadius * 2) {
               ctx.beginPath();
               ctx.moveTo(x, y);
               ctx.lineTo(textX, textY);
               ctx.strokeStyle = '#ff4444';
-              ctx.lineWidth = 3;
-              ctx.setLineDash([8, 8]);
+              ctx.lineWidth = lineWidth;
+              ctx.setLineDash([8 * scaleX, 8 * scaleX]); // Scale dash pattern
               ctx.stroke();
               ctx.setLineDash([]);
             }
             
-            // Draw text background (larger and more visible)
-            ctx.font = 'bold 18px Arial, sans-serif';
+            // Draw text background (scaled appropriately)
+            ctx.font = `bold ${Math.round(fontSize)}px Arial, sans-serif`;
             ctx.textAlign = 'left';
             ctx.textBaseline = 'top';
             const textMetrics = ctx.measureText(annotation.text);
-            const textWidth = textMetrics.width + 20;
-            const textHeight = 30;
+            const textWidth = textMetrics.width + (20 * scaleX);
+            const textHeight = fontSize * 1.5;
             
-            // Background with shadow
+            // Ensure text stays within canvas bounds
+            const finalTextX = Math.max(10, Math.min(textX, canvas.width - textWidth - 10));
+            const finalTextY = Math.max(10, Math.min(textY, canvas.height - textHeight - 10));
+            
+            // Background with shadow (scaled)
             ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-            ctx.fillRect(textX - 7, textY - 3, textWidth, textHeight);
+            ctx.fillRect(finalTextX - (7 * scaleX), finalTextY - (3 * scaleY), textWidth, textHeight);
             
             // Main background
             ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-            ctx.fillRect(textX - 10, textY - 6, textWidth, textHeight);
+            ctx.fillRect(finalTextX - (10 * scaleX), finalTextY - (6 * scaleY), textWidth, textHeight);
             
-            // Border
+            // Border (scaled)
             ctx.strokeStyle = '#ff4444';
-            ctx.lineWidth = 3;
-            ctx.strokeRect(textX - 10, textY - 6, textWidth, textHeight);
+            ctx.lineWidth = lineWidth;
+            ctx.strokeRect(finalTextX - (10 * scaleX), finalTextY - (6 * scaleY), textWidth, textHeight);
             
             // Text
             ctx.fillStyle = '#333333';
-            ctx.fillText(annotation.text, textX, textY);
+            ctx.fillText(annotation.text, finalTextX, finalTextY);
           });
           
           // Return high-quality annotated image
           const annotatedImage = canvas.toDataURL('image/png', 1.0);
-          console.log('✅ Annotated image created for PDF');
+          console.log('✅ Annotated image created for PDF with corrected scaling');
           resolve(annotatedImage);
         };
         
