@@ -36,7 +36,8 @@ class ScreenshotAnnotator {
       this.schedulePeriodicCleanup();
       
       // Setup storage quota monitoring
-      this.setupStorageQuotaMonitoring();
+      // Setup periodic cleanup for IndexedDB (no quota monitoring needed)
+      this.schedulePeriodicCleanup();
       
       console.log('✅ ScreenshotAnnotator initialized successfully');
       this.isInitialized = true;
