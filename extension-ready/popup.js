@@ -2190,12 +2190,19 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('  🧹 clearExtensionStorage() - Clear all data');
   console.log('  ⚡ extremeCleanup() - Keep only 1 screenshot');
   console.log('  🔧 fixCorruptedScreenshots() - Remove corrupted screenshots');
-  console.log('  🗄️ resetDatabaseSchema() - Fix PDF export object store issues');
+  console.log('  🗄️ resetDatabaseSchema() - Manual database repair (also runs automatically!)');
+  console.log('');
+  console.log('🔧 AUTOMATIC DATABASE REPAIR:');
+  console.log('  ✅ Schema validation runs automatically on every popup opening');
+  console.log('  ✅ Missing object stores (including pdfExports) auto-created');
+  console.log('  ✅ PDF export "object store not found" errors auto-fixed');
+  console.log('  ✅ No manual intervention required - repairs happen seamlessly');
   console.log('');
   console.log('💡 PDF EXPORT TROUBLESHOOTING:');
-  console.log('  If PDF export fails with "object stores was not found":');
-  console.log('  1. Run: resetDatabaseSchema()');
-  console.log('  2. Or reload extension completely');
+  console.log('  🎉 GOOD NEWS: Schema issues are now auto-repaired!');
+  console.log('  📱 If popup shows "Database automatically repaired" - PDF export is ready');
+  console.log('  🔄 If issues persist: Run resetDatabaseSchema() manually');
+  console.log('  🆘 Last resort: Reload extension completely');
 });
 
 // Refresh UI when popup becomes visible
