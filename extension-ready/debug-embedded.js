@@ -71,38 +71,21 @@ function saveDebugHistory() {
     try {
         // Keep only the last MAX_HISTORY_ENTRIES to prevent storage bloat
         const recentHistory = debugOutput.slice(-MAX_HISTORY_ENTRIES);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        const historyData = {
             timestamp: Date.now(),
             entries: recentHistory,
-            sessionStart: new Date().toISOString()
-        }));
+            sessionStart: new Date().toISOString(),
+            continuityMarker: `Session_${Date.now()}`
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(historyData));
     } catch (error) {
         console.warn('Failed to save debug history:', error);
     }
 }
 
 function loadDebugHistory() {
-    try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            const history = JSON.parse(stored);
-            const timeSinceLastSession = Date.now() - history.timestamp;
-            
-            // If less than 1 hour since last session, restore history
-            if (timeSinceLastSession < 3600000) {
-                debugOutput = [...(history.entries || [])];
-                debugLog(`🔄 Restored debug history from ${new Date(history.timestamp).toLocaleTimeString()}`);
-                debugLog(`📊 Session continuity maintained (${Math.round(timeSinceLastSession / 1000)}s ago)`);
-                return true;
-            } else {
-                debugLog('🆕 Starting new debug session (previous session too old)');
-                return false;
-            }
-        }
-    } catch (error) {
-        debugError('Failed to load debug history', error);
-    }
-    return false;
+    // This is now handled by initializeDebugSystem()
+    return debugOutput.length > 0;
 }
 
 function updateDebugDisplay() {
