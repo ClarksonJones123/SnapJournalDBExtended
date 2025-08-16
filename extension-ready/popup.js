@@ -150,11 +150,15 @@ class ScreenshotAnnotator {
       }
       
       // Load from PRIMARY storage (IndexedDB - unlimited capacity)
-      const screenshots = await this.tempStorage.getAllScreenshots();
+      const currentSessionId = await this.tempStorage.getCurrentSessionId();
+      const screenshots = await this.tempStorage.getAllScreenshots(currentSessionId);
       this.screenshots = screenshots || [];
       
       console.log(`📊 Loaded ${this.screenshots.length} screenshots from PRIMARY storage`);
-      console.log('🏷️ Current session:', await this.tempStorage.getCurrentSessionId());
+      console.log('🏷️ Current session:', currentSessionId);
+      
+      // Update session stats
+      await this.tempStorage.updateSessionStats(currentSessionId);
       
       // Show capacity info
       const stats = await this.tempStorage.getStorageStats();
