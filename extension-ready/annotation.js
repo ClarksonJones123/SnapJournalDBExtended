@@ -393,7 +393,7 @@ class UniversalAnnotator {
             voiceBtn.textContent = '🎤 Voice';
             voiceBtn.className = 'btn-voice';
             
-            this.updateStatus('✅ Annotation added! Drag text to reposition, drag red dot for precise pointing. Click again to add more.');
+            this.updateStatus('✅ Annotation added! Drag text to reposition, drag large red dot for precise pointing. Click again to add more.');
         });
     }
     
