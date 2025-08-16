@@ -966,20 +966,24 @@ class ScreenshotAnnotator {
           hour12: true 
         }),
         captureTimestamp: now.getTime(),
-        annotations: []
+        annotations: [],
+        // Multi-tab session info will be added by tempStorage.saveScreenshot()
+        tabId: tab.id,
+        tabUrl: tab.url
       };
       
       console.log('✅ Screenshot object created:', {
         id: screenshot.id,
         dimensions: `${screenshot.displayWidth}x${screenshot.displayHeight}`,
         imageDataSize: screenshot.imageData.length,
-        title: screenshot.title.substring(0, 50) + '...'
+        title: screenshot.title.substring(0, 50) + '...',
+        tabId: screenshot.tabId
       });
       
       console.log('💾 Adding screenshot to array (current count:', this.screenshots.length, ')');
       this.screenshots.push(screenshot);
       
-      console.log('💾 Saving screenshots to storage...');
+      console.log('💾 Saving screenshots to PRIMARY STORAGE...');
       await this.saveScreenshots();
       
       console.log('🎯 Setting selected screenshot...');
