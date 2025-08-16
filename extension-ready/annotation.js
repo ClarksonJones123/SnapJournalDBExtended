@@ -254,7 +254,7 @@ class UniversalAnnotator {
                 scaledTextPos: `(${scaledTextX.toFixed(1)}, ${scaledTextY.toFixed(1)})`
             });
             
-            // Create annotation object with SCALED coordinates
+            // Create annotation object with SCALED coordinates AND DEBUG INFO
             const annotation = {
                 id: Date.now().toString(),
                 text: annotationText.trim(),
@@ -262,10 +262,38 @@ class UniversalAnnotator {
                 y: scaledY,        // USE SCALED COORDINATES  
                 textX: scaledTextX, // USE SCALED TEXT POSITION
                 textY: scaledTextY, // USE SCALED TEXT POSITION
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                
+                // 🔍 DEBUG COORDINATE TRACKING
+                debug: {
+                    originalClick: {
+                        x: x,
+                        y: y,
+                        timestamp: new Date().toISOString()
+                    },
+                    initialScaling: {
+                        scaleFactorX: scaleFactorX,
+                        scaleFactorY: scaleFactorY,
+                        scaledX: scaledX,
+                        scaledY: scaledY
+                    },
+                    imageInfo: {
+                        displaySize: `${img.offsetWidth}x${img.offsetHeight}`,
+                        storedSize: `${this.screenshot.displayWidth}x${this.screenshot.displayHeight}`,
+                        naturalSize: `${img.naturalWidth}x${img.naturalHeight}`
+                    },
+                    coordinateHistory: [
+                        {
+                            event: 'INITIAL_CLICK',
+                            displayCoords: { x: x, y: y },
+                            storedCoords: { x: scaledX, y: scaledY },
+                            timestamp: new Date().toISOString()
+                        }
+                    ]
+                }
             };
             
-            console.log('🎯 FINAL ANNOTATION OBJECT:', annotation);
+            console.log('🎯 FINAL ANNOTATION OBJECT WITH DEBUG:', annotation);
             console.log('🔍 === COORDINATE DEBUG END ===');
             
             await this.addAnnotation(annotation, container, img);
