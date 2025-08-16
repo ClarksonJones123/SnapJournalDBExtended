@@ -1861,7 +1861,7 @@ class ScreenshotAnnotator {
         
         // Clear from PRIMARY storage (IndexedDB)
         if (this.tempStorage) {
-          await this.tempStorage.clearAll();
+          await this.tempStorage.clearAllStorage();
           console.log('✅ Cleared all data from PRIMARY storage (IndexedDB)');
         }
         
