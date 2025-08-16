@@ -721,7 +721,19 @@ class TempStorageManager {
       const transaction = this.db.transaction(['pdfExports'], 'readwrite');
       const store = transaction.objectStore('pdfExports');
       
-      await store.delete(exportId);
+      // CRITICAL FIX: Properly handle IndexedDB async request
+      await new Promise((resolve, reject) => {
+        const request = store.delete(exportId);
+        
+        request.onsuccess = () => {
+          resolve(request.result);
+        };
+        
+        request.onerror = () => {
+          reject(request.error);
+        };
+      });
+      
       console.log('✅ PDF export data deleted successfully');
       
       return { success: true };
