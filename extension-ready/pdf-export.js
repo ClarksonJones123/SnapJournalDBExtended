@@ -163,19 +163,45 @@ class PDFJournalExporter {
             this.showLoading(true);
             this.updateProgress(0);
             
-            // Create PDF document
+            // Create PDF document with NO BORDERS - fit to image size
             const jsPDF = this.jsPDF;
+            
+            // Get first screenshot to determine optimal PDF size
+            const firstScreenshot = this.screenshots[0];
+            let pdfWidth, pdfHeight;
+            
+            if (firstScreenshot) {
+                // Calculate PDF dimensions based on image aspect ratio
+                const imageAspectRatio = firstScreenshot.displayWidth / firstScreenshot.displayHeight;
+                
+                // Use A4 width as base, calculate height to match image aspect ratio
+                const baseWidth = 210; // A4 width in mm
+                pdfWidth = baseWidth;
+                pdfHeight = baseWidth / imageAspectRatio;
+                
+                // If height is too large, use A4 height as base instead
+                if (pdfHeight > 297) { // A4 height
+                    pdfHeight = 297;
+                    pdfWidth = pdfHeight * imageAspectRatio;
+                }
+            } else {
+                // Fallback to A4
+                pdfWidth = 210;
+                pdfHeight = 297;
+            }
+            
+            console.log('📄 PDF dimensions calculated:', { width: pdfWidth, height: pdfHeight });
+            
             const pdf = new jsPDF({
-                orientation: 'portrait',
+                orientation: pdfWidth > pdfHeight ? 'landscape' : 'portrait',
                 unit: 'mm',
-                format: 'a4'
+                format: [pdfWidth, pdfHeight] // Custom size to fit images perfectly
             });
             
-            // PDF dimensions (A4)
-            const pageWidth = 210;
-            const pageHeight = 297;
-            const margin = 20;
-            const contentWidth = pageWidth - (margin * 2);
+            // NO MARGINS - fill entire page
+            const margin = 0;
+            const contentWidth = pdfWidth;
+            const contentHeight = pdfHeight;
             
             // Add title page
             this.addTitlePage(pdf, pageWidth, pageHeight, margin);
