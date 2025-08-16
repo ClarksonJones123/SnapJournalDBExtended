@@ -684,7 +684,7 @@ class ScreenshotAnnotator {
           annotations: []
         };
         
-        console.log('✅ Screenshot object created with ORIGINAL coordinate reference:', {
+        console.log('✅ Screenshot object created with 100% ORIGINAL quality:', {
           id: screenshot.id,
           originalCaptureWidth: screenshot.originalCaptureWidth,
           originalCaptureHeight: screenshot.originalCaptureHeight,
@@ -694,7 +694,7 @@ class ScreenshotAnnotator {
           displayHeight: screenshot.displayHeight,  // Same as original capture
           imageDataSize: screenshot.imageData.length,
           title: screenshot.title.substring(0, 50) + '...',
-          coordinateReferenceSystem: 'ORIGINAL_CAPTURE_DIMENSIONS'
+          quality: '100% ORIGINAL - NO COMPRESSION'
         });
         
         console.log('Created screenshot object:', screenshot.id);
