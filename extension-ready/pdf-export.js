@@ -33,6 +33,7 @@ class PDFJournalExporter {
             if (exportId) {
                 // Load from chrome storage (for large datasets)
                 console.log('📦 Loading export data from storage:', exportId);
+                this.currentExportId = exportId; // Store for cleanup
                 const result = await chrome.storage.local.get(exportId);
                 this.exportData = result[exportId];
                 
