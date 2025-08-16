@@ -166,6 +166,41 @@ backend:
         - comment: "VERIFIED: Error handling working correctly. Returns 404 for invalid endpoints and 422 for validation errors (invalid POST data). FastAPI's built-in validation and error handling is functioning properly."
 
 frontend:
+  - task: "Replace Chrome local storage with IndexedDB as primary storage"
+    implemented: true
+    working: "needs_testing"
+    file: "/app/extension-ready/popup.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "implemented"
+        - agent: "main"
+        - comment: "MAJOR REFACTOR: Replaced Chrome storage methods with IndexedDB primary storage. Updated loadScreenshots() to use tempStorage.getAllScreenshots(), saveScreenshots() to use tempStorage.saveScreenshot(), removed complex quota monitoring and migration logic. Screenshots now stored directly in IndexedDB with unlimited capacity."
+
+  - task: "Multi-tab session management UI implementation"
+    implemented: true
+    working: "needs_testing"
+    file: "/app/extension-ready/popup.html"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "implemented"
+        - agent: "main"
+        - comment: "NEW FEATURE: Added complete multi-tab session management UI. Includes session modal with current session display, new session creation, session switching, and session list with stats. Added CSS styling for modal, session items, and management controls."
+
+  - task: "Multi-tab session management functionality"
+    implemented: true
+    working: "needs_testing"
+    file: "/app/extension-ready/popup.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "implemented"
+        - agent: "main"
+        - comment: "NEW FEATURE: Implemented complete session management functionality including updateSessionInfo(), showSessionModal(), createNewSession(), switchToSession(), refreshSessionsList(). Screenshots now include tab context info. PDF export includes session name. Event listeners added for all session controls."
   - task: "Extension popup interface loading and initialization"
     implemented: true
     working: true
