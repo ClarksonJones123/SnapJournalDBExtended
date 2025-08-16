@@ -495,18 +495,36 @@ class ScreenshotAnnotator {
     }
     
     try {
-      console.log('🔄 Starting PDF journal export...');
-      this.showStatus('Generating PDF journal...', 'info');
+      console.log('🔄 Starting PDF journal export with annotated images...');
+      this.showStatus('Generating PDF journal with annotations...', 'info');
       
-      // Create PDF export window with all screenshots
+      // Create annotated versions of all screenshots for PDF
+      const annotatedScreenshots = [];
+      for (let i = 0; i < this.screenshots.length; i++) {
+        const screenshot = this.screenshots[i];
+        console.log(`🎨 Processing screenshot ${i + 1}/${this.screenshots.length} for PDF...`);
+        
+        const annotatedImageData = await this.createAnnotatedImageForPDF(screenshot);
+        
+        annotatedScreenshots.push({
+          ...screenshot,
+          imageData: annotatedImageData, // Use annotated version
+          originalImageData: screenshot.imageData // Keep original as backup
+        });
+        
+        // Show progress
+        this.showStatus(`Processing images for PDF: ${i + 1}/${this.screenshots.length}`, 'info');
+      }
+      
+      // Create PDF export window with annotated screenshots
       const exportData = {
-        screenshots: this.screenshots,
+        screenshots: annotatedScreenshots,
         exportDate: new Date().toISOString(),
-        totalScreenshots: this.screenshots.length,
-        totalAnnotations: this.screenshots.reduce((sum, s) => sum + (s.annotations?.length || 0), 0)
+        totalScreenshots: annotatedScreenshots.length,
+        totalAnnotations: annotatedScreenshots.reduce((sum, s) => sum + (s.annotations?.length || 0), 0)
       };
       
-      console.log('📊 Export data prepared:', {
+      console.log('📊 Export data prepared with annotated images:', {
         screenshots: exportData.screenshots.length,
         totalAnnotations: exportData.totalAnnotations,
         dataSize: JSON.stringify(exportData).length
@@ -564,8 +582,8 @@ class ScreenshotAnnotator {
         }
       }, 3000);
       
-      this.showStatus('📄 PDF journal export opened in new window', 'success');
-      console.log('✅ PDF export window opened successfully');
+      this.showStatus('📄 PDF journal export opened with annotated images!', 'success');
+      console.log('✅ PDF export window opened successfully with annotations');
       
       // Clean up stored data after a delay
       setTimeout(async () => {
