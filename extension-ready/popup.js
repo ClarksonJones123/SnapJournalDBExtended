@@ -176,9 +176,9 @@ class ScreenshotAnnotator {
     return Math.round(bytes / (1024 * 1024)) + ' MB';
   }
   
-  async compressImageData(imageData, quality = 0.85) {
+  async compressImageData(imageData, quality = 0.95) {
     try {
-      console.log('🗜️ Optimizing image data...');
+      console.log('🗜️ Optimizing image data (minimal compression for quality)...');
       console.log('📊 Original size:', this.formatMemorySize(imageData.length));
       
       return new Promise((resolve) => {
@@ -187,19 +187,19 @@ class ScreenshotAnnotator {
         const img = new Image();
         
         img.onload = () => {
-          // Less aggressive compression - maintain better quality
-          const maxWidth = 1600;  // Increased from 1200
-          const maxHeight = 1200; // Increased from 800
+          // Minimal compression - preserve quality
+          const maxWidth = 1920;  // Full HD
+          const maxHeight = 1080; // Full HD
           
           let { width, height } = img;
           
-          // Only resize if significantly larger
-          if (width > maxWidth) {
+          // Only resize if much larger than Full HD
+          if (width > maxWidth * 1.5) {
             height = (height * maxWidth) / width;
             width = maxWidth;
           }
           
-          if (height > maxHeight) {
+          if (height > maxHeight * 1.5) {
             width = (width * maxHeight) / height;
             height = maxHeight;
           }
@@ -207,16 +207,16 @@ class ScreenshotAnnotator {
           canvas.width = width;
           canvas.height = height;
           
-          // Draw with better quality settings
+          // Highest quality settings
           ctx.imageSmoothingEnabled = true;
           ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(img, 0, 0, width, height);
           
-          // Higher quality compression
-          const optimizedData = canvas.toDataURL('image/jpeg', quality);
+          // Very high quality compression (95%)
+          const optimizedData = canvas.toDataURL('image/png', quality);
           
           console.log('✅ Optimized size:', this.formatMemorySize(optimizedData.length));
-          console.log('📉 Size reduction:', Math.round((1 - optimizedData.length / imageData.length) * 100) + '%');
+          console.log('📉 Size change:', Math.round((1 - optimizedData.length / imageData.length) * 100) + '%');
           
           resolve(optimizedData);
         };
