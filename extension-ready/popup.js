@@ -1286,9 +1286,24 @@ class ScreenshotAnnotator {
       console.log('📋 Setting innerHTML with', html.length, 'characters');
       listElement.innerHTML = html;
       
-      // Add click handlers
+      // Add click handlers and image error handlers
       const screenshotItems = listElement.querySelectorAll('.screenshot-item');
+      const previewImages = listElement.querySelectorAll('.screenshot-preview-img');
+      
       console.log('📋 Adding click handlers to', screenshotItems.length, 'items');
+      console.log('📋 Adding error handlers to', previewImages.length, 'images');
+      
+      // Add image error handlers (CSP compliant)
+      previewImages.forEach((img) => {
+        img.addEventListener('error', (e) => {
+          console.error('Failed to load image:', e.target.src.substring(0, 50) + '...');
+          const screenshotId = e.target.dataset.screenshotId;
+          console.log('📁 Attempting to restore image from temporary storage for:', screenshotId);
+          
+          // Try to restore from temporary storage
+          this.restoreImageForElement(screenshotId, e.target);
+        });
+      });
       
       screenshotItems.forEach((item, index) => {
         item.addEventListener('click', () => {
