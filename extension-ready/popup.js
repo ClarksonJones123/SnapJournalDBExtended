@@ -1881,6 +1881,12 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('  🧹 clearExtensionStorage() - Clear all data');
   console.log('  ⚡ extremeCleanup() - Keep only 1 screenshot');
   console.log('  🔧 fixCorruptedScreenshots() - Remove corrupted screenshots');
+  console.log('  🗄️ resetDatabaseSchema() - Fix PDF export object store issues');
+  console.log('');
+  console.log('💡 PDF EXPORT TROUBLESHOOTING:');
+  console.log('  If PDF export fails with "object stores was not found":');
+  console.log('  1. Run: resetDatabaseSchema()');
+  console.log('  2. Or reload extension completely');
 });
 
 // Refresh UI when popup becomes visible
