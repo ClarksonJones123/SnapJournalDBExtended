@@ -246,17 +246,17 @@ frontend:
         - agent: "main"
         - comment: "PRECISION IMPROVED: Added Math.round() to click coordinates and drag coordinates to eliminate sub-pixel positioning issues. Coordinates now use integer values for precise positioning. Also accounted for CSS transform centering."
 
-  - task: "PDF journal formatting with no borders"
+  - task: "Remove annotation numbering system"
     implemented: true
     working: "NA"
-    file: "/app/extension-ready/pdf-export.js"
+    file: "/app/extension-ready/annotation.js"
     stuck_count: 0
     priority: "high"
     needs_retesting: true
     status_history:
         - working: "implemented"
         - agent: "main"
-        - comment: "IMPLEMENTED: Completely redesigned PDF export to have no borders, no margins, no headers, no text formatting. PDF pages are now custom-sized to fit images perfectly with 0mm margins. Removed title page and all formatting - pure image journal."
+        - comment: "REMOVED: Eliminated all number badges from annotations (red dots, text labels, PDF rendering, and thumbnail indicators). This prevents conflict with red dot visibility and provides cleaner annotation appearance."
 
 metadata:
   created_by: "testing_agent"
