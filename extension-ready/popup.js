@@ -801,6 +801,18 @@ class ScreenshotAnnotator {
         }
       }
       
+      console.log('📊 Final export data summary:', {
+        totalScreenshotsProcessed: annotatedScreenshots.length,
+        originalScreenshotCount: this.screenshots.length,
+        allScreenshotsIncluded: annotatedScreenshots.length === this.screenshots.length
+      });
+      
+      if (annotatedScreenshots.length === 0) {
+        console.error('❌ No screenshots were successfully processed for PDF');
+        this.showStatus('Failed to process any screenshots for PDF export', 'error');
+        return;
+      }
+      
       // Create PDF export window with annotated screenshots
       const exportData = {
         screenshots: annotatedScreenshots,
