@@ -78,13 +78,59 @@ class ScreenshotAnnotator {
   
   async loadScreenshots() {
     try {
+      console.log('📂 Loading screenshots with temporary storage support...');
+      
       const result = await chrome.storage.local.get('screenshots');
       this.screenshots = result.screenshots || [];
-      console.log('Loaded screenshots:', this.screenshots.length);
+      
+      console.log(`📂 Loaded ${this.screenshots.length} screenshot records from Chrome storage`);
+      
+      // 📁 Restore images from temporary storage if needed
+      if (this.tempStorage && this.screenshots.length > 0) {
+        console.log('📁 Checking for images in temporary storage...');
+        
+        for (let i = 0; i < this.screenshots.length; i++) {
+          const screenshot = this.screenshots[i];
+          
+          if (screenshot.isInTempStorage && screenshot.tempImageId) {
+            console.log(`📁 Restoring image for screenshot ${screenshot.id} from temporary storage...`);
+            
+            try {
+              const restoredScreenshot = await this.tempStorage.restoreFullScreenshot(screenshot);
+              this.screenshots[i] = restoredScreenshot;
+              
+              if (restoredScreenshot.imageData) {
+                console.log(`✅ Restored image for screenshot ${screenshot.id}`);
+              } else {
+                console.warn(`⚠️ Failed to restore image for screenshot ${screenshot.id}`);
+              }
+            } catch (error) {
+              console.error(`❌ Error restoring screenshot ${screenshot.id}:`, error);
+            }
+          }
+        }
+        
+        console.log('📁 Temporary storage restoration completed');
+      }
+      
       this.calculateMemoryUsage();
+      this.updateUI();
+      
+      // Initialize annotation mode after loading
+      if (this.screenshots.length > 0 && !this.selectedScreenshot) {
+        this.selectedScreenshot = this.screenshots[0];
+        const annotateBtn = document.getElementById('annotateBtn');
+        if (annotateBtn) {
+          annotateBtn.disabled = false;
+        }
+      }
+      
+      console.log(`✅ Screenshot loading completed: ${this.screenshots.length} screenshots available`);
+      
     } catch (error) {
-      console.error('Error loading screenshots:', error);
-      this.showStatus('Error loading screenshots', 'error');
+      console.error('❌ Error loading screenshots:', error);
+      this.screenshots = [];
+      this.updateUI();
     }
   }
   
