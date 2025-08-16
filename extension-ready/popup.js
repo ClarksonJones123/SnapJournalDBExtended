@@ -1104,9 +1104,6 @@ class ScreenshotAnnotator {
       console.log('✅ Updated screenshot count:', countElement.textContent);
     }
     
-    // Update session info
-    this.updateSessionInfo();
-    
     // Update screenshots list
     const listElement = document.getElementById('screenshotsList');
     if (!listElement) {
@@ -1118,11 +1115,8 @@ class ScreenshotAnnotator {
       console.log('📋 No screenshots - showing empty state');
       listElement.innerHTML = `
         <div class="empty-state">
-          No screenshots in this session yet.<br>
-          Click "Capture Current Page" to add screenshots from any tab!<br>
-          <small style="color: #999; margin-top: 8px; display: block;">
-            💡 Tip: You can capture from different tabs and they'll all be saved in "${this.currentSessionName || 'this session'}"
-          </small>
+          No screenshots yet.<br>
+          Click "Capture Current Page" to get started with unlimited storage!
         </div>`;
       
       // Disable PDF export when no screenshots
@@ -1189,12 +1183,6 @@ class ScreenshotAnnotator {
           annotationsList += '</div>';
         }
         
-        // Show tab info for multi-tab context
-        const tabInfo = screenshot.tabUrl ? `
-          <div style="font-size: 10px; color: #999; margin-top: 2px;">
-            🌐 ${new URL(screenshot.tabUrl).hostname}
-          </div>` : '';
-        
         html += `
           <div class="screenshot-item ${isSelected ? 'selected' : ''}" data-id="${screenshot.id}">
             <div class="screenshot-preview">
@@ -1214,7 +1202,6 @@ class ScreenshotAnnotator {
               <div class="timestamp-info">
                 <span class="capture-date">📅 ${screenshot.captureDate || new Date(screenshot.timestamp).toLocaleDateString()}</span>
                 <span class="capture-time">🕐 ${screenshot.captureTime || new Date(screenshot.timestamp).toLocaleTimeString()}</span>
-                ${tabInfo}
               </div>
               <div class="technical-info">
                 <span>${screenshot.displayWidth}×${screenshot.displayHeight}</span>
