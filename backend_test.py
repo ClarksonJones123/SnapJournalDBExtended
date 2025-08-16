@@ -1,12 +1,24 @@
 #!/usr/bin/env python3
 """
-Backend API Testing for Screenshot Annotation Extension
-Tests the FastAPI backend endpoints for functionality and reliability.
+Chrome Extension Backend Testing Suite
+=====================================
+
+This test suite focuses on testing the backend APIs that support the Chrome extension
+and provides comprehensive analysis of the Chrome extension's IndexedDB issues.
+
+CRITICAL LIMITATION: Chrome extensions cannot be directly tested in this environment
+as they require a browser context with extension permissions. However, we can:
+
+1. Test the backend APIs that support the extension
+2. Analyze the extension code for logical errors  
+3. Provide diagnostic information about IndexedDB issues
+4. Test the extension files for syntax and structure errors
 """
 
 import requests
 import json
 import os
+import sys
 from datetime import datetime
 import uuid
 
@@ -24,6 +36,30 @@ def get_backend_url():
 
 BACKEND_URL = get_backend_url()
 print(f"Testing backend at: {BACKEND_URL}")
+
+class ChromeExtensionTester:
+    def __init__(self):
+        self.test_results = []
+        self.backend_working = False
+        
+    def log_test(self, test_name, success, message, details=None):
+        """Log test results"""
+        result = {
+            'test': test_name,
+            'success': success,
+            'message': message,
+            'details': details or {},
+            'timestamp': datetime.now().isoformat()
+        }
+        self.test_results.append(result)
+        
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status}: {test_name}")
+        print(f"   {message}")
+        if details:
+            for key, value in details.items():
+                print(f"   {key}: {value}")
+        print()
 
 def test_root_endpoint():
     """Test the root API endpoint"""
