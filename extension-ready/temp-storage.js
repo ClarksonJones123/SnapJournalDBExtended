@@ -46,6 +46,13 @@ class TempStorageManager {
           console.log('✅ Created sessions store for multi-tab journals');
         }
         
+        // PDF Exports object store (NEW - for large dataset exports)
+        if (!db.objectStoreNames.contains('pdfExports')) {
+          const pdfExportStore = db.createObjectStore('pdfExports', { keyPath: 'id' });
+          pdfExportStore.createIndex('timestamp', 'timestamp', { unique: false });
+          console.log('✅ Created pdfExports object store for large datasets');
+        }
+        
         // Legacy temp storage (keep for compatibility)
         if (!db.objectStoreNames.contains('tempImages')) {
           const tempStore = db.createObjectStore('tempImages', { keyPath: 'id' });
