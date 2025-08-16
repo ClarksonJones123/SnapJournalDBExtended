@@ -385,6 +385,37 @@ class ScreenshotAnnotator {
     }
   }
 
+  // 🎯 COORDINATE CORRECTION SYSTEM
+  getCoordinateCorrection(canvasWidth, canvasHeight) {
+    // User reports 0.38 inch offset (lower and right)
+    // This method calculates dynamic correction based on image size
+    
+    const standardDPI = 96; // Standard web DPI
+    const targetOffsetInches = 0.38;
+    
+    // Calculate image dimensions in inches
+    const imageWidthInches = canvasWidth / standardDPI;
+    const imageHeightInches = canvasHeight / standardDPI;
+    
+    // Calculate offset as percentage of image size
+    const offsetPercentageX = targetOffsetInches / imageWidthInches;
+    const offsetPercentageY = targetOffsetInches / imageHeightInches;
+    
+    // Convert back to pixels with negative values (to move up and left)
+    const offsetX = -Math.round(canvasWidth * offsetPercentageX);
+    const offsetY = -Math.round(canvasHeight * offsetPercentageY);
+    
+    console.log('🎯 Coordinate correction calculated:', {
+      imageSize: `${canvasWidth}x${canvasHeight}px`,
+      imageSizeInches: `${imageWidthInches.toFixed(2)}" x ${imageHeightInches.toFixed(2)}"`,
+      offsetPercentage: `${(offsetPercentageX*100).toFixed(2)}% x ${(offsetPercentageY*100).toFixed(2)}%`,
+      offsetPixels: `${offsetX}px, ${offsetY}px`,
+      targetOffset: `${targetOffsetInches}" correction`
+    });
+    
+    return { x: offsetX, y: offsetY };
+  }
+
   async createAnnotatedImageForPDF(screenshot) {
     try {
       console.log('🎨 Creating annotated image for PDF (100% original quality)...');
