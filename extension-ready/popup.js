@@ -622,15 +622,17 @@ class ScreenshotAnnotator {
           annotations: []
         };
         
-        console.log('✅ Screenshot object created:', {
+        console.log('✅ Screenshot object created with ORIGINAL coordinate reference:', {
           id: screenshot.id,
-          originalWidth: screenshot.originalWidth,
-          originalHeight: screenshot.originalHeight,
-          displayWidth: screenshot.displayWidth,
-          displayHeight: screenshot.displayHeight,
+          originalCaptureWidth: screenshot.originalCaptureWidth,
+          originalCaptureHeight: screenshot.originalCaptureHeight,
+          storageWidth: screenshot.storageWidth,
+          storageHeight: screenshot.storageHeight, 
+          displayWidth: screenshot.displayWidth,    // Same as original capture
+          displayHeight: screenshot.displayHeight,  // Same as original capture
           imageDataSize: screenshot.imageData.length,
           title: screenshot.title.substring(0, 50) + '...',
-          actualImageDimensions: actualDimensions
+          coordinateReferenceSystem: 'ORIGINAL_CAPTURE_DIMENSIONS'
         });
         
         console.log('Created screenshot object:', screenshot.id);
