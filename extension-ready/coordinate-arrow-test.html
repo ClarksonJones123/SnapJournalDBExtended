@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coordinate & Arrow Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            background: #f5f5f5;
+        }
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+        }
+        .test-image {
+            width: 800px;
+            height: 500px;
+            background: linear-gradient(45deg, #e1f5fe, #f3e5f5);
+            border: 2px solid #333;
+            position: relative;
+            margin: 20px auto;
+            cursor: crosshair;
+            background-image: 
+                radial-gradient(circle at 200px 150px, rgba(255,0,0,0.1) 30px, transparent 30px),
+                radial-gradient(circle at 400px 250px, rgba(0,255,0,0.1) 30px, transparent 30px),
+                radial-gradient(circle at 600px 350px, rgba(0,0,255,0.1) 30px, transparent 30px);
+        }
+        .coordinate-display {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .grid-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🎯 Coordinate Accuracy & Dashed Arrow Test</h1>
+        
+        <div class="test-section">
+            <h2>Test Instructions</h2>
+            <ol>
+                <li><strong>Click anywhere on the test image below</strong></li>
+                <li><strong>Enter annotation text when prompted</strong></li>
+                <li><strong>Observe:</strong>
+                    <ul>
+                        <li>🎯 <strong>Lime green crosshair</strong> shows exact click position (8 seconds)</li>
+                        <li>🔴 <strong>Red dot</strong> should align perfectly with crosshair center</li>
+                        <li>🔗 <strong>Dashed red line</strong> should connect red dot to text box</li>
+                    </ul>
+                </li>
+                <li><strong>Drag elements to test arrow updates</strong></li>
+            </ol>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test Image (Click to Annotate)</h2>
+            <div id="imageContainer" style="position: relative; display: inline-block;">
+                <div class="test-image" id="testImage">
+                    <div class="grid-overlay"></div>
+                    <div class="coordinate-display" id="coordinates">
+                        Mouse: (0, 0)<br>
+                        Image Relative: (0, 0)
+                    </div>
+                </div>
+                <div class="annotation-count" style="position: absolute; top: 10px; right: 10px; background: rgba(255,0,0,0.8); color: white; padding: 8px 12px; border-radius: 4px; font-weight: bold;">
+                    0
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test Results</h2>
+            <div id="testResults">
+                <div class="info">Waiting for first annotation test...</div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Settings Panel Test</h2>
+            <button id="settingsBtn" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">🎨 Settings</button>
+            <button id="voiceBtn" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px;">🎤 Voice</button>
+            <button id="closeBtn" style="padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px;">❌ Close</button>
+        </div>
+        
+        <div id="status" class="status info">Ready for testing...</div>
+        
+        <!-- Settings Panel -->
+        <div id="settingsPanel" style="display: none; position: fixed; top: 50px; right: 50px; background: white; border: 2px solid #ddd; border-radius: 8px; padding: 20px; z-index: 10000; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+            <h3>🎨 Annotation Settings</h3>
+            <div style="margin: 10px 0;">
+                <label>Annotation Color:</label>
+                <input type="color" id="annotationColor" value="#ff4444">
+                <input type="text" id="annotationColorText" value="#ff4444" style="margin-left: 10px; width: 80px;">
+            </div>
+            <div style="margin: 10px 0;">
+                <label>Text Color:</label>
+                <input type="color" id="textColor" value="#333333">
+                <input type="text" id="textColorText" value="#333333" style="margin-left: 10px; width: 80px;">
+            </div>
+            <div style="margin: 10px 0;">
+                <label>Text Background:</label>
+                <input type="color" id="textBgColor" value="#ffffff">
+            </div>
+            <div style="margin: 10px 0;">
+                <label>Opacity: <span id="opacityValue">95</span></label>
+                <input type="range" id="textBgOpacity" min="10" max="100" value="95">
+            </div>
+            <div style="margin: 10px 0;">
+                <label>Font Size: <span id="fontSizeValue">14</span>px</label>
+                <input type="range" id="fontSize" min="10" max="24" value="14">
+            </div>
+            <div style="margin: 10px 0;">
+                <label>Font Weight:</label>
+                <select id="fontWeight">
+                    <option value="normal">Normal</option>
+                    <option value="bold" selected>Bold</option>
+                </select>
+            </div>
+            <div style="margin: 10px 0;">
+                <label>Font Family:</label>
+                <select id="fontFamily">
+                    <option value="Arial, sans-serif" selected>Arial</option>
+                    <option value="Georgia, serif">Georgia</option>
+                    <option value="monospace">Monospace</option>
+                </select>
+            </div>
+            <div style="margin: 15px 0;">
+                <button id="applySettings" style="padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Apply Settings</button>
+                <button id="resetSettings" style="padding: 8px 15px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px;">Reset</button>
+                <button id="closeSettingsBtn" style="padding: 8px 15px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px;">Close</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Mock chrome object for testing
+        if (typeof chrome === 'undefined') {
+            window.chrome = {
+                runtime: {
+                    sendMessage: function(message, callback) {
+                        console.log('Mock chrome.runtime.sendMessage called:', message);
+                        if (callback) {
+                            setTimeout(() => callback({success: true}), 100);
+                        }
+                    }
+                }
+            };
+        }
+    </script>
+    <script src="annotation.js"></script>
+    
+    <script>
+        // Test-specific enhancements
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🧪 Test page loaded, setting up coordinate tracking...');
+            
+            const testImage = document.getElementById('testImage');
+            const coordinates = document.getElementById('coordinates');
+            const testResults = document.getElementById('testResults');
+            let annotationCount = 0;
+            
+            // Track mouse movement for coordinate display
+            testImage.addEventListener('mousemove', (e) => {
+                const rect = testImage.getBoundingClientRect();
+                const x = Math.round(e.clientX - rect.left);
+                const y = Math.round(e.clientY - rect.top);
+                
+                coordinates.innerHTML = `
+                    Mouse: (${e.clientX}, ${e.clientY})<br>
+                    Image Relative: (${x}, ${y})<br>
+                    Image Rect: ${rect.left.toFixed(1)}, ${rect.top.toFixed(1)}
+                `;
+            });
+            
+            // Override the annotation creation to add test results
+            const originalAnnotator = window.UniversalAnnotator;
+            if (originalAnnotator && originalAnnotator.prototype) {
+                const originalAddAnnotation = originalAnnotator.prototype.addAnnotation;
+                
+                originalAnnotator.prototype.addAnnotation = async function(annotation, container, img) {
+                    // Call original method
+                    await originalAddAnnotation.call(this, annotation, container, img);
+                    
+                    // Add test results
+                    annotationCount++;
+                    document.querySelector('.annotation-count').textContent = annotationCount;
+                    
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'success';
+                    resultDiv.innerHTML = `
+                        <strong>Annotation ${annotationCount} Created:</strong><br>
+                        📍 Position: (${annotation.x}, ${annotation.y})<br>
+                        📝 Text: "${annotation.text}"<br>
+                        🕐 Time: ${new Date().toLocaleTimeString()}<br>
+                        <em>Check for: Red dot accuracy + Visible dashed line</em>
+                    `;
+                    
+                    testResults.appendChild(resultDiv);
+                    
+                    // Scroll to show results
+                    resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                };
+            }
+            
+            // Status update function  
+            window.updateTestStatus = (message, type = 'info') => {
+                const status = document.getElementById('status');
+                status.textContent = message;
+                status.className = `status ${type}`;
+            };
+            
+            updateTestStatus('✅ Test page ready - Click on the image to create annotations!', 'success');
+        });
+    </script>
+</body>
+</html>
