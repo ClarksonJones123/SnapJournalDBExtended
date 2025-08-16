@@ -559,13 +559,18 @@ class ScreenshotAnnotator {
         // 🔧 STORAGE-OPTIMIZED COMPRESSION (JPEG 75% quality)
         const processedImageData = await this.compressImageData(response.imageData, 0.75);
         
+        // 🔧 GET ACTUAL IMAGE DIMENSIONS from processed image
+        const actualDimensions = await this.getImageDimensions(processedImageData);
+        console.log('📐 Actual processed image dimensions:', actualDimensions);
+        
         const screenshot = {
           id: Date.now().toString(),
           imageData: processedImageData,
-          originalWidth: 1920,
-          originalHeight: 1080,
-          displayWidth: Math.round(1920 * 0.9), // 90% sizing
-          displayHeight: Math.round(1080 * 0.9),
+          // Store ACTUAL dimensions, not assumed ones
+          originalWidth: actualDimensions.width,
+          originalHeight: actualDimensions.height,
+          displayWidth: actualDimensions.width,  // Use actual width for annotations
+          displayHeight: actualDimensions.height, // Use actual height for annotations
           url: tab.url,
           title: tab.title,
           timestamp: now.toISOString(),
