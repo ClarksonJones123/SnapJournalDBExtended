@@ -408,24 +408,26 @@ class ScreenshotAnnotator {
             coordinateReference: 'DIRECT_ORIGINAL_COORDINATES'
           });
           
-          // Get coordinate correction for this image
-          const correction = this.getCoordinateCorrection(canvas.width, canvas.height);
+          // Get coordinate correction for this image (using natural dimensions)
+          const correction = this.getCoordinateCorrection(naturalWidth, naturalHeight);
           
           // Render each annotation with coordinate offset correction
           screenshot.annotations.forEach((annotation, index) => {
-            console.log(`🎯 Annotation ${index + 1} - Applying coordinate correction`);
+            console.log(`🎯 Annotation ${index + 1} - Using natural dimensions for precise coordinates`);
             
-            // Apply correction to coordinates
+            // COORDINATES ARE ALREADY IN NATURAL/STORAGE SPACE - NO ADDITIONAL SCALING NEEDED
+            // Just apply the 0.38 inch correction
             const correctedX = annotation.x + correction.x;
             const correctedY = annotation.y + correction.y;
             
-            console.log(`📍 Coordinate correction applied:`, {
-              original: `(${annotation.x}, ${annotation.y})`,
+            console.log(`📍 Coordinate correction applied (natural dimensions):`, {
+              stored: `(${annotation.x}, ${annotation.y})`,
               corrected: `(${correctedX}, ${correctedY})`,
-              correction: `(${correction.x}, ${correction.y})`
+              correction: `(${correction.x}, ${correction.y})`,
+              coordinateSpace: 'NATURAL_IMAGE_DIMENSIONS'
             });
             
-            // Use corrected coordinates
+            // Use corrected coordinates directly
             const x = correctedX;
             const y = correctedY;
             
@@ -439,7 +441,7 @@ class ScreenshotAnnotator {
               textY = y - 30;
             }
             
-            console.log(`📍 Final coordinates:`, { 
+            console.log(`📍 Final PDF coordinates:`, { 
               x: Math.round(x), 
               y: Math.round(y), 
               textX: Math.round(textX), 
