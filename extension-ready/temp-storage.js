@@ -152,11 +152,12 @@ class TempStorageManager {
         
         if (repairSuccessful) {
           console.log('✅ AUTOMATIC SCHEMA REPAIR COMPLETED SUCCESSFULLY');
-          console.log('📊 Repair results:', {
+          console.log('📊 Repair results:');
+          console.log(JSON.stringify({
             allStoresPresent: newMissingStores.length === 0,
             correctVersion: this.db.version === this.dbVersion,
             availableStores: newExistingStores
-          });
+          }, null, 2));
           
           return { 
             repaired: true, 
