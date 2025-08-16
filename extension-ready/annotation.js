@@ -488,73 +488,82 @@ class UniversalAnnotator {
     }
     
     createAnnotationMarker(container, img, annotation, index) {
-        console.log(`🔧 Creating annotation ${index + 1} with text: "${annotation.text}"`);
-        console.log('🔍 PRECISE MARKER POSITIONING:', {
-            annotationCoords: `(${annotation.x}, ${annotation.y})`,
-            textCoords: `(${annotation.textX}, ${annotation.textY})`,
-            coordinateSystem: 'DISPLAY_RELATIVE_EXACT'
+        console.log(`🔧 Creating PIXEL-PERFECT annotation ${index + 1}: "${annotation.text}"`);
+        
+        // Use coordinates EXACTLY as calculated (no adjustments)
+        const exactX = annotation.x;
+        const exactY = annotation.y;
+        const exactTextX = annotation.textX || (annotation.x + 60);
+        const exactTextY = annotation.textY || (annotation.y - 30);
+        
+        console.log('🎯 PIXEL-PERFECT MARKER POSITIONING:', {
+            annotationId: annotation.id,
+            exactCoords: `(${exactX}, ${exactY})`,
+            textCoords: `(${exactTextX}, ${exactTextY})`,
+            positioning: 'ZERO_ADJUSTMENTS_APPLIED'
         });
         
-        // Use coordinates EXACTLY as clicked - no transforms, no adjustments
-        const displayX = annotation.x;
-        const displayY = annotation.y;
-        const displayTextX = annotation.textX || (annotation.x + 60);
-        const displayTextY = annotation.textY || (annotation.y - 30);
-        
-        console.log('🔧 EXACT positioning (no CSS centering compensation):', {
-            pinpoint: `left: ${displayX}px, top: ${displayY}px`,
-            textLabel: `left: ${displayTextX}px, top: ${displayTextY}px`,
-            note: 'Coordinates used EXACTLY as clicked'
-        });
-        
-        // Create annotation system container
+        // Create annotation system container positioned exactly over the image
         const annotationSystem = document.createElement('div');
         annotationSystem.className = 'annotation-system';
         annotationSystem.style.position = 'absolute';
         annotationSystem.style.top = '0';
         annotationSystem.style.left = '0';
-        annotationSystem.style.pointerEvents = 'none'; // Don't interfere with image clicks
+        annotationSystem.style.width = '100%';
+        annotationSystem.style.height = '100%';
+        annotationSystem.style.pointerEvents = 'none';
+        annotationSystem.style.zIndex = '1000';
         
-        // Create pinpoint using EXACT coordinates (no centering compensation)
+        // Create pinpoint with EXACT positioning - no transform adjustments
         const pinpoint = document.createElement('div');
         pinpoint.className = 'annotation-pinpoint';
+        
+        // Critical: Position exactly at coordinates with centering transform
         pinpoint.style.position = 'absolute';
-        pinpoint.style.left = displayX + 'px';
-        pinpoint.style.top = displayY + 'px';
-        pinpoint.style.width = '12px';
-        pinpoint.style.height = '12px';
-        pinpoint.style.backgroundColor = '#ff4444';
-        pinpoint.style.border = '2px solid white';
+        pinpoint.style.left = exactX + 'px';
+        pinpoint.style.top = exactY + 'px';
+        pinpoint.style.width = '14px';  // Slightly larger for visibility
+        pinpoint.style.height = '14px';
+        pinpoint.style.backgroundColor = '#ff0000'; // Pure red for max visibility
+        pinpoint.style.border = '2px solid #ffffff';
         pinpoint.style.borderRadius = '50%';
-        pinpoint.style.transform = 'translate(-50%, -50%)'; // Center the dot on the click point
+        pinpoint.style.transform = 'translate(-50%, -50%)'; // Center on exact coordinates
         pinpoint.style.cursor = 'move';
         pinpoint.style.pointerEvents = 'auto';
-        pinpoint.style.zIndex = '1000';
-        pinpoint.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+        pinpoint.style.zIndex = '1002';
+        pinpoint.style.boxShadow = '0 2px 6px rgba(0,0,0,0.5)';
         
-        // Create text label using EXACT coordinates
+        console.log('🔴 Red dot positioned at:', {
+            left: exactX + 'px',
+            top: exactY + 'px',
+            transform: 'translate(-50%, -50%)',
+            note: 'Should be centered exactly on click point'
+        });
+        
+        // Create text label with EXACT positioning
         const textLabel = document.createElement('div');
         textLabel.className = 'annotation-text-label';
         textLabel.style.position = 'absolute';
-        textLabel.style.left = displayTextX + 'px';
-        textLabel.style.top = displayTextY + 'px';
-        textLabel.style.transform = 'translate(-50%, -50%)'; // Center the text on its position
+        textLabel.style.left = exactTextX + 'px';
+        textLabel.style.top = exactTextY + 'px';
+        textLabel.style.transform = 'translate(-50%, -50%)';
         textLabel.style.cursor = 'move';
         textLabel.style.pointerEvents = 'auto';
-        textLabel.style.zIndex = '1001';
+        textLabel.style.zIndex = '1003';
         
-        // Text content styling
-        textLabel.style.backgroundColor = 'rgba(255, 255, 255, 0.95)';
-        textLabel.style.color = '#333333';
-        textLabel.style.padding = '6px 10px';
-        textLabel.style.borderRadius = '4px';
+        // Enhanced text styling for visibility
+        textLabel.style.backgroundColor = 'rgba(255, 255, 255, 0.98)';
+        textLabel.style.color = '#000000';
+        textLabel.style.padding = '8px 12px';
+        textLabel.style.borderRadius = '6px';
         textLabel.style.fontSize = '14px';
-        textLabel.style.fontWeight = 'bold';
+        textLabel.style.fontWeight = '600';
         textLabel.style.fontFamily = 'Arial, sans-serif';
-        textLabel.style.border = '2px solid #ff4444';
-        textLabel.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
-        textLabel.style.maxWidth = '200px';
+        textLabel.style.border = '2px solid #ff0000';
+        textLabel.style.boxShadow = '0 3px 8px rgba(0,0,0,0.4)';
+        textLabel.style.maxWidth = '220px';
         textLabel.style.wordWrap = 'break-word';
+        textLabel.style.whiteSpace = 'pre-wrap';
         textLabel.textContent = annotation.text;
         const textContent = document.createElement('div');
         textContent.className = 'annotation-text-content';
