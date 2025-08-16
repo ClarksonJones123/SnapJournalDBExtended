@@ -587,28 +587,6 @@ class UniversalAnnotator {
         }, 3000);
         
         annotationSystem.appendChild(debugCrosshair);
-        annotationSystem.appendChild(pinpoint);
-        annotationSystem.appendChild(textLabel);
-        
-        // Create the connecting arrow
-        const arrow = this.createArrow();
-        
-        // Arrow update function
-        const updateArrow = () => {
-            const pinX = parseFloat(pinpoint.style.left);
-            const pinY = parseFloat(pinpoint.style.top);
-            const labelX = parseFloat(textLabel.style.left);
-            const labelY = parseFloat(textLabel.style.top);
-            
-            this.updateArrowPosition(arrow, pinX, pinY, labelX, labelY);
-        };
-        
-        // Make text label draggable
-        this.makeDraggable(textLabel, annotation, updateArrow, 'text');
-        
-        // Make pinpoint draggable
-        this.makeDraggable(pinpoint, annotation, updateArrow, 'pin');
-        
         // DEBUG: Add temporary crosshair at exact click point for testing
         const debugCrosshair = document.createElement('div');
         debugCrosshair.style.position = 'absolute';
@@ -630,23 +608,24 @@ class UniversalAnnotator {
             }
         }, 3000);
         
-        // Assemble annotation system WITH ARROW
+        // Add all elements to annotation system (arrow already exists from above)
         annotationSystem.appendChild(arrow);
         annotationSystem.appendChild(debugCrosshair);
         annotationSystem.appendChild(pinpoint);
         annotationSystem.appendChild(textLabel);
         
-        console.log('🎯 Added DEBUG crosshair + connecting arrow for complete annotation system');
+        console.log('🎯 Added DEBUG crosshair to existing annotation system with arrow');
         
         // Add to container
         container.appendChild(annotationSystem);
         
-        console.log('✅ PIXEL-PERFECT annotation marker created with debug crosshair + arrow');
+        console.log('✅ Complete annotation system created: dot + text + arrow + debug crosshair');
         
         // Initial arrow update
         updateArrow();
         
-        console.log(`✅ Added annotation ${index + 1} with connecting arrow`);
+        console.log(`✅ Added annotation ${index + 1} - check lime crosshair alignment with red dot`);
+    }
     }
     }
     
