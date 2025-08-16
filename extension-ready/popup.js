@@ -1211,7 +1211,7 @@ class ScreenshotAnnotator {
           const window = await chrome.windows.get(windowId);
           
           if (!window) {
-            console.log('🧹 PDF export completed, cleaning up memory...');
+            console.log('🧹 PDF export completed, cleaning up...');
             clearInterval(checkInterval);
             
             // Clean up temporary export data
@@ -1224,12 +1224,7 @@ class ScreenshotAnnotator {
               console.warn('⚠️ Failed to clean up export data:', error);
             }
             
-            // Aggressive memory cleanup after PDF export
-            await this.aggressiveStorageCleanup();
-            console.log('🧹 Post-export memory cleanup completed');
-            
-            // Update UI to reflect changes
-            this.updateUI();
+            console.log('🧹 Post-export cleanup completed');
           }
         }
       } catch (error) {
@@ -1241,8 +1236,6 @@ class ScreenshotAnnotator {
           if (chrome.storage && chrome.storage.local) {
             await chrome.storage.local.remove(exportId);
           }
-          await this.aggressiveStorageCleanup();
-          this.updateUI();
         } catch (cleanupError) {
           console.warn('⚠️ Failed cleanup after export:', cleanupError);
         }
