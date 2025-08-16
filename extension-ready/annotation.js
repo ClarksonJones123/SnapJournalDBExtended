@@ -574,9 +574,11 @@ class UniversalAnnotator {
         console.log('🎯 Lime crosshair shows exact click point - compare with red dot for 8 seconds');
     }
     
-    createArrow() {
+    createDashedArrow() {
+        console.log('🔗 Creating ENHANCED dashed arrow with better visibility');
+        
         const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        arrow.setAttribute('class', 'annotation-arrow');
+        arrow.setAttribute('class', 'annotation-arrow-enhanced');
         arrow.style.cssText = `
             position: absolute;
             top: 0;
@@ -585,25 +587,32 @@ class UniversalAnnotator {
             height: 100%;
             pointer-events: none;
             z-index: 1001;
+            overflow: visible;
         `;
         
+        // Enhanced dashed line with better visibility
         const arrowLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         arrowLine.setAttribute('stroke', '#ff4444');
-        arrowLine.setAttribute('stroke-width', '2');
-        arrowLine.setAttribute('stroke-dasharray', '3,3');
+        arrowLine.setAttribute('stroke-width', '3');
+        arrowLine.setAttribute('stroke-dasharray', '8,6');
+        arrowLine.setAttribute('stroke-linecap', 'round');
+        arrowLine.setAttribute('opacity', '0.9');
         
+        // Enhanced arrowhead with better visibility
         const arrowHead = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
         arrowHead.setAttribute('fill', '#ff4444');
-        arrowHead.setAttribute('stroke', 'white');
-        arrowHead.setAttribute('stroke-width', '1');
+        arrowHead.setAttribute('stroke', '#ffffff');
+        arrowHead.setAttribute('stroke-width', '2');
+        arrowHead.setAttribute('opacity', '0.9');
         
         arrow.appendChild(arrowLine);
         arrow.appendChild(arrowHead);
         
+        console.log('✅ Enhanced dashed arrow created with improved visibility');
         return arrow;
     }
     
-    updateArrowPosition(arrow, pinX, pinY, labelX, labelY) {
+    updateDashedArrowPosition(arrow, pinX, pinY, labelX, labelY) {
         const dx = labelX - pinX;
         const dy = labelY - pinY;
         const length = Math.sqrt(dx * dx + dy * dy);
@@ -611,28 +620,40 @@ class UniversalAnnotator {
         const arrowLine = arrow.querySelector('line');
         const arrowHead = arrow.querySelector('polygon');
         
-        if (length > 20) {
+        console.log(`🔗 Updating dashed arrow position: distance=${length.toFixed(1)}px`);
+        
+        if (length > 25) { // Show arrow if distance is reasonable
             const angle = Math.atan2(dy, dx);
-            const labelRadius = 25;
+            const labelRadius = 30; // Distance from label center to arrow end
             const endX = labelX - Math.cos(angle) * labelRadius;
             const endY = labelY - Math.sin(angle) * labelRadius;
             
+            // Set line coordinates
             arrowLine.setAttribute('x1', pinX);
             arrowLine.setAttribute('y1', pinY);
             arrowLine.setAttribute('x2', endX);
             arrowLine.setAttribute('y2', endY);
             
-            const headSize = 8;
-            const headAngle = angle + Math.PI;
-            const head1X = endX + Math.cos(headAngle + 0.5) * headSize;
-            const head1Y = endY + Math.sin(headAngle + 0.5) * headSize;
-            const head2X = endX + Math.cos(headAngle - 0.5) * headSize;
-            const head2Y = endY + Math.sin(headAngle - 0.5) * headSize;
+            // Create arrowhead
+            const headSize = 10;
+            const headAngle = angle + Math.PI; // Point towards the line direction
+            const head1X = endX + Math.cos(headAngle + 0.4) * headSize;
+            const head1Y = endY + Math.sin(headAngle + 0.4) * headSize;
+            const head2X = endX + Math.cos(headAngle - 0.4) * headSize;
+            const head2Y = endY + Math.sin(headAngle - 0.4) * headSize;
             
             arrowHead.setAttribute('points', `${endX},${endY} ${head1X},${head1Y} ${head2X},${head2Y}`);
+            
+            // Make arrow visible
             arrow.style.display = 'block';
+            arrowLine.style.display = 'block';
+            arrowHead.style.display = 'block';
+            
+            console.log('✅ Dashed arrow positioned and made VISIBLE');
         } else {
+            // Hide arrow when elements are too close
             arrow.style.display = 'none';
+            console.log('🔗 Arrow hidden (elements too close)');
         }
     }
     
