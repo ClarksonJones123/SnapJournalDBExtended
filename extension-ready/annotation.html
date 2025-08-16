@@ -134,13 +134,13 @@
 
         .annotation-pinpoint {
             position: absolute;
-            width: 8px;
-            height: 8px;
+            width: 2px;  /* Reduced by 75%: 8px -> 2px */
+            height: 2px; /* Reduced by 75%: 8px -> 2px */
             background: #ff4444;
-            border: 2px solid white;
+            border: 1px solid white; /* Reduced border: 2px -> 1px */
             border-radius: 50%;
             transform: translate(-50%, -50%);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3); /* Reduced shadow */
             pointer-events: auto;
             cursor: crosshair;
             z-index: 1002;
