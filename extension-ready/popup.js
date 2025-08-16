@@ -16,22 +16,33 @@ class ScreenshotAnnotator {
     try {
       console.log('📁 Initializing temporary storage system...');
       
-      // Wait for temp storage to be available
-      const maxWait = 5000; // 5 seconds
+      // Wait longer for temp storage to be available and initialized
+      const maxWait = 10000; // 10 seconds
       const startTime = Date.now();
       
-      while (!window.tempStorage && (Date.now() - startTime) < maxWait) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+      while ((!window.tempStorage || !window.tempStorage.db) && (Date.now() - startTime) < maxWait) {
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
       
-      if (window.tempStorage) {
+      if (window.tempStorage && window.tempStorage.db) {
         this.tempStorage = window.tempStorage;
         console.log('✅ Temporary storage system initialized');
+        
+        // Test the connection
+        try {
+          const stats = await this.tempStorage.getStorageStats();
+          console.log('📊 Temporary storage ready:', stats);
+        } catch (testError) {
+          console.warn('⚠️ Temporary storage test failed:', testError);
+          this.tempStorage = null;
+        }
       } else {
         console.warn('⚠️ Temporary storage not available, using Chrome storage only');
+        this.tempStorage = null;
       }
     } catch (error) {
       console.error('❌ Failed to initialize temporary storage:', error);
+      this.tempStorage = null;
     }
   }
   
