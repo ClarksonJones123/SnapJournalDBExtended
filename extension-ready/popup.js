@@ -654,14 +654,14 @@ class ScreenshotAnnotator {
         
         const screenshot = {
           id: Date.now().toString(),
-          imageData: processedImageData,
-          // Store ORIGINAL capture dimensions as coordinate reference
+          imageData: processedImageData, // 100% original quality
+          // Store ORIGINAL dimensions as coordinate reference (no compression)
           originalCaptureWidth: originalDimensions.width,   // COORDINATE REFERENCE
           originalCaptureHeight: originalDimensions.height, // COORDINATE REFERENCE
-          // Store compressed dimensions for display/storage info
-          storageWidth: compressedDimensions.width,
-          storageHeight: compressedDimensions.height,
-          // Use ORIGINAL dimensions for annotation coordinate system
+          // Store same dimensions for display/storage info (no compression)
+          storageWidth: finalDimensions.width,
+          storageHeight: finalDimensions.height,
+          // Use ORIGINAL dimensions for annotation coordinate system (no compression)
           displayWidth: originalDimensions.width,   // FOR ANNOTATION SCALING
           displayHeight: originalDimensions.height, // FOR ANNOTATION SCALING
           url: tab.url,
