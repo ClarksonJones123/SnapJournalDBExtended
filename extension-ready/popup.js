@@ -176,9 +176,9 @@ class ScreenshotAnnotator {
     return Math.round(bytes / (1024 * 1024)) + ' MB';
   }
   
-  async compressImageData(imageData, quality = 0.7) {
+  async compressImageData(imageData, quality = 0.85) {
     try {
-      console.log('🗜️ Compressing image data...');
+      console.log('🗜️ Optimizing image data...');
       console.log('📊 Original size:', this.formatMemorySize(imageData.length));
       
       return new Promise((resolve) => {
@@ -187,12 +187,13 @@ class ScreenshotAnnotator {
         const img = new Image();
         
         img.onload = () => {
-          // Calculate new dimensions (reduce by 80% for storage efficiency)
-          const maxWidth = 1200;
-          const maxHeight = 800;
+          // Less aggressive compression - maintain better quality
+          const maxWidth = 1600;  // Increased from 1200
+          const maxHeight = 1200; // Increased from 800
           
           let { width, height } = img;
           
+          // Only resize if significantly larger
           if (width > maxWidth) {
             height = (height * maxWidth) / width;
             width = maxWidth;
@@ -206,23 +207,127 @@ class ScreenshotAnnotator {
           canvas.width = width;
           canvas.height = height;
           
-          // Draw and compress
+          // Draw with better quality settings
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(img, 0, 0, width, height);
-          const compressedData = canvas.toDataURL('image/jpeg', quality);
           
-          console.log('✅ Compressed size:', this.formatMemorySize(compressedData.length));
-          console.log('📉 Compression ratio:', Math.round((1 - compressedData.length / imageData.length) * 100) + '%');
+          // Higher quality compression
+          const optimizedData = canvas.toDataURL('image/jpeg', quality);
           
-          resolve(compressedData);
+          console.log('✅ Optimized size:', this.formatMemorySize(optimizedData.length));
+          console.log('📉 Size reduction:', Math.round((1 - optimizedData.length / imageData.length) * 100) + '%');
+          
+          resolve(optimizedData);
         };
         
         img.src = imageData;
       });
       
     } catch (error) {
-      console.error('❌ Image compression failed:', error);
+      console.error('❌ Image optimization failed:', error);
       console.log('⚠️ Using original image data');
       return imageData; // Fallback to original
+    }
+  }
+
+  async createAnnotatedImageForPDF(screenshot) {
+    try {
+      console.log('🎨 Creating annotated image for PDF...');
+      
+      if (!screenshot.annotations || screenshot.annotations.length === 0) {
+        console.log('ℹ️ No annotations to render');
+        return screenshot.imageData;
+      }
+
+      return new Promise((resolve) => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        
+        img.onload = () => {
+          // Use original image dimensions for PDF (high quality)
+          canvas.width = img.width;
+          canvas.height = img.height;
+          
+          // Draw the original image
+          ctx.drawImage(img, 0, 0);
+          
+          // Configure text rendering
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          ctx.font = 'bold 16px Arial, sans-serif';
+          
+          // Render each annotation
+          screenshot.annotations.forEach((annotation, index) => {
+            const x = annotation.x * (img.width / screenshot.displayWidth);
+            const y = annotation.y * (img.height / screenshot.displayHeight);
+            const textX = (annotation.textX || annotation.x + 60) * (img.width / screenshot.displayWidth);
+            const textY = (annotation.textY || annotation.y - 30) * (img.height / screenshot.displayHeight);
+            
+            // Draw pinpoint circle
+            ctx.beginPath();
+            ctx.arc(x, y, 8, 0, 2 * Math.PI);
+            ctx.fillStyle = '#ff4444';
+            ctx.fill();
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Draw number badge
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText((index + 1).toString(), x, y);
+            
+            // Draw connecting line
+            const distance = Math.sqrt((textX - x) ** 2 + (textY - y) ** 2);
+            if (distance > 30) {
+              ctx.beginPath();
+              ctx.moveTo(x, y);
+              ctx.lineTo(textX, textY);
+              ctx.strokeStyle = '#ff4444';
+              ctx.lineWidth = 2;
+              ctx.setLineDash([5, 5]);
+              ctx.stroke();
+              ctx.setLineDash([]);
+            }
+            
+            // Draw text background
+            ctx.font = 'bold 14px Arial, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            const textMetrics = ctx.measureText(annotation.text);
+            const textWidth = textMetrics.width + 16;
+            const textHeight = 24;
+            
+            // Background
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            ctx.fillRect(textX - 8, textY - 4, textWidth, textHeight);
+            
+            // Border
+            ctx.strokeStyle = '#ff4444';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(textX - 8, textY - 4, textWidth, textHeight);
+            
+            // Text
+            ctx.fillStyle = '#333333';
+            ctx.fillText(annotation.text, textX, textY);
+          });
+          
+          // Return high-quality annotated image
+          const annotatedImage = canvas.toDataURL('image/png', 1.0);
+          console.log('✅ Annotated image created for PDF');
+          resolve(annotatedImage);
+        };
+        
+        img.src = screenshot.imageData;
+      });
+      
+    } catch (error) {
+      console.error('❌ Error creating annotated image:', error);
+      return screenshot.imageData; // Fallback to original
     }
   }
   
