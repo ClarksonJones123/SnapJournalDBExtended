@@ -1,336 +1,361 @@
-// 📁 Temporary Storage Manager for Chrome Extension
-// Handles large image data using IndexedDB to avoid Chrome storage quota issues
-
+// Enhanced Temporary Storage Manager - Now PRIMARY storage with unlimited capacity
 class TempStorageManager {
-    constructor() {
-        this.dbName = 'ScreenshotAnnotatorTemp';
-        this.dbVersion = 1;
-        this.db = null;
-        this.maxTempFiles = 10; // Maximum temporary files to keep
+  constructor() {
+    this.dbName = 'ScreenshotAnnotatorDB';
+    this.dbVersion = 2; // Increased for schema update
+    this.db = null;
+    this.isReady = false;
+  }
+  
+  async init() {
+    return new Promise((resolve, reject) => {
+      console.log('🗄️ Initializing PRIMARY storage (IndexedDB unlimited capacity)...');
+      
+      const request = indexedDB.open(this.dbName, this.dbVersion);
+      
+      request.onerror = () => {
+        console.error('❌ Failed to open IndexedDB:', request.error);
+        reject(request.error);
+      };
+      
+      request.onsuccess = () => {
+        this.db = request.result;
+        this.isReady = true;
+        console.log('✅ PRIMARY storage initialized with unlimited capacity');
+        resolve();
+      };
+      
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        console.log('🔄 Upgrading database schema...');
         
-        this.init();
-    }
-    
-    async init() {
-        try {
-            console.log('🗄️ Initializing temporary storage...');
-            
-            // Ensure we wait for the database to be ready
-            this.db = await this.openDatabase();
-            
-            if (!this.db) {
-                throw new Error('Failed to open IndexedDB database');
-            }
-            
-            console.log('🗄️ Database opened successfully');
-            
-            // Test database functionality
-            await this.testDatabase();
-            
-            await this.cleanOldTempFiles();
-            console.log('✅ Temporary storage initialized successfully');
-            
-        } catch (error) {
-            console.error('❌ Failed to initialize temporary storage:', error);
-            // Don't throw - allow fallback to Chrome storage
-            this.db = null;
+        // Create screenshots store (main storage)
+        if (!db.objectStoreNames.contains('screenshots')) {
+          const screenshotStore = db.createObjectStore('screenshots', { keyPath: 'id' });
+          screenshotStore.createIndex('timestamp', 'timestamp', { unique: false });
+          screenshotStore.createIndex('sessionId', 'sessionId', { unique: false });
+          screenshotStore.createIndex('tabUrl', 'tabUrl', { unique: false });
+          console.log('✅ Created screenshots store with multi-tab indexes');
         }
-    }
-    
-    // Test database functionality
-    async testDatabase() {
-        try {
-            const transaction = this.db.transaction(['images'], 'readonly');
-            const store = transaction.objectStore('images');
-            await this.promisifyRequest(store.count());
-            console.log('🗄️ Database test successful');
-        } catch (error) {
-            console.error('❌ Database test failed:', error);
-            throw error;
+        
+        // Create sessions store (for multi-tab collections)
+        if (!db.objectStoreNames.contains('sessions')) {
+          const sessionStore = db.createObjectStore('sessions', { keyPath: 'id' });
+          sessionStore.createIndex('created', 'created', { unique: false });
+          sessionStore.createIndex('name', 'name', { unique: false });
+          console.log('✅ Created sessions store for multi-tab journals');
         }
-    }
-    
-    openDatabase() {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open(this.dbName, this.dbVersion);
-            
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => resolve(request.result);
-            
-            request.onupgradeneeded = (event) => {
-                const db = event.target.result;
-                
-                // Create object stores
-                if (!db.objectStoreNames.contains('images')) {
-                    const imageStore = db.createObjectStore('images', { keyPath: 'id' });
-                    imageStore.createIndex('timestamp', 'timestamp');
-                    imageStore.createIndex('type', 'type');
-                }
-                
-                if (!db.objectStoreNames.contains('metadata')) {
-                    const metaStore = db.createObjectStore('metadata', { keyPath: 'id' });
-                    metaStore.createIndex('timestamp', 'timestamp');
-                }
-                
-                console.log('🗄️ Database schema created');
-            };
-        });
-    }
-    
-    // 💾 Store large image data in IndexedDB
-    async storeImage(id, imageDataUrl, metadata = {}) {
-        try {
-            if (!this.db) {
-                console.error('❌ Database not initialized for storeImage');
-                return { id: id, stored: false, error: 'Database not initialized' };
-            }
-            
-            console.log(`🗄️ Storing image ${id} in temporary storage...`);
-            
-            // Convert data URL to blob for efficient storage
-            const blob = await this.dataUrlToBlob(imageDataUrl);
-            
-            const imageRecord = {
-                id: id,
-                blob: blob,
-                size: blob.size,
-                type: blob.type,
-                timestamp: Date.now(),
-                metadata: metadata
-            };
-            
-            const transaction = this.db.transaction(['images'], 'readwrite');
-            const store = transaction.objectStore('images');
-            await this.promisifyRequest(store.put(imageRecord));
-            
-            console.log(`✅ Image ${id} stored (${this.formatBytes(blob.size)})`);
-            
-            // Clean up old files if we exceed the limit
-            await this.cleanOldTempFiles();
-            
-            return {
-                id: id,
-                size: blob.size,
-                type: blob.type,
-                stored: true
-            };
-            
-        } catch (error) {
-            console.error(`❌ Failed to store image ${id}:`, error);
-            return { id: id, stored: false, error: error.message };
+        
+        // Legacy temp storage (keep for compatibility)
+        if (!db.objectStoreNames.contains('tempImages')) {
+          const tempStore = db.createObjectStore('tempImages', { keyPath: 'id' });
+          tempStore.createIndex('created', 'created', { unique: false });
         }
+      };
+    });
+  }
+  
+  // PRIMARY STORAGE METHODS - Unlimited Capacity
+  
+  async saveScreenshot(screenshot) {
+    if (!this.db) {
+      throw new Error('Database not initialized');
     }
     
-    // 📁 Retrieve image data from IndexedDB
-    async retrieveImage(id) {
-        try {
-            if (!this.db) {
-                console.error('❌ Database not initialized for retrieveImage');
-                return null;
-            }
-            
-            console.log(`🗄️ Retrieving image ${id} from temporary storage...`);
-            
-            const transaction = this.db.transaction(['images'], 'readonly');
-            const store = transaction.objectStore('images');
-            const result = await this.promisifyRequest(store.get(id));
-            
-            if (!result) {
-                console.warn(`⚠️ Image ${id} not found in temporary storage`);
-                return null;
-            }
-            
-            // Convert blob back to data URL
-            const dataUrl = await this.blobToDataUrl(result.blob);
-            
-            console.log(`✅ Retrieved image ${id} (${this.formatBytes(result.size)})`);
-            
-            return {
-                id: id,
-                imageData: dataUrl,
-                size: result.size,
-                type: result.type,
-                metadata: result.metadata,
-                timestamp: result.timestamp
-            };
-            
-        } catch (error) {
-            console.error(`❌ Failed to retrieve image ${id}:`, error);
-            return null;
+    try {
+      console.log('💾 Saving screenshot to PRIMARY storage (unlimited):', screenshot.id);
+      
+      const transaction = this.db.transaction(['screenshots'], 'readwrite');
+      const store = transaction.objectStore('screenshots');
+      
+      // Add session info if not present
+      if (!screenshot.sessionId) {
+        screenshot.sessionId = await this.getCurrentSessionId();
+      }
+      
+      await store.put(screenshot);
+      console.log('✅ Screenshot saved to PRIMARY storage');
+      
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error saving screenshot:', error);
+      throw error;
+    }
+  }
+  
+  async getAllScreenshots(sessionId = null) {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(['screenshots'], 'readonly');
+      const store = transaction.objectStore('screenshots');
+      
+      let request;
+      if (sessionId) {
+        const index = store.index('sessionId');
+        request = index.getAll(sessionId);
+      } else {
+        request = store.getAll();
+      }
+      
+      request.onsuccess = () => {
+        const screenshots = request.result.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        console.log(`📊 Retrieved ${screenshots.length} screenshots from PRIMARY storage${sessionId ? ` for session ${sessionId}` : ''}`);
+        resolve(screenshots);
+      };
+      
+      request.onerror = () => {
+        console.error('❌ Error retrieving screenshots:', request.error);
+        reject(request.error);
+      };
+    });
+  }
+  
+  async deleteScreenshot(id) {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    
+    try {
+      const transaction = this.db.transaction(['screenshots'], 'readwrite');
+      const store = transaction.objectStore('screenshots');
+      await store.delete(id);
+      console.log('✅ Screenshot deleted from PRIMARY storage:', id);
+      return true;
+    } catch (error) {
+      console.error('❌ Error deleting screenshot:', error);
+      return false;
+    }
+  }
+  
+  // MULTI-TAB SESSION MANAGEMENT
+  
+  async getCurrentSessionId() {
+    // Get or create current session
+    let sessionId = localStorage.getItem('currentSessionId');
+    
+    if (!sessionId) {
+      sessionId = 'session_' + Date.now();
+      localStorage.setItem('currentSessionId', sessionId);
+      
+      // Create session record
+      await this.createSession(sessionId, 'Multi-Tab Journal Session');
+    }
+    
+    return sessionId;
+  }
+  
+  async createSession(id = null, name = null) {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    
+    const sessionId = id || 'session_' + Date.now();
+    const session = {
+      id: sessionId,
+      name: name || `Journal Session - ${new Date().toLocaleDateString()}`,
+      created: new Date().toISOString(),
+      screenshotCount: 0,
+      lastActive: new Date().toISOString()
+    };
+    
+    try {
+      const transaction = this.db.transaction(['sessions'], 'readwrite');
+      const store = transaction.objectStore('sessions');
+      await store.put(session);
+      
+      console.log('✅ Created new session:', sessionId);
+      return sessionId;
+    } catch (error) {
+      console.error('❌ Error creating session:', error);
+      throw error;
+    }
+  }
+  
+  async getAllSessions() {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(['sessions'], 'readonly');
+      const store = transaction.objectStore('sessions');
+      const request = store.getAll();
+      
+      request.onsuccess = () => {
+        const sessions = request.result.sort((a, b) => new Date(b.lastActive) - new Date(a.lastActive));
+        resolve(sessions);
+      };
+      
+      request.onerror = () => {
+        console.error('❌ Error retrieving sessions:', request.error);
+        reject(request.error);
+      };
+    });
+  }
+  
+  async updateSessionStats(sessionId) {
+    try {
+      const screenshots = await this.getAllScreenshots(sessionId);
+      const transaction = this.db.transaction(['sessions'], 'readwrite');
+      const store = transaction.objectStore('sessions');
+      
+      const sessionRequest = store.get(sessionId);
+      sessionRequest.onsuccess = () => {
+        const session = sessionRequest.result;
+        if (session) {
+          session.screenshotCount = screenshots.length;
+          session.lastActive = new Date().toISOString();
+          store.put(session);
+          console.log('✅ Updated session stats:', sessionId);
         }
+      };
+    } catch (error) {
+      console.error('❌ Error updating session stats:', error);
+    }
+  }
+  
+  // STORAGE ANALYTICS - Unlimited Capacity
+  
+  async getStorageStats() {
+    if (!this.db) {
+      return { totalScreenshots: 0, totalSessions: 0, totalSize: 0, unlimited: true };
     }
     
-    // 🗑️ Delete specific image from temporary storage
-    async deleteImage(id) {
-        try {
-            const transaction = this.db.transaction(['images'], 'readwrite');
-            const store = transaction.objectStore('images');
-            await this.promisifyRequest(store.delete(id));
-            
-            console.log(`🗑️ Deleted image ${id} from temporary storage`);
-            return true;
-        } catch (error) {
-            console.error(`❌ Failed to delete image ${id}:`, error);
-            return false;
+    try {
+      const screenshots = await this.getAllScreenshots();
+      const sessions = await this.getAllSessions();
+      
+      let totalSize = 0;
+      screenshots.forEach(screenshot => {
+        if (screenshot.imageData) {
+          totalSize += screenshot.imageData.length;
         }
+      });
+      
+      const stats = {
+        totalScreenshots: screenshots.length,
+        totalSessions: sessions.length,
+        totalSize: totalSize,
+        totalSizeMB: Math.round(totalSize / (1024 * 1024)),
+        unlimited: true,
+        capacity: 'UNLIMITED (IndexedDB)',
+        oldChromeLimit: '10MB',
+        currentUsage: totalSize > 10485760 ? `${Math.round(totalSize / 1024 / 1024)}MB (Would exceed Chrome storage!)` : `${Math.round(totalSize / 1024)}KB`
+      };
+      
+      console.log('📊 UNLIMITED storage stats:', stats);
+      return stats;
+    } catch (error) {
+      console.error('❌ Error getting storage stats:', error);
+      return { totalScreenshots: 0, totalSessions: 0, totalSize: 0, unlimited: true };
+    }
+  }
+  
+  async clearAll() {
+    if (!this.db) {
+      throw new Error('Database not initialized');
     }
     
-    // 📊 Get storage usage statistics
-    async getStorageStats() {
-        try {
-            const transaction = this.db.transaction(['images'], 'readonly');
-            const store = transaction.objectStore('images');
-            const request = store.getAll();
-            const images = await this.promisifyRequest(request);
-            
-            const stats = {
-                totalImages: images.length,
-                totalSize: images.reduce((sum, img) => sum + img.size, 0),
-                images: images.map(img => ({
-                    id: img.id,
-                    size: img.size,
-                    type: img.type,
-                    timestamp: img.timestamp
-                }))
-            };
-            
-            console.log('📊 Temporary storage stats:', {
-                totalImages: stats.totalImages,
-                totalSize: this.formatBytes(stats.totalSize)
-            });
-            
-            return stats;
-        } catch (error) {
-            console.error('❌ Failed to get storage stats:', error);
-            return { totalImages: 0, totalSize: 0, images: [] };
-        }
+    try {
+      console.log('🧹 Clearing ALL PRIMARY storage...');
+      
+      const transaction = this.db.transaction(['screenshots', 'sessions', 'tempImages'], 'readwrite');
+      
+      await transaction.objectStore('screenshots').clear();
+      await transaction.objectStore('sessions').clear();
+      await transaction.objectStore('tempImages').clear();
+      
+      // Clear current session
+      localStorage.removeItem('currentSessionId');
+      
+      console.log('✅ ALL PRIMARY storage cleared');
+      return true;
+    } catch (error) {
+      console.error('❌ Error clearing storage:', error);
+      return false;
     }
+  }
+  
+  // LEGACY METHODS (kept for compatibility)
+  
+  async storeImage(id, imageDataUrl, metadata = {}) {
+    // Legacy method - now just saves as screenshot
+    const screenshot = {
+      id: id,
+      imageData: imageDataUrl,
+      metadata: metadata,
+      timestamp: new Date().toISOString(),
+      sessionId: await this.getCurrentSessionId()
+    };
     
-    // 🧹 Clean up old temporary files
-    async cleanOldTempFiles() {
-        try {
-            const stats = await this.getStorageStats();
-            
-            if (stats.totalImages <= this.maxTempFiles) {
-                console.log(`ℹ️ Only ${stats.totalImages} temp files, no cleanup needed`);
-                return;
-            }
-            
-            // Sort by timestamp (oldest first)
-            const sortedImages = stats.images.sort((a, b) => a.timestamp - b.timestamp);
-            const toDelete = sortedImages.slice(0, stats.totalImages - this.maxTempFiles);
-            
-            console.log(`🧹 Cleaning up ${toDelete.length} old temporary files...`);
-            
-            const transaction = this.db.transaction(['images'], 'readwrite');
-            const store = transaction.objectStore('images');
-            
-            for (const image of toDelete) {
-                await this.promisifyRequest(store.delete(image.id));
-                console.log(`🗑️ Deleted old temp file: ${image.id}`);
-            }
-            
-            console.log(`✅ Cleanup completed. Kept ${this.maxTempFiles} most recent files`);
-            
-        } catch (error) {
-            console.error('❌ Failed to clean old temp files:', error);
-        }
-    }
-    
-    // 🗑️ Clear all temporary storage
-    async clearAll() {
-        try {
-            console.log('🧹 Clearing all temporary storage...');
-            
-            const transaction = this.db.transaction(['images'], 'readwrite');
-            const store = transaction.objectStore('images');
-            await this.promisifyRequest(store.clear());
-            
-            console.log('✅ All temporary storage cleared');
-            return true;
-        } catch (error) {
-            console.error('❌ Failed to clear temporary storage:', error);
-            return false;
-        }
-    }
-    
-    // 🔄 Utility: Convert data URL to blob
-    dataUrlToBlob(dataUrl) {
-        return new Promise((resolve) => {
-            const arr = dataUrl.split(',');
-            const mime = arr[0].match(/:(.*?);/)[1];
-            const bstr = atob(arr[1]);
-            let n = bstr.length;
-            const u8arr = new Uint8Array(n);
-            
-            while (n--) {
-                u8arr[n] = bstr.charCodeAt(n);
-            }
-            
-            resolve(new Blob([u8arr], { type: mime }));
-        });
-    }
-    
-    // 🔄 Utility: Convert blob to data URL
-    blobToDataUrl(blob) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
-    }
-    
-    // 🔄 Utility: Convert IndexedDB request to promise
-    promisifyRequest(request) {
-        return new Promise((resolve, reject) => {
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-        });
-    }
-    
-    // 🔄 Utility: Format bytes to human readable
-    formatBytes(bytes) {
-        if (bytes === 0) return '0 B';
-        const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
-    
-    // 📁 Create lightweight screenshot record for Chrome storage
-    createLightweightScreenshot(screenshot, tempImageId) {
-        return {
-            ...screenshot,
-            imageData: null, // Remove large image data
-            tempImageId: tempImageId, // Reference to temporary storage
-            isInTempStorage: true,
-            originalSize: screenshot.imageData ? screenshot.imageData.length : 0
+    const result = await this.saveScreenshot(screenshot);
+    return { stored: result.success, size: imageDataUrl.length };
+  }
+  
+  async retrieveImage(id) {
+    try {
+      const transaction = this.db.transaction(['screenshots'], 'readonly');
+      const store = transaction.objectStore('screenshots');
+      
+      return new Promise((resolve, reject) => {
+        const request = store.get(id);
+        
+        request.onsuccess = () => {
+          const screenshot = request.result;
+          if (screenshot) {
+            resolve({ imageData: screenshot.imageData, metadata: screenshot.metadata });
+          } else {
+            resolve(null);
+          }
         };
-    }
-    
-    // 🔄 Restore full screenshot from temporary storage
-    async restoreFullScreenshot(lightweightScreenshot) {
-        if (!lightweightScreenshot.isInTempStorage || !lightweightScreenshot.tempImageId) {
-            return lightweightScreenshot; // Not in temp storage
-        }
         
-        const imageData = await this.retrieveImage(lightweightScreenshot.tempImageId);
-        if (!imageData) {
-            console.warn(`⚠️ Could not restore image for screenshot ${lightweightScreenshot.id}`);
-            return lightweightScreenshot;
-        }
-        
-        return {
-            ...lightweightScreenshot,
-            imageData: imageData.imageData,
-            isInTempStorage: false,
-            tempImageId: null
+        request.onerror = () => {
+          console.error('❌ Error retrieving image:', request.error);
+          reject(request.error);
         };
+      });
+    } catch (error) {
+      console.error('❌ Error in retrieveImage:', error);
+      return null;
     }
+  }
+  
+  async deleteImage(id) {
+    return await this.deleteScreenshot(id);
+  }
+  
+  async cleanOldTempFiles() {
+    // Legacy cleanup - now managed differently
+    console.log('ℹ️ Legacy temp file cleanup - using new session management');
+    return true;
+  }
+  
+  async restoreFullScreenshot(screenshotStub) {
+    // For compatibility with existing code
+    if (screenshotStub.isInTempStorage && screenshotStub.tempImageId) {
+      const result = await this.retrieveImage(screenshotStub.tempImageId);
+      if (result) {
+        return {
+          ...screenshotStub,
+          imageData: result.imageData,
+          isInTempStorage: false
+        };
+      }
+    }
+    return screenshotStub;
+  }
 }
 
-// 🌍 Global instance for use throughout the extension
+// Initialize and make available globally
 window.tempStorage = new TempStorageManager();
+window.tempStorage.init().then(() => {
+  console.log('🚀 PRIMARY STORAGE READY - UNLIMITED CAPACITY!');
+  console.log('📊 Old Chrome limit: 10MB | New capacity: UNLIMITED');
+}).catch((error) => {
+  console.error('❌ PRIMARY storage initialization failed:', error);
+});
 
-console.log('📁 Temporary storage manager loaded');
+console.log('📁 PRIMARY storage manager loaded with UNLIMITED capacity');
