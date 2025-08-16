@@ -296,22 +296,44 @@ class UniversalAnnotator {
     
     createAnnotationMarker(container, img, annotation, index) {
         console.log(`🔧 Creating annotation ${index + 1} with text: "${annotation.text}"`);
+        console.log('🔍 MARKER COORDINATE DEBUG:', {
+            storedCoords: `(${annotation.x}, ${annotation.y})`,
+            storedTextPos: `(${annotation.textX}, ${annotation.textY})`,
+            imgDisplaySize: `${img.offsetWidth}x${img.offsetHeight}`,
+            screenshotStoredSize: `${this.screenshot.displayWidth}x${this.screenshot.displayHeight}`
+        });
+        
+        // Calculate display scale factors (reverse of storage scaling)
+        const displayScaleX = img.offsetWidth / this.screenshot.displayWidth;
+        const displayScaleY = img.offsetHeight / this.screenshot.displayHeight;
+        
+        // Convert stored coordinates back to display coordinates
+        const displayX = annotation.x * displayScaleX;
+        const displayY = annotation.y * displayScaleY;
+        const displayTextX = (annotation.textX || (annotation.x + 60)) * displayScaleX;
+        const displayTextY = (annotation.textY || (annotation.y - 30)) * displayScaleY;
+        
+        console.log('🔧 DISPLAY COORDINATES:', {
+            displayScale: `${displayScaleX.toFixed(3)}x, ${displayScaleY.toFixed(3)}`,
+            displayCoords: `(${displayX.toFixed(1)}, ${displayY.toFixed(1)})`,
+            displayTextPos: `(${displayTextX.toFixed(1)}, ${displayTextY.toFixed(1)})`
+        });
         
         // Create annotation system container
         const annotationSystem = document.createElement('div');
         annotationSystem.className = 'annotation-system';
         
-        // Create pinpoint
+        // Create pinpoint using DISPLAY coordinates
         const pinpoint = document.createElement('div');
         pinpoint.className = 'annotation-pinpoint';
-        pinpoint.style.left = annotation.x + 'px';
-        pinpoint.style.top = annotation.y + 'px';
+        pinpoint.style.left = displayX + 'px';
+        pinpoint.style.top = displayY + 'px';
         
-        // Create text label
+        // Create text label using DISPLAY coordinates
         const textLabel = document.createElement('div');
         textLabel.className = 'annotation-text-label';
-        textLabel.style.left = (annotation.textX || (annotation.x + 60)) + 'px';
-        textLabel.style.top = (annotation.textY || (annotation.y - 30)) + 'px';
+        textLabel.style.left = displayTextX + 'px';
+        textLabel.style.top = displayTextY + 'px';
         
         // Number badge
         const numberBadge = document.createElement('div');
