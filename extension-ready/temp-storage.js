@@ -201,12 +201,13 @@ class TempStorageManager {
       
     } catch (error) {
       console.error('❌ Schema validation failed with error:', error);
-      console.error('📊 Error details:', {
+      console.error('📊 Error details:');
+      console.error(JSON.stringify({
         errorName: error.name,
         errorMessage: error.message,
         dbAvailable: !!this.db,
         dbVersion: this.db?.version
-      });
+      }, null, 2));
       
       // Don't throw - allow extension to continue working
       return { 
