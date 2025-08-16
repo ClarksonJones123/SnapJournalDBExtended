@@ -228,6 +228,14 @@
   </style>
 </head>
 <body>
+  <!-- DEBUG OUTPUT SECTION -->
+  <div id="debugSection" style="background: #f0f0f0; border: 1px solid #ccc; margin: 5px; padding: 10px; font-family: monospace; font-size: 11px; max-height: 200px; overflow-y: auto;">
+    <div style="font-weight: bold; color: #333; margin-bottom: 5px;">🔍 Debug Output (Auto-Running):</div>
+    <div id="debugOutput">Loading diagnostics...</div>
+    <button id="copyDebugBtn" style="margin-top: 5px; padding: 2px 8px; font-size: 10px;">📋 Copy Debug Info</button>
+    <button id="toggleDebugBtn" style="margin-top: 5px; padding: 2px 8px; font-size: 10px;">👁️ Toggle Debug</button>
+  </div>
+
   <div class="header">
     <h1>📸 Screenshot Annotator</h1>
     <div class="memory-info">
