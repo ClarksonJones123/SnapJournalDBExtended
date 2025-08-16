@@ -436,11 +436,25 @@ class ScreenshotAnnotator {
           
           // Render each annotation with DIRECT coordinates (minimal scaling needed)
           screenshot.annotations.forEach((annotation, index) => {
-            console.log(`🎯 Rendering annotation ${index + 1} (FROM FINAL RED DOT POSITION):`, {
+            console.log(`🎯 === ANNOTATION ${index + 1} PDF RENDERING DEBUG ===`);
+            console.log('📊 STORED ANNOTATION OBJECT:', annotation);
+            
+            if (annotation.debug) {
+              console.log('🔍 DEBUG INFO AVAILABLE:');
+              console.log('  - Original click:', annotation.debug.originalClick);
+              console.log('  - Final red dot position:', annotation.debug.finalRedDotPosition);
+              console.log('  - Final stored coordinates:', annotation.debug.finalStoredCoordinates);
+              console.log('  - Coordinate history:', annotation.debug.coordinateHistory);
+            } else {
+              console.log('⚠️ NO DEBUG INFO AVAILABLE');
+            }
+            
+            console.log('📍 USING COORDINATES FOR PDF:', {
               storedCoords: { x: annotation.x, y: annotation.y },
               text: annotation.text.substring(0, 30) + (annotation.text.length > 30 ? '...' : ''),
               annotationId: annotation.id
             });
+            console.log(`🎯 === END ANNOTATION ${index + 1} DEBUG ===`);
             
             // Apply scaling (should be close to 1:1 now)
             const x = annotation.x * scaleX;
