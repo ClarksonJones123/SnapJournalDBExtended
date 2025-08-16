@@ -17,12 +17,13 @@ class ScreenshotAnnotator {
       // Initialize temporary storage first
       await this.initTempStorage();
       
-      // Run automatic cleanup on initialization
-      console.log('🧹 Running automatic storage cleanup on startup...');
-      await this.automaticStorageCleanup();
-      
-      // Load existing screenshots
+      // CRITICAL FIX: Load existing screenshots BEFORE running cleanup
+      console.log('📱 Loading existing screenshots BEFORE cleanup...');
       await this.loadScreenshots();
+      
+      // Only run cleanup AFTER screenshots are loaded
+      console.log('🧹 Running automatic storage cleanup AFTER loading screenshots...');
+      await this.automaticStorageCleanup();
       
       // Setup event handlers
       this.setupEventListeners();
