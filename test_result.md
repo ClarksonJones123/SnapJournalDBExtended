@@ -468,9 +468,7 @@ metadata:
 
 test_plan:
   current_focus:
-    - "IndexedDB diagnostic tool functionality"
-    - "Chrome extension PDF export functionality"
-    - "IndexedDB pdfExports object store creation and management"
+    - "Chrome storage quota prevention system for PDF export"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
