@@ -90,23 +90,56 @@ class ScreenshotAnnotator {
   
   async saveScreenshots() {
     try {
-      console.log('💾 Saving screenshots to storage...');
+      console.log('💾 Saving screenshots with temporary storage system...');
       
-      // AGGRESSIVE PRE-SAVE CLEANUP
-      console.log('🧹 Pre-save cleanup to prevent quota issues...');
-      await this.aggressiveStorageCleanup();
-      
-      // Check storage quota before saving
-      const storageInfo = await this.checkStorageQuota();
-      console.log('📊 Storage info after cleanup:', storageInfo);
-      
-      // If still over quota, force more aggressive cleanup
-      if (storageInfo.quotaExceeded) {
-        console.log('⚠️ Still over quota after cleanup, emergency cleanup...');
-        await this.emergencyStorageCleanup();
+      // 📁 Use temporary storage if available
+      if (this.tempStorage) {
+        console.log('📁 Using temporary storage for large images...');
+        
+        const lightweightScreenshots = [];
+        
+        for (let i = 0; i < this.screenshots.length; i++) {
+          const screenshot = this.screenshots[i];
+          
+          if (screenshot.imageData && !screenshot.isInTempStorage) {
+            // Store large image data in temporary storage
+            const tempId = `screenshot_${screenshot.id}_${Date.now()}`;
+            const storeResult = await this.tempStorage.storeImage(tempId, screenshot.imageData, {
+              screenshotId: screenshot.id,
+              title: screenshot.title,
+              timestamp: screenshot.timestamp
+            });
+            
+            if (storeResult.stored) {
+              // Create lightweight version for Chrome storage
+              const lightweightScreenshot = this.tempStorage.createLightweightScreenshot(screenshot, tempId);
+              lightweightScreenshots.push(lightweightScreenshot);
+              
+              console.log(`📁 Moved screenshot ${screenshot.id} to temporary storage (saved ${this.formatMemorySize(storeResult.size)})`);
+            } else {
+              // Fallback to Chrome storage if temp storage fails
+              console.warn(`⚠️ Temp storage failed for ${screenshot.id}, using Chrome storage`);
+              lightweightScreenshots.push(screenshot);
+            }
+          } else {
+            // Already in temp storage or no image data
+            lightweightScreenshots.push(screenshot);
+          }
+        }
+        
+        // Save lightweight versions to Chrome storage
+        await chrome.storage.local.set({ screenshots: lightweightScreenshots });
+        console.log('✅ Saved lightweight screenshots to Chrome storage');
+        
+        // Update local array
+        this.screenshots = lightweightScreenshots;
+        
+      } else {
+        // Fallback to original Chrome storage method
+        console.log('⚠️ Using Chrome storage only (temp storage not available)');
+        await chrome.storage.local.set({ screenshots: this.screenshots });
       }
       
-      await chrome.storage.local.set({ screenshots: this.screenshots });
       console.log('✅ Saved screenshots:', this.screenshots.length);
       
       this.calculateMemoryUsage();
@@ -127,20 +160,59 @@ class ScreenshotAnnotator {
       console.error('Error saving screenshots:', error);
       
       if (error.message && error.message.includes('quota')) {
-        console.log('🚨 QUOTA EXCEEDED - Emergency cleanup...');
-        await this.emergencyStorageCleanup();
+        console.log('🚨 QUOTA EXCEEDED - Using temporary storage for relief...');
         
-        // Try saving again with much fewer screenshots
+        if (this.tempStorage) {
+          // Emergency: Move all images to temporary storage
+          await this.moveAllImagesToTempStorage();
+        } else {
+          // Fallback to aggressive cleanup
+          await this.emergencyStorageCleanup();
+        }
+        
+        // Try saving again
         try {
           await chrome.storage.local.set({ screenshots: this.screenshots });
-          this.showStatus('Screenshots saved after emergency cleanup', 'success');
+          this.showStatus('Screenshots saved using temporary storage', 'success');
         } catch (retryError) {
-          console.error('❌ Even emergency cleanup failed:', retryError);
+          console.error('❌ Even temporary storage relief failed:', retryError);
           this.showStatus('Storage full. Please clear screenshots manually.', 'error');
         }
       } else {
         this.showStatus('Error saving screenshots', 'error');
       }
+    }
+  }
+  
+  // 📁 Emergency: Move all images to temporary storage
+  async moveAllImagesToTempStorage() {
+    if (!this.tempStorage) {
+      console.warn('⚠️ Temporary storage not available for emergency move');
+      return;
+    }
+    
+    try {
+      console.log('🚨 Emergency: Moving all images to temporary storage...');
+      
+      for (let i = 0; i < this.screenshots.length; i++) {
+        const screenshot = this.screenshots[i];
+        
+        if (screenshot.imageData && !screenshot.isInTempStorage) {
+          const tempId = `emergency_${screenshot.id}_${Date.now()}`;
+          const storeResult = await this.tempStorage.storeImage(tempId, screenshot.imageData);
+          
+          if (storeResult.stored) {
+            // Replace with lightweight version
+            this.screenshots[i] = this.tempStorage.createLightweightScreenshot(screenshot, tempId);
+            console.log(`📁 Emergency moved screenshot ${screenshot.id} to temp storage`);
+          }
+        }
+      }
+      
+      console.log('✅ Emergency move to temporary storage completed');
+      
+    } catch (error) {
+      console.error('❌ Emergency move to temporary storage failed:', error);
     }
   }
 
