@@ -5,6 +5,7 @@ class TempStorageManager {
     this.dbVersion = 2; // Increased for schema update
     this.db = null;
     this.isReady = false;
+    this.isInitializing = false; // NEW: Prevent race conditions
   }
   
   async init() {
@@ -13,23 +14,37 @@ class TempStorageManager {
       
       this.dbName = 'ScreenshotAnnotatorDB';
       this.dbVersion = 2;
+      this.isInitializing = true; // Set flag to prevent race conditions
       
       return new Promise((resolve, reject) => {
         const request = indexedDB.open(this.dbName, this.dbVersion);
         
-        request.onsuccess = (event) => {
+        request.onsuccess = async (event) => {
           this.db = event.target.result;
           console.log('✅ PRIMARY storage (IndexedDB) initialized successfully');
           console.log('🚀 UNLIMITED storage capacity available via IndexedDB');
           
+          // Wait a moment for any pending onupgradeneeded to complete
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
           // AUTOMATIC SCHEMA VALIDATION: Check if all required object stores exist
-          this.validateAndFixSchema().then(() => {
+          // Only run after initialization is complete
+          try {
+            const validationResult = await this.validateAndFixSchema();
+            this.isInitializing = false; // Clear flag after validation complete
+            this.isReady = true;
+            console.log('✅ Schema validation completed:', validationResult.message);
             resolve();
-          }).catch(reject);
+          } catch (validationError) {
+            console.error('❌ Schema validation failed:', validationError);
+            this.isInitializing = false; // Clear flag even on error
+            reject(validationError);
+          }
         };
         
         request.onerror = (event) => {
           console.error('❌ PRIMARY storage initialization failed:', event.target.error);
+          this.isInitializing = false; // Clear flag on error
           reject(event.target.error);
         };
         
@@ -74,6 +89,7 @@ class TempStorageManager {
       });
     } catch (error) {
       console.error('❌ IndexedDB initialization error:', error);
+      this.isInitializing = false; // Clear flag on error
       throw error;
     }
   }
