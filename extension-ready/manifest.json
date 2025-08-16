@@ -38,7 +38,8 @@
         "pdf-export-init.js",
         "jspdf.min.js",
         "debug-export.html",
-        "debug-export.js"
+        "debug-export.js",
+        "temp-storage.js"
       ],
       "matches": ["<all_urls>"]
     }
