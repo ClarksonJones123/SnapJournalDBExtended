@@ -1273,28 +1273,18 @@ class ScreenshotAnnotator {
     
     if (confirm(`Delete all ${this.screenshots.length} screenshots? This will free ${this.formatMemorySize(this.memoryUsage)} of memory.`)) {
       try {
-        console.log('Clearing all screenshots...');
+        console.log('Clearing all screenshots from PRIMARY STORAGE...');
         
-        // Clear temporary storage images
+        // Clear from PRIMARY storage (IndexedDB)
         if (this.tempStorage) {
-          for (const screenshot of this.screenshots) {
-            if (screenshot.isInTempStorage && screenshot.tempImageId) {
-              try {
-                await this.tempStorage.deleteImage(screenshot.tempImageId);
-              } catch (error) {
-                console.error('Error deleting temp image:', error);
-              }
-            }
-          }
+          await this.tempStorage.clearAll();
+          console.log('✅ Cleared all data from PRIMARY storage (IndexedDB)');
         }
         
         // Clear local data
         this.screenshots = [];
         this.selectedScreenshot = null;
         this.memoryUsage = 0;
-        
-        // Save empty screenshots array
-        await this.saveScreenshots();
         
         // Update UI
         const annotateBtn = document.getElementById('annotateBtn');
