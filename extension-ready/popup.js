@@ -409,6 +409,11 @@ class ScreenshotAnnotator {
         img.onload = () => {
           console.log('🖼️ High-quality image loaded - dimensions:', img.width, 'x', img.height);
           console.log('📏 Display dimensions used for annotations:', screenshot.displayWidth, 'x', screenshot.displayHeight);
+          console.log('📊 Original capture reference system:', {
+            originalCaptureWidth: screenshot.originalCaptureWidth,
+            originalCaptureHeight: screenshot.originalCaptureHeight,
+            currentPdfImageSize: `${img.width}x${img.height}`
+          });
           
           // Use actual image dimensions
           canvas.width = img.width;
@@ -417,17 +422,17 @@ class ScreenshotAnnotator {
           // Draw the high-quality image
           ctx.drawImage(img, 0, 0);
           
-          // SIMPLIFIED SCALING: Since we now store actual dimensions,
-          // the scaling should be much simpler
-          const scaleX = img.width / screenshot.displayWidth;
-          const scaleY = img.height / screenshot.displayHeight;
+          // FIXED: Calculate scaling factors using ORIGINAL CAPTURE dimensions as reference
+          const scaleX = img.width / screenshot.originalCaptureWidth;
+          const scaleY = img.height / screenshot.originalCaptureHeight;
           
-          console.log('📏 SIMPLIFIED scaling factors:', { 
+          console.log('📏 CORRECTED PDF scaling factors:', { 
             scaleX: scaleX.toFixed(3), 
             scaleY: scaleY.toFixed(3),
-            imageSize: `${img.width}x${img.height}`,
-            displaySize: `${screenshot.displayWidth}x${screenshot.displayHeight}`,
-            shouldBeClose: Math.abs(scaleX - 1) < 0.1 && Math.abs(scaleY - 1) < 0.1 ? 'YES' : 'NO'
+            pdfImageSize: `${img.width}x${img.height}`,
+            originalCaptureSize: `${screenshot.originalCaptureWidth}x${screenshot.originalCaptureHeight}`,
+            coordinateReference: 'ORIGINAL_CAPTURE_DIMENSIONS',
+            shouldBeReasonable: Math.abs(scaleX - 1) < 2 && Math.abs(scaleY - 1) < 2 ? 'YES' : 'NO'
           });
           
           // Configure text rendering
