@@ -499,11 +499,19 @@ class UniversalAnnotator {
             const displayToStorageScaleX = this.screenshot.originalCaptureWidth / img.offsetWidth;
             const displayToStorageScaleY = this.screenshot.originalCaptureHeight / img.offsetHeight;
             
-            console.log('📐 SIMPLIFIED SAVE COORDINATE CONVERSION:', {
+            console.log('📐 DETAILED SAVE COORDINATE ANALYSIS:', {
                 imgDisplaySize: `${img.offsetWidth}x${img.offsetHeight}`,
                 originalCaptureSize: `${this.screenshot.originalCaptureWidth}x${this.screenshot.originalCaptureHeight}`,
-                conversionScale: `${displayToStorageScaleX.toFixed(3)}x, ${displayToStorageScaleY.toFixed(3)}`
+                conversionScale: `${displayToStorageScaleX.toFixed(6)}x, ${displayToStorageScaleY.toFixed(6)}`,
+                isExactMatch: displayToStorageScaleX === 1.0 && displayToStorageScaleY === 1.0,
+                potentialOffsetCause: displayToStorageScaleX !== 1.0 || displayToStorageScaleY !== 1.0
             });
+            
+            // Check if scaling is causing the offset issue
+            if (displayToStorageScaleX !== 1.0 || displayToStorageScaleY !== 1.0) {
+                console.warn('⚠️ COORDINATE SCALING DETECTED - This could cause the 0.38 inch offset!');
+                console.warn('   Scale factors are not 1:1, indicating image size changes.');
+            }
             
             // Convert all annotation coordinates from display to storage coordinates
             const annotationsForStorage = this.annotations.map((annotation, index) => {
