@@ -426,19 +426,37 @@ class ScreenshotAnnotator {
             coordinateReference: 'DIRECT_ORIGINAL_COORDINATES'
           });
           
-          // Render each annotation with DIRECT coordinates (1:1 scale)
+          // Render each annotation with coordinate offset correction
           screenshot.annotations.forEach((annotation, index) => {
-            console.log(`🎯 Annotation ${index + 1} - Direct rendering (1:1 scale)`);
+            console.log(`🎯 Annotation ${index + 1} - Investigating coordinate offset`);
             
-            // Use coordinates directly (no scaling needed)
-            const x = annotation.x;
-            const y = annotation.y;
+            // COORDINATE OFFSET CORRECTION
+            // User reports 0.38 inch offset (lower and right)
+            // At typical screen DPI (~96), 0.38 inch ≈ 36 pixels
+            // Let's apply a correction factor
+            const offsetCorrectionX = -36; // Move left to compensate for rightward shift
+            const offsetCorrectionY = -36; // Move up to compensate for downward shift
             
-            // Handle text positioning
+            // Apply correction to coordinates
+            const correctedX = annotation.x + offsetCorrectionX;
+            const correctedY = annotation.y + offsetCorrectionY;
+            
+            console.log(`📍 Coordinate correction applied:`, {
+              original: `(${annotation.x}, ${annotation.y})`,
+              corrected: `(${correctedX}, ${correctedY})`,
+              offset: `(${offsetCorrectionX}, ${offsetCorrectionY})`,
+              offsetInches: "0.38 inch correction"
+            });
+            
+            // Use corrected coordinates
+            const x = correctedX;
+            const y = correctedY;
+            
+            // Handle text positioning with correction
             let textX, textY;
             if (annotation.textX && annotation.textY) {
-              textX = annotation.textX;
-              textY = annotation.textY;
+              textX = annotation.textX + offsetCorrectionX;
+              textY = annotation.textY + offsetCorrectionY;
             } else {
               textX = x + 60;
               textY = y - 30;
