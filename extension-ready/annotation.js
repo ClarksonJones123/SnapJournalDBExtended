@@ -122,11 +122,28 @@ class UniversalAnnotator {
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                // Close settings panel if open, otherwise close window
                 const settingsPanel = document.getElementById('settingsPanel');
                 if (settingsPanel.style.display !== 'none') {
                     settingsPanel.style.display = 'none';
+                    console.log('⚙️ Settings panel closed');
                 } else {
+                    console.log('🔄 Annotation complete - maintaining popup continuity');
+                    
+                    try {
+                        // Try to notify the popup that annotation is done
+                        if (typeof chrome !== 'undefined' && chrome.runtime) {
+                            chrome.runtime.sendMessage({
+                                action: 'annotationComplete',
+                                timestamp: new Date().toISOString()
+                            }, (response) => {
+                                console.log('✅ Notified popup of annotation completion');
+                            });
+                        }
+                    } catch (error) {
+                        console.log('ℹ️ Could not notify popup (expected if popup closed):', error.message);
+                    }
+                    
+                    // Close only the annotation window, not the popup
                     window.close();
                 }
             }
