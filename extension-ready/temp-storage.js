@@ -81,36 +81,121 @@ class TempStorageManager {
   // NEW: Automatic schema validation and repair on every startup
   async validateAndFixSchema() {
     try {
-      console.log('🔍 Performing automatic schema validation...');
+      console.log('🔍 === COMPREHENSIVE SCHEMA VALIDATION START ===');
       
       const requiredStores = ['screenshots', 'sessions', 'tempImages', 'pdfExports'];
       const existingStores = [...this.db.objectStoreNames];
       const missingStores = requiredStores.filter(store => !existingStores.includes(store));
       
-      console.log('📊 Schema validation results:', {
+      console.log('📊 Schema validation analysis:', {
         required: requiredStores,
         existing: existingStores,
-        missing: missingStores
+        missing: missingStores,
+        dbVersion: this.db.version
       });
       
-      if (missingStores.length > 0) {
-        console.warn(`⚠️ Missing object stores detected: ${missingStores.join(', ')}`);
-        console.log('🔧 Automatically fixing schema issues...');
+      // Additional check: Test critical PDF export functionality
+      let pdfExportWorking = true;
+      try {
+        if (this.db.objectStoreNames.contains('pdfExports')) {
+          // Try to create a test transaction to verify store is accessible
+          const testTransaction = this.db.transaction(['pdfExports'], 'readonly');
+          const testStore = testTransaction.objectStore('pdfExports');
+          console.log('✅ pdfExports object store is accessible');
+        } else {
+          pdfExportWorking = false;
+          console.warn('⚠️ pdfExports object store missing');
+        }
+      } catch (pdfTestError) {
+        pdfExportWorking = false;
+        console.warn('⚠️ pdfExports object store test failed:', pdfTestError.message);
+      }
+      
+      // Decide if repair is needed
+      const repairNeeded = missingStores.length > 0 || !pdfExportWorking || this.db.version < 2;
+      
+      if (repairNeeded) {
+        console.warn(`🔧 SCHEMA REPAIR REQUIRED:`, {
+          missingStores: missingStores.length,
+          pdfExportWorking,
+          currentVersion: this.db.version,
+          targetVersion: this.dbVersion
+        });
         
-        // Automatic schema repair
+        console.log('🔧 Initiating automatic schema repair...');
+        
+        // Perform automatic schema repair
         await this.performAutomaticSchemaRepair();
-        console.log('✅ Schema automatically repaired - PDF export will now work!');
         
-        return { repaired: true, missingStores };
+        // Verify repair success
+        const newExistingStores = [...this.db.objectStoreNames];
+        const newMissingStores = requiredStores.filter(store => !newExistingStores.includes(store));
+        const repairSuccessful = newMissingStores.length === 0 && this.db.version === this.dbVersion;
+        
+        if (repairSuccessful) {
+          console.log('✅ AUTOMATIC SCHEMA REPAIR COMPLETED SUCCESSFULLY');
+          console.log('📊 Repair results:', {
+            allStoresPresent: newMissingStores.length === 0,
+            correctVersion: this.db.version === this.dbVersion,
+            availableStores: newExistingStores
+          });
+          
+          return { 
+            repaired: true, 
+            success: true,
+            missingStores: missingStores,
+            fixedStores: newExistingStores,
+            message: 'Schema automatically repaired - PDF export ready!'
+          };
+        } else {
+          console.error('❌ AUTOMATIC SCHEMA REPAIR INCOMPLETE');
+          console.error('📊 Repair failure details:', {
+            stillMissing: newMissingStores,
+            versionCorrect: this.db.version === this.dbVersion
+          });
+          
+          return { 
+            repaired: true, 
+            success: false,
+            missingStores: newMissingStores,
+            error: 'Automatic repair incomplete - manual intervention may be required'
+          };
+        }
       } else {
-        console.log('✅ All required object stores present - schema is healthy');
-        return { repaired: false, missingStores: [] };
+        console.log('✅ SCHEMA VALIDATION PASSED - All required object stores present and functional');
+        console.log('📊 Database health check:', {
+          allStoresPresent: true,
+          pdfExportReady: pdfExportWorking,
+          version: this.db.version,
+          stores: existingStores
+        });
+        
+        return { 
+          repaired: false, 
+          success: true,
+          missingStores: [],
+          message: 'Database schema is healthy and ready'
+        };
       }
       
     } catch (error) {
-      console.error('❌ Schema validation failed:', error);
+      console.error('❌ Schema validation failed with error:', error);
+      console.error('📊 Error details:', {
+        errorName: error.name,
+        errorMessage: error.message,
+        dbAvailable: !!this.db,
+        dbVersion: this.db?.version
+      });
+      
       // Don't throw - allow extension to continue working
-      return { repaired: false, error: error.message };
+      return { 
+        repaired: false, 
+        success: false,
+        error: error.message,
+        message: 'Schema validation failed - extension may have limited functionality'
+      };
+    } finally {
+      console.log('🔍 === COMPREHENSIVE SCHEMA VALIDATION END ===');
     }
   }
 
