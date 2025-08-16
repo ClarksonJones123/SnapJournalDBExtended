@@ -171,50 +171,22 @@ class UniversalAnnotator {
     
     setupImageClickHandler(img, container) {
         img.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            console.log('🎯 === SIMPLIFIED COORDINATE SYSTEM START ===');
+            
             const rect = img.getBoundingClientRect();
-            const containerRect = container.getBoundingClientRect();
             
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+            // Get click position relative to the displayed image
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
             
-            console.log('🔍 === COORDINATE DEBUG START ===');
-            console.log(`📍 RAW CLICK COORDINATES: (${x}, ${y})`);
-            console.log('🖼️ IMAGE ELEMENT INFO:', {
-                offsetWidth: img.offsetWidth,
-                offsetHeight: img.offsetHeight,
-                naturalWidth: img.naturalWidth,
-                naturalHeight: img.naturalHeight,
-                clientWidth: img.clientWidth,
-                clientHeight: img.clientHeight
-            });
-            console.log('📊 SCREENSHOT COORDINATE REFERENCE SYSTEM:', {
-                originalCaptureWidth: this.screenshot.originalCaptureWidth,
-                originalCaptureHeight: this.screenshot.originalCaptureHeight,
-                storageWidth: this.screenshot.storageWidth,
-                storageHeight: this.screenshot.storageHeight,
-                displayWidth: this.screenshot.displayWidth,     // Should equal originalCapture
-                displayHeight: this.screenshot.displayHeight    // Should equal originalCapture
-            });
-            console.log('📐 BROWSER RECTS:', {
-                imgRect: rect,
-                containerRect: containerRect
-            });
-            
-            // FIXED: Calculate what the coordinates should be relative to ORIGINAL CAPTURE dimensions
-            const scaleFactorX = this.screenshot.originalCaptureWidth / img.offsetWidth;
-            const scaleFactorY = this.screenshot.originalCaptureHeight / img.offsetHeight;
-            
-            const scaledX = x * scaleFactorX;
-            const scaledY = y * scaleFactorY;
-            
-            console.log('🔢 CORRECTED SCALE CALCULATIONS:', {
-                referenceSystem: 'ORIGINAL_CAPTURE_DIMENSIONS',
-                originalCaptureSize: `${this.screenshot.originalCaptureWidth}x${this.screenshot.originalCaptureHeight}`,
-                currentDisplaySize: `${img.offsetWidth}x${img.offsetHeight}`,
-                scaleFactorX: scaleFactorX.toFixed(3),
-                scaleFactorY: scaleFactorY.toFixed(3),
-                clickedAt: `(${x}, ${y})`,
-                scaledToOriginalCapture: `(${scaledX.toFixed(1)}, ${scaledY.toFixed(1)})`
+            console.log('🖱️ Raw click coordinates:', { clickX, clickY });
+            console.log('📐 Image display info:', {
+                displaySize: `${img.offsetWidth}x${img.offsetHeight}`,
+                naturalSize: `${img.naturalWidth}x${img.naturalHeight}`,
+                boundingRect: rect
             });
             
             let annotationText = this.pendingAnnotationText;
@@ -232,74 +204,37 @@ class UniversalAnnotator {
                 }
             }
             
-            // Calculate initial text position with smart positioning
-            const imgWidth = img.offsetWidth;
-            const imgHeight = img.offsetHeight;
-            
-            let textX, textY;
-            
-            if (x + 100 < imgWidth) {
-                textX = x + 80; // To the right
-            } else {
-                textX = x - 80; // To the left if not enough space
-            }
-            
-            if (y > 50) {
-                textY = y - 40; // Above
-            } else {
-                textY = y + 40; // Below if not enough space
-            }
-            
-            // Scale text position too
-            const scaledTextX = textX * scaleFactorX;
-            const scaledTextY = textY * scaleFactorY;
-            
-            console.log('📝 TEXT POSITION CALCULATIONS:', {
-                rawTextPos: `(${textX}, ${textY})`,
-                scaledTextPos: `(${scaledTextX.toFixed(1)}, ${scaledTextY.toFixed(1)})`
-            });
-            
-            // Create annotation object with SCALED coordinates AND DEBUG INFO
+            // SIMPLIFIED: Store coordinates directly relative to the displayed image
+            // We'll scale them when needed for storage/PDF, but keep display coordinates as primary
             const annotation = {
                 id: Date.now().toString(),
                 text: annotationText.trim(),
-                x: scaledX,        // USE SCALED COORDINATES
-                y: scaledY,        // USE SCALED COORDINATES  
-                textX: scaledTextX, // USE SCALED TEXT POSITION
-                textY: scaledTextY, // USE SCALED TEXT POSITION
+                // Store display coordinates directly
+                x: clickX,
+                y: clickY,
+                textX: clickX + 60,  // Default text offset
+                textY: clickY - 30,  // Default text offset
                 timestamp: new Date().toISOString(),
-                
-                // 🔍 DEBUG COORDINATE TRACKING
+                // Enhanced debug information
                 debug: {
-                    originalClick: {
-                        x: x,
-                        y: y,
-                        timestamp: new Date().toISOString()
-                    },
-                    initialScaling: {
-                        scaleFactorX: scaleFactorX,
-                        scaleFactorY: scaleFactorY,
-                        scaledX: scaledX,
-                        scaledY: scaledY
+                    clickEvent: {
+                        clientX: e.clientX,
+                        clientY: e.clientY,
+                        rectLeft: rect.left,
+                        rectTop: rect.top,
+                        clickRelativeToImage: { x: clickX, y: clickY }
                     },
                     imageInfo: {
                         displaySize: `${img.offsetWidth}x${img.offsetHeight}`,
-                        storedSize: `${this.screenshot.displayWidth}x${this.screenshot.displayHeight}`,
-                        naturalSize: `${img.naturalWidth}x${img.naturalHeight}`
+                        naturalSize: `${img.naturalWidth}x${img.naturalHeight}`,
+                        coordinates: 'DISPLAY_RELATIVE'
                     },
-                    coordinateHistory: [
-                        {
-                            event: 'INITIAL_CLICK',
-                            displayCoords: { x: x, y: y },
-                            storedCoords: { x: scaledX, y: scaledY },
-                            timestamp: new Date().toISOString()
-                        }
-                    ]
+                    timestamp: new Date().toISOString()
                 }
             };
             
-            console.log('🎯 FINAL ANNOTATION OBJECT WITH DEBUG:', annotation);
-            console.log('🔍 === COORDINATE DEBUG END ===');
+            console.log('🎯 SIMPLIFIED ANNOTATION CREATED:', annotation);
+            console.log('🎯 === SIMPLIFIED COORDINATE SYSTEM END ===');
             
             await this.addAnnotation(annotation, container, img);
             
