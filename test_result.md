@@ -227,6 +227,9 @@ frontend:
         - working: "implemented"
         - agent: "main"
         - comment: "FIXED: Updated compressImageData function to properly preserve aspect ratio during compression. Added logging to verify aspect ratio preservation."
+        - working: "updated"
+        - agent: "main"
+        - comment: "MAJOR UPDATE: Removed all compression - images are now captured at 100% original quality with no compression or resizing. This eliminates any aspect ratio issues completely."
 
   - task: "Simplified coordinate system for annotation precision"
     implemented: true
