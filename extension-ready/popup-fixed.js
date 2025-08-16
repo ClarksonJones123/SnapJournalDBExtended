@@ -1,0 +1,1267 @@
+class ScreenshotAnnotator {
+  constructor() {
+    this.screenshots = [];
+    this.selectedScreenshot = null;
+    this.memoryUsage = 0;
+    this.isInitialized = false;
+    
+    // Initialize temporary storage
+    this.tempStorage = null;
+    this.init();
+  }
+  
+  async init() {
+    console.log('🚀 Initializing ScreenshotAnnotator...');
+    
+    try {
+      // Initialize temporary storage first
+      await this.initTempStorage();
+      
+      // Run automatic cleanup on initialization
+      console.log('🧹 Running automatic storage cleanup on startup...');
+      await this.automaticStorageCleanup();
+      
+      // Load existing screenshots
+      await this.loadScreenshots();
+      
+      // Setup event handlers
+      this.setupEventListeners();
+      this.setupStorageListener();
+      
+      // Update UI
+      this.updateUI();
+      
+      // Schedule periodic cleanup
+      this.schedulePeriodicCleanup();
+      
+      // Setup storage quota monitoring
+      this.setupStorageQuotaMonitoring();
+      
+      console.log('✅ ScreenshotAnnotator initialized successfully');
+      this.isInitialized = true;
+      
+    } catch (error) {
+      console.error('❌ ScreenshotAnnotator initialization failed:', error);
+      this.showStatus('Extension initialization failed. Please reload.', 'error');
+    }
+  }
+  
+  async initTempStorage() {
+    try {
+      console.log('📁 Initializing temporary storage system...');
+      
+      // Wait for temp storage to be available
+      const maxWait = 10000;
+      const startTime = Date.now();
+      
+      while ((!window.tempStorage || !window.tempStorage.db) && (Date.now() - startTime) < maxWait) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+      
+      if (window.tempStorage && window.tempStorage.db) {
+        this.tempStorage = window.tempStorage;
+        console.log('✅ Temporary storage system initialized');
+        
+        // Test the connection
+        try {
+          const stats = await this.tempStorage.getStorageStats();
+          console.log('📊 Temporary storage ready:', stats);
+        } catch (testError) {
+          console.warn('⚠️ Temporary storage test failed:', testError);
+          this.tempStorage = null;
+        }
+      } else {
+        console.warn('⚠️ Temporary storage not available, using Chrome storage only');
+        this.tempStorage = null;
+      }
+    } catch (error) {
+      console.error('❌ Failed to initialize temporary storage:', error);
+      this.tempStorage = null;
+    }
+  }
+  
+  setupStorageListener() {
+    try {
+      if (chrome && chrome.storage && chrome.storage.onChanged) {
+        chrome.storage.onChanged.addListener((changes, areaName) => {
+          if (areaName === 'local' && changes.screenshots) {
+            console.log('Storage changed, refreshing UI...');
+            this.screenshots = changes.screenshots.newValue || [];
+            this.calculateMemoryUsage();
+            this.updateUI();
+          }
+        });
+        console.log('Storage listener setup complete');
+      }
+    } catch (error) {
+      console.log('Storage listener not available (expected outside extension context)');
+    }
+  }
+  
+  setupEventListeners() {
+    try {
+      const captureBtn = document.getElementById('captureBtn');
+      const annotateBtn = document.getElementById('annotateBtn');
+      const exportPdfBtn = document.getElementById('exportPdfBtn');
+      const clearBtn = document.getElementById('clearBtn');
+      
+      if (captureBtn) {
+        captureBtn.addEventListener('click', () => this.captureScreenshot());
+      }
+      
+      if (annotateBtn) {
+        annotateBtn.addEventListener('click', () => this.startAnnotation());
+      }
+      
+      if (exportPdfBtn) {
+        exportPdfBtn.addEventListener('click', () => this.exportPdfJournal());
+      }
+      
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => this.clearAllScreenshots());
+      }
+      
+      console.log('Event listeners setup complete');
+    } catch (error) {
+      console.error('Error setting up event listeners:', error);
+    }
+  }
+  
+  async loadScreenshots() {
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        const result = await chrome.storage.local.get('screenshots');
+        this.screenshots = result.screenshots || [];
+        
+        // Restore images from temporary storage if needed
+        for (let i = 0; i < this.screenshots.length; i++) {
+          const screenshot = this.screenshots[i];
+          
+          if (screenshot.isInTempStorage && screenshot.tempImageId && this.tempStorage) {
+            try {
+              console.log(`📁 Restoring screenshot ${i + 1} from temporary storage...`);
+              const imageData = await this.tempStorage.retrieveImage(screenshot.tempImageId);
+              
+              if (imageData && imageData.imageData) {
+                screenshot.imageData = imageData.imageData;
+                screenshot.isInTempStorage = false;
+                delete screenshot.tempImageId;
+                console.log(`✅ Restored screenshot ${i + 1} from temporary storage`);
+              }
+            } catch (error) {
+              console.error(`❌ Failed to restore screenshot ${i + 1}:`, error);
+            }
+          }
+        }
+        
+        console.log(`📱 Loaded ${this.screenshots.length} screenshots`);
+        this.calculateMemoryUsage();
+        
+      } else {
+        console.log('Chrome storage not available, using empty screenshot list');
+        this.screenshots = [];
+      }
+    } catch (error) {
+      console.error('Error loading screenshots:', error);
+      this.screenshots = [];
+    }
+  }
+  
+  async saveScreenshots() {
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        // Check storage quota before saving
+        const storageCheck = await this.checkStorageQuota();
+        
+        if (storageCheck.quotaExceeded) {
+          console.log('🚨 Storage quota exceeded, running emergency cleanup...');
+          await this.emergencyStorageCleanup();
+        }
+        
+        // Try to save, if it fails due to quota, migrate to temp storage
+        try {
+          await chrome.storage.local.set({ screenshots: this.screenshots });
+          console.log(`💾 Saved ${this.screenshots.length} screenshots to Chrome storage`);
+        } catch (storageError) {
+          if (storageError.message.includes('quota') || storageError.message.includes('QUOTA')) {
+            console.log('🚨 Storage quota exceeded during save, migrating large images...');
+            await this.forceTemporaryStorageMigration();
+            
+            // Try saving again after migration
+            try {
+              await chrome.storage.local.set({ screenshots: this.screenshots });
+              console.log(`💾 Saved ${this.screenshots.length} screenshots after migration`);
+            } catch (secondError) {
+              console.error('Failed to save even after migration:', secondError);
+              await this.extremeEmergencyCleanup();
+            }
+          } else {
+            throw storageError;
+          }
+        }
+        
+      } else {
+        console.log('Chrome storage not available for saving');
+      }
+    } catch (error) {
+      console.error('Error saving screenshots:', error);
+    }
+  }
+  
+  async forceTemporaryStorageMigration() {
+    if (!this.tempStorage) {
+      console.warn('⚠️ Cannot migrate to temporary storage - not available');
+      return;
+    }
+    
+    try {
+      console.log('📁 Migrating large images to temporary storage...');
+      
+      for (let i = 0; i < this.screenshots.length; i++) {
+        const screenshot = this.screenshots[i];
+        
+        if (screenshot.imageData && !screenshot.isInTempStorage) {
+          const imageSize = screenshot.imageData.length;
+          
+          // Migrate images larger than 1MB
+          if (imageSize > 1048576) {
+            try {
+              const tempId = 'temp_' + screenshot.id + '_' + Date.now();
+              const storeResult = await this.tempStorage.storeImage(tempId, screenshot.imageData, {
+                screenshotId: screenshot.id,
+                migrationDate: new Date().toISOString()
+              });
+              
+              if (storeResult.stored) {
+                // Mark as in temporary storage and remove image data
+                screenshot.isInTempStorage = true;
+                screenshot.tempImageId = tempId;
+                delete screenshot.imageData;
+                
+                console.log(`📁 Migrated screenshot ${i + 1} to temporary storage (${imageSize} bytes)`);
+              }
+            } catch (error) {
+              console.error(`❌ Failed to migrate screenshot ${i + 1}:`, error);
+            }
+          }
+        }
+      }
+      
+      console.log('✅ Temporary storage migration completed');
+    } catch (error) {
+      console.error('❌ Error during temporary storage migration:', error);
+    }
+  }
+  
+  async restoreImageForElement(screenshotId, imgElement) {
+    if (!this.tempStorage) return;
+    
+    try {
+      const screenshot = this.screenshots.find(s => s.id === screenshotId);
+      if (screenshot && screenshot.isInTempStorage && screenshot.tempImageId) {
+        console.log('📁 Restoring image from temporary storage for element:', screenshotId);
+        
+        const restoredScreenshot = await this.tempStorage.restoreFullScreenshot(screenshot);
+        
+        if (restoredScreenshot && restoredScreenshot.imageData) {
+          imgElement.src = restoredScreenshot.imageData;
+          
+          // Update the screenshot in our array
+          const index = this.screenshots.findIndex(s => s.id === screenshotId);
+          if (index !== -1) {
+            this.screenshots[index] = restoredScreenshot;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error restoring image for element:', error);
+    }
+  }
+  
+  async aggressiveStorageCleanup() {
+    try {
+      console.log('🧹 Running aggressive storage cleanup...');
+      
+      // Remove old screenshots (keep only 5 most recent)
+      if (this.screenshots.length > 5) {
+        this.screenshots.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        const removedCount = this.screenshots.length - 5;
+        this.screenshots = this.screenshots.slice(0, 5);
+        console.log(`🗑️ Removed ${removedCount} old screenshots`);
+      }
+      
+      // Migrate remaining large images to temp storage
+      if (this.tempStorage) {
+        for (const screenshot of this.screenshots) {
+          if (screenshot.imageData && !screenshot.isInTempStorage) {
+            const imageSize = screenshot.imageData.length;
+            if (imageSize > 512000) { // 512KB threshold
+              try {
+                const tempId = 'temp_' + screenshot.id + '_' + Date.now();
+                const storeResult = await this.tempStorage.storeImage(tempId, screenshot.imageData);
+                
+                if (storeResult.stored) {
+                  screenshot.isInTempStorage = true;
+                  screenshot.tempImageId = tempId;
+                  delete screenshot.imageData;
+                  console.log(`📁 Migrated large image to temporary storage`);
+                }
+              } catch (error) {
+                console.error('Error migrating during aggressive cleanup:', error);
+              }
+            }
+          }
+        }
+      }
+      
+      // Clean temporary storage
+      if (this.tempStorage) {
+        await this.tempStorage.cleanOldTempFiles();
+      }
+      
+      // Save cleaned up screenshots
+      await this.saveScreenshots();
+      
+      // Update memory usage
+      this.calculateMemoryUsage();
+      
+      console.log('✅ Aggressive cleanup completed');
+      
+    } catch (error) {
+      console.error('Error during aggressive cleanup:', error);
+    }
+  }
+  
+  async cleanupUnselectedScreenshots(selectedId) {
+    try {
+      console.log('🧹 Cleaning up unselected screenshots for journal...');
+      
+      // Don't remove screenshots, just migrate large ones to temp storage
+      for (const screenshot of this.screenshots) {
+        if (screenshot.id !== selectedId && screenshot.imageData && !screenshot.isInTempStorage) {
+          const imageSize = screenshot.imageData.length;
+          
+          if (imageSize > 1048576 && this.tempStorage) { // 1MB threshold
+            try {
+              const tempId = 'temp_' + screenshot.id + '_' + Date.now();
+              const storeResult = await this.tempStorage.storeImage(tempId, screenshot.imageData);
+              
+              if (storeResult.stored) {
+                screenshot.isInTempStorage = true;
+                screenshot.tempImageId = tempId;
+                delete screenshot.imageData;
+                console.log(`📁 Migrated unselected screenshot to temporary storage`);
+              }
+            } catch (error) {
+              console.error('Error migrating unselected screenshot:', error);
+            }
+          }
+        }
+      }
+      
+      await this.saveScreenshots();
+      console.log('✅ Cleanup of unselected screenshots completed');
+      
+    } catch (error) {
+      console.error('Error cleaning up unselected screenshots:', error);
+    }
+  }
+  
+  async manualStorageClear() {
+    try {
+      console.log('🧹 Manual storage clear initiated...');
+      
+      if (confirm('This will clear ALL screenshots and data. Are you sure?')) {
+        // Clear Chrome storage
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+          await chrome.storage.local.clear();
+        }
+        
+        // Clear temporary storage
+        if (this.tempStorage) {
+          await this.tempStorage.clearAll();
+        }
+        
+        // Clear local data
+        this.screenshots = [];
+        this.selectedScreenshot = null;
+        this.memoryUsage = 0;
+        
+        // Update UI
+        this.updateUI();
+        
+        this.showStatus('All data cleared successfully', 'success');
+        console.log('✅ Manual storage clear completed');
+      }
+    } catch (error) {
+      console.error('Error during manual storage clear:', error);
+      this.showStatus('Error clearing storage', 'error');
+    }
+  }
+  
+  async automaticStorageCleanup() {
+    try {
+      console.log('🧹 === AUTOMATIC STORAGE CLEANUP START ===');
+      
+      // Check storage quota
+      const storageInfo = await this.checkStorageQuota();
+      console.log('📊 Storage info:', storageInfo);
+      
+      if (storageInfo.quotaExceeded) {
+        console.log('🚨 Storage quota exceeded, running emergency cleanup...');
+        await this.emergencyStorageCleanup();
+        return;
+      }
+      
+      // Remove corrupted screenshots
+      const originalCount = this.screenshots.length;
+      this.screenshots = this.screenshots.filter(screenshot => {
+        // Keep screenshots with image data
+        if (screenshot.imageData) {
+          return true;
+        }
+        
+        // Keep screenshots that are properly stored in temp storage
+        if (screenshot.isInTempStorage && screenshot.tempImageId) {
+          return true;
+        }
+        
+        // Remove corrupted screenshots (no image data and not in temp storage)
+        console.log('🗑️ Removing corrupted screenshot:', screenshot.id);
+        return false;
+      });
+      
+      const removedCorrupted = originalCount - this.screenshots.length;
+      if (removedCorrupted > 0) {
+        console.log(`🗑️ Removed ${removedCorrupted} corrupted screenshots`);
+      }
+      
+      // If we have too many screenshots, clean up old ones
+      if (this.screenshots.length > 10) {
+        console.log('📊 Too many screenshots, cleaning up old ones...');
+        
+        // Sort by timestamp (newest first)
+        this.screenshots.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        const toKeep = this.screenshots.slice(0, 10);
+        const toRemove = this.screenshots.slice(10);
+        
+        // Remove old screenshots from temp storage
+        if (this.tempStorage) {
+          for (const screenshot of toRemove) {
+            if (screenshot.isInTempStorage && screenshot.tempImageId) {
+              try {
+                await this.tempStorage.deleteImage(screenshot.tempImageId);
+              } catch (error) {
+                console.error('Error deleting old temp image:', error);
+              }
+            }
+          }
+        }
+        
+        this.screenshots = toKeep;
+        console.log(`🗑️ Removed ${toRemove.length} old screenshots, kept ${toKeep.length}`);
+      }
+      
+      // Migrate large images to temp storage if available
+      if (this.tempStorage && storageInfo.usagePercent > 70) {
+        console.log('📁 Storage usage high, migrating large images to temporary storage...');
+        
+        for (const screenshot of this.screenshots) {
+          if (screenshot.imageData && !screenshot.isInTempStorage) {
+            const imageSize = screenshot.imageData.length;
+            
+            if (imageSize > 1048576) { // 1MB threshold
+              try {
+                const tempId = 'temp_' + screenshot.id + '_' + Date.now();
+                const storeResult = await this.tempStorage.storeImage(tempId, screenshot.imageData, {
+                  screenshotId: screenshot.id,
+                  cleanupDate: new Date().toISOString()
+                });
+                
+                if (storeResult.stored) {
+                  screenshot.isInTempStorage = true;
+                  screenshot.tempImageId = tempId;
+                  delete screenshot.imageData;
+                  console.log(`📁 Migrated large image to temporary storage (${imageSize} bytes)`);
+                }
+              } catch (error) {
+                console.error('Error migrating large image:', error);
+              }
+            }
+          }
+        }
+      }
+      
+      // Clean old temporary files
+      if (this.tempStorage) {
+        await this.tempStorage.cleanOldTempFiles();
+      }
+      
+      // Save cleaned up screenshots
+      await this.saveScreenshots();
+      
+      // Update memory usage calculation
+      this.calculateMemoryUsage();
+      
+      console.log('✅ Automatic cleanup completed successfully');
+      console.log('🧹 === AUTOMATIC STORAGE CLEANUP END ===');
+      
+    } catch (error) {
+      console.error('❌ Error during automatic storage cleanup:', error);
+    }
+  }
+  
+  schedulePeriodicCleanup() {
+    // Run cleanup every 5 minutes
+    setInterval(async () => {
+      console.log('⏰ Running scheduled periodic cleanup...');
+      await this.automaticStorageCleanup();
+    }, 5 * 60 * 1000); // 5 minutes
+    
+    this.setupStorageQuotaMonitoring();
+    console.log('✅ Periodic cleanup scheduled (every 5 minutes)');
+  }
+  
+  setupStorageQuotaMonitoring() {
+    // Monitor storage before each save operation
+    setInterval(async () => {
+      try {
+        const storageInfo = await this.checkStorageQuota();
+        
+        if (storageInfo.quotaExceeded) {
+          console.log('🚨 Storage quota monitoring triggered cleanup');
+          await this.automaticStorageCleanup();
+        }
+      } catch (error) {
+        console.error('Error in storage quota monitoring:', error);
+      }
+    }, 30000); // Check every 30 seconds
+    
+    console.log('✅ Storage quota monitoring setup');
+  }
+  
+  async emergencyStorageCleanup() {
+    try {
+      console.log('🚨 Emergency storage cleanup initiated...');
+      
+      // Keep only the 3 most recent screenshots
+      if (this.screenshots.length > 3) {
+        this.screenshots.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        const removedCount = this.screenshots.length - 3;
+        this.screenshots = this.screenshots.slice(0, 3);
+        
+        console.log(`🚨 Emergency cleanup - removed ${removedCount} screenshots, kept 3 most recent`);
+      }
+      
+      // Update selected screenshot if it was removed
+      if (this.selectedScreenshot && !this.screenshots.find(s => s.id === this.selectedScreenshot.id)) {
+        this.selectedScreenshot = this.screenshots[0] || null;
+      }
+      
+      // Force memory cleanup
+      this.memoryUsage = 0;
+      this.calculateMemoryUsage();
+      
+      console.log('🚨 Emergency cleanup completed - kept 3 most recent screenshots');
+      
+    } catch (error) {
+      console.error('Error during emergency cleanup:', error);
+    }
+  }
+  
+  async extremeEmergencyCleanup() {
+    try {
+      console.log('💥 EXTREME emergency cleanup - keeping only 1 screenshot...');
+      
+      if (this.screenshots.length > 1) {
+        // Sort by timestamp and keep only the most recent
+        this.screenshots.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        const removedCount = this.screenshots.length - 1;
+        this.screenshots = this.screenshots.slice(0, 1);
+        
+        console.log(`💥 Extreme cleanup - removed ${removedCount} screenshots, kept 1 most recent`);
+      }
+      
+      // Update selected screenshot
+      this.selectedScreenshot = this.screenshots[0] || null;
+      
+      // Force memory cleanup
+      this.memoryUsage = 0;
+      this.calculateMemoryUsage();
+      
+      console.log('💥 Extreme emergency cleanup completed - kept 1 screenshot');
+      
+    } catch (error) {
+      console.error('Error during extreme emergency cleanup:', error);
+    }
+  }
+  
+  async fixCorruptedScreenshots() {
+    try {
+      console.log('🔧 Fixing corrupted screenshots...');
+      
+      const originalCount = this.screenshots.length;
+      
+      // Remove screenshots without image data and not in temp storage
+      this.screenshots = this.screenshots.filter(screenshot => {
+        const hasImageData = !!screenshot.imageData;
+        const inTempStorage = screenshot.isInTempStorage && screenshot.tempImageId;
+        
+        if (!hasImageData && !inTempStorage) {
+          console.log('🗑️ Removing corrupted screenshot:', screenshot.id, screenshot.title);
+          return false;
+        }
+        
+        return true;
+      });
+      
+      const removedCount = originalCount - this.screenshots.length;
+      
+      if (removedCount > 0) {
+        console.log(`🔧 Fixed ${removedCount} corrupted screenshots`);
+        await this.saveScreenshots();
+        this.calculateMemoryUsage();
+        this.updateUI();
+        
+        this.showStatus(`Fixed ${removedCount} corrupted screenshots`, 'success');
+      } else {
+        console.log('✅ No corrupted screenshots found');
+        this.showStatus('No corrupted screenshots found', 'info');
+      }
+      
+    } catch (error) {
+      console.error('Error fixing corrupted screenshots:', error);
+      this.showStatus('Error fixing screenshots', 'error');
+    }
+  }
+  
+  async checkStorageQuota() {
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local && chrome.storage.local.getBytesInUse) {
+        const bytesInUse = await chrome.storage.local.getBytesInUse();
+        const quota = chrome.storage.local.QUOTA_BYTES || 10485760; // 10MB default
+        
+        return {
+          bytesInUse,
+          quota,
+          available: quota - bytesInUse,
+          quotaExceeded: bytesInUse > quota * 0.9, // Warn at 90%
+          usagePercent: Math.round((bytesInUse / quota) * 100)
+        };
+      }
+    } catch (error) {
+      console.error('Error checking storage quota:', error);
+    }
+    
+    return { quotaExceeded: false, usagePercent: 0, bytesInUse: 0, quota: 10485760, available: 10485760 };
+  }
+  
+  calculateMemoryUsage() {
+    this.memoryUsage = 0;
+    this.screenshots.forEach(screenshot => {
+      if (screenshot.imageData) {
+        this.memoryUsage += screenshot.imageData.length * 0.75;
+      }
+      if (screenshot.annotations) {
+        screenshot.annotations.forEach(annotation => {
+          this.memoryUsage += JSON.stringify(annotation).length;
+        });
+      }
+    });
+    console.log('Memory usage calculated:', this.formatMemorySize(this.memoryUsage));
+  }
+  
+  formatMemorySize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
+    return Math.round(bytes / (1024 * 1024)) + ' MB';
+  }
+  
+  async getImageDimensions(imageData) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        resolve({
+          width: img.width,
+          height: img.height
+        });
+      };
+      img.onerror = () => {
+        reject(new Error('Failed to load image for dimension calculation'));
+      };
+      img.src = imageData;
+    });
+  }
+  
+  async captureScreenshot() {
+    try {
+      this.showStatus('Capturing screenshot...', 'info');
+      console.log('Starting screenshot capture...');
+      
+      // Check if Chrome APIs are available
+      if (typeof chrome === 'undefined' || !chrome.tabs || !chrome.runtime) {
+        throw new Error('Chrome extension APIs not available. Please install as Chrome extension.');
+      }
+      
+      // Get current tab info
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      console.log('Current tab:', tab.title, tab.url);
+      
+      // Capture screenshot via background script
+      const response = await chrome.runtime.sendMessage({ 
+        action: 'captureVisibleTab' 
+      });
+      
+      console.log('Capture response:', response ? 'Success' : 'Failed');
+      
+      if (response && response.imageData) {
+        // Create screenshot object with detailed timestamp
+        const now = new Date();
+        
+        // Get original dimensions
+        const originalDimensions = await this.getImageDimensions(response.imageData);
+        console.log('📐 Original capture dimensions (100% quality):', originalDimensions);
+        
+        const screenshot = {
+          id: Date.now().toString(),
+          imageData: response.imageData, // 100% original quality
+          originalCaptureWidth: originalDimensions.width,
+          originalCaptureHeight: originalDimensions.height,
+          storageWidth: originalDimensions.width,
+          storageHeight: originalDimensions.height,
+          displayWidth: originalDimensions.width,
+          displayHeight: originalDimensions.height,
+          url: tab.url,
+          title: tab.title,
+          timestamp: now.toISOString(),
+          captureDate: now.toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          }),
+          captureTime: now.toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            second: '2-digit',
+            hour12: true 
+          }),
+          captureTimestamp: now.getTime(),
+          annotations: []
+        };
+        
+        console.log('✅ Screenshot object created:', {
+          id: screenshot.id,
+          dimensions: `${screenshot.displayWidth}x${screenshot.displayHeight}`,
+          imageDataSize: screenshot.imageData.length,
+          title: screenshot.title.substring(0, 50) + '...'
+        });
+        
+        this.screenshots.push(screenshot);
+        await this.saveScreenshots();
+        
+        this.showStatus('Screenshot captured! Starting annotation mode...', 'success');
+        this.selectedScreenshot = screenshot;
+        
+        // Enable annotation button
+        const annotateBtn = document.getElementById('annotateBtn');
+        if (annotateBtn) {
+          annotateBtn.disabled = false;
+        }
+        
+        console.log('Screenshot capture completed successfully');
+        
+        // Auto-start annotation mode
+        console.log('🎯 Auto-starting annotation mode...');
+        setTimeout(() => {
+          this.startAnnotation();
+        }, 500);
+        
+      } else {
+        throw new Error(response?.error || 'Failed to capture screenshot');
+      }
+    } catch (error) {
+      console.error('Capture error:', error);
+      this.showStatus(`Failed to capture: ${error.message}`, 'error');
+    }
+  }
+  
+  async startAnnotation() {
+    console.log('🎯 Starting annotation...');
+    
+    if (!this.selectedScreenshot) {
+      console.error('❌ No screenshot selected');
+      this.showStatus('Please select a screenshot first by clicking on one', 'error');
+      return;
+    }
+    
+    try {
+      console.log('✅ Starting annotation mode for screenshot:', this.selectedScreenshot.id);
+      
+      // Check if Chrome APIs are available
+      if (typeof chrome === 'undefined' || !chrome.tabs || !chrome.runtime || !chrome.windows) {
+        throw new Error('Chrome extension APIs not available for annotation window.');
+      }
+      
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      console.log('✅ Current tab found:', tab.id, tab.title);
+      
+      console.log('🌐 Opening universal annotation interface...');
+      
+      // Create annotation URL with screenshot data
+      const annotationUrl = chrome.runtime.getURL('annotation.html') + 
+        '?screenshot=' + encodeURIComponent(JSON.stringify(this.selectedScreenshot));
+      
+      // Open in new window for unrestricted annotation
+      const windowInfo = await chrome.windows.create({
+        url: annotationUrl,
+        type: 'popup',
+        width: Math.min(1200, screen.width * 0.9),
+        height: Math.min(800, screen.height * 0.9),
+        focused: true
+      });
+      
+      console.log('✅ Universal annotation interface opened');
+      this.showStatus('🎯 Annotation window opened - works on ANY page!', 'success');
+      
+      // Close popup after successful annotation start
+      setTimeout(() => {
+        if (window.close) {
+          window.close();
+        }
+      }, 1000);
+      
+    } catch (error) {
+      console.error('❌ Annotation error:', error);
+      this.showStatus(`Annotation failed: ${error.message}`, 'error');
+    }
+  }
+  
+  async exportPdfJournal() {
+    if (this.screenshots.length === 0) {
+      this.showStatus('No screenshots to export', 'info');
+      return;
+    }
+    
+    try {
+      console.log('🔄 Starting PDF journal export...');
+      this.showStatus('Generating PDF journal with annotations...', 'info');
+      
+      // Restore all images from temporary storage if needed
+      console.log('📁 Restoring images from temporary storage for PDF export...');
+      
+      for (let i = 0; i < this.screenshots.length; i++) {
+        const screenshot = this.screenshots[i];
+        
+        if (screenshot.isInTempStorage && screenshot.tempImageId && this.tempStorage) {
+          console.log(`📁 Restoring screenshot ${i + 1}/${this.screenshots.length} from temp storage...`);
+          
+          try {
+            const restoredScreenshot = await this.tempStorage.restoreFullScreenshot(screenshot);
+            if (restoredScreenshot && restoredScreenshot.imageData) {
+              this.screenshots[i] = restoredScreenshot;
+              console.log(`✅ Restored screenshot ${i + 1} for PDF export`);
+            } else {
+              console.warn(`⚠️ Failed to restore screenshot ${i + 1}, will skip in PDF`);
+            }
+          } catch (error) {
+            console.error(`❌ Error restoring screenshot ${i + 1}:`, error);
+          }
+        }
+        
+        this.showStatus(`Restoring images: ${i + 1}/${this.screenshots.length}`, 'info');
+      }
+      
+      // Filter out screenshots that don't have image data
+      const validScreenshots = this.screenshots.filter(s => s.imageData);
+      console.log(`📊 Valid screenshots for PDF: ${validScreenshots.length}/${this.screenshots.length}`);
+      
+      if (validScreenshots.length === 0) {
+        console.error('❌ No valid screenshots for PDF export');
+        this.showStatus('No images available for PDF export', 'error');
+        return;
+      }
+      
+      // Create PDF export window
+      const exportData = {
+        screenshots: validScreenshots,
+        exportDate: new Date().toISOString(),
+        totalScreenshots: validScreenshots.length,
+        totalAnnotations: validScreenshots.reduce((sum, s) => sum + (s.annotations?.length || 0), 0)
+      };
+      
+      console.log('📊 Export data prepared:', {
+        screenshots: exportData.screenshots.length,
+        totalAnnotations: exportData.totalAnnotations
+      });
+      
+      // Check if Chrome APIs are available for window creation
+      if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.windows) {
+        throw new Error('Chrome extension APIs not available for PDF export window.');
+      }
+      
+      // Store data in chrome storage temporarily
+      const exportId = 'pdf_export_' + Date.now();
+      await chrome.storage.local.set({ [exportId]: exportData });
+      
+      const exportUrl = chrome.runtime.getURL('pdf-export.html') + 
+        '?exportId=' + encodeURIComponent(exportId);
+      
+      console.log('🔗 Export URL created:', exportUrl);
+      
+      // Open PDF export in new window
+      const windowInfo = await chrome.windows.create({
+        url: exportUrl,
+        type: 'popup',
+        width: 1200,
+        height: 800,
+        focused: true
+      });
+      
+      console.log('🪟 Export window created:', windowInfo.id);
+      
+      // Monitor PDF export completion and clean up
+      this.monitorPdfExportCompletion(exportId, windowInfo.id);
+      
+      this.showStatus('📄 PDF journal export opened with annotations!', 'success');
+      console.log('✅ PDF export window opened successfully');
+      
+    } catch (error) {
+      console.error('❌ PDF export error:', error);
+      this.showStatus(`Failed to export PDF journal: ${error.message}`, 'error');
+    }
+  }
+  
+  async monitorPdfExportCompletion(exportId, windowId) {
+    console.log('👀 Monitoring PDF export completion...');
+    
+    const checkInterval = setInterval(async () => {
+      try {
+        if (typeof chrome !== 'undefined' && chrome.windows) {
+          const window = await chrome.windows.get(windowId);
+          
+          if (!window) {
+            console.log('🧹 PDF export completed, cleaning up memory...');
+            clearInterval(checkInterval);
+            
+            // Clean up temporary export data
+            try {
+              if (chrome.storage && chrome.storage.local) {
+                await chrome.storage.local.remove(exportId);
+                console.log('🧹 Cleaned up temporary export data');
+              }
+            } catch (error) {
+              console.warn('⚠️ Failed to clean up export data:', error);
+            }
+            
+            // Aggressive memory cleanup after PDF export
+            await this.aggressiveStorageCleanup();
+            console.log('🧹 Post-export memory cleanup completed');
+            
+            // Update UI to reflect changes
+            this.updateUI();
+          }
+        }
+      } catch (error) {
+        // Window doesn't exist anymore, clean up
+        console.log('🧹 PDF export window closed, cleaning up...');
+        clearInterval(checkInterval);
+        
+        try {
+          if (chrome.storage && chrome.storage.local) {
+            await chrome.storage.local.remove(exportId);
+          }
+          await this.aggressiveStorageCleanup();
+          this.updateUI();
+        } catch (cleanupError) {
+          console.warn('⚠️ Failed cleanup after export:', cleanupError);
+        }
+      }
+    }, 2000); // Check every 2 seconds
+    
+    // Stop monitoring after 10 minutes max
+    setTimeout(() => {
+      clearInterval(checkInterval);
+      console.log('⏰ Stopped monitoring PDF export after 10 minutes');
+    }, 600000);
+  }
+  
+  async clearAllScreenshots() {
+    if (this.screenshots.length === 0) {
+      this.showStatus('No screenshots to clear', 'info');
+      return;
+    }
+    
+    if (confirm(`Delete all ${this.screenshots.length} screenshots? This will free ${this.formatMemorySize(this.memoryUsage)} of memory.`)) {
+      try {
+        console.log('Clearing all screenshots...');
+        
+        // Clear temporary storage images
+        if (this.tempStorage) {
+          for (const screenshot of this.screenshots) {
+            if (screenshot.isInTempStorage && screenshot.tempImageId) {
+              try {
+                await this.tempStorage.deleteImage(screenshot.tempImageId);
+              } catch (error) {
+                console.error('Error deleting temp image:', error);
+              }
+            }
+          }
+        }
+        
+        // Clear local data
+        this.screenshots = [];
+        this.selectedScreenshot = null;
+        this.memoryUsage = 0;
+        
+        // Save empty screenshots array
+        await this.saveScreenshots();
+        
+        // Update UI
+        const annotateBtn = document.getElementById('annotateBtn');
+        const exportBtn = document.getElementById('exportPdfBtn');
+        
+        if (annotateBtn) annotateBtn.disabled = true;
+        if (exportBtn) exportBtn.disabled = true;
+        
+        this.updateUI();
+        
+        this.showStatus('All screenshots cleared!', 'success');
+        console.log('Screenshots cleared successfully');
+        
+      } catch (error) {
+        console.error('Clear error:', error);
+        this.showStatus('Failed to clear screenshots', 'error');
+      }
+    }
+  }
+  
+  updateUI() {
+    console.log('=== UPDATEUI START ===');
+    console.log('Updating UI - Screenshots:', this.screenshots.length);
+    
+    // Update memory info
+    const memoryElement = document.getElementById('memoryUsage');
+    const countElement = document.getElementById('screenshotCount');
+    
+    if (memoryElement) {
+      memoryElement.textContent = this.formatMemorySize(this.memoryUsage);
+      console.log('✅ Updated memory usage:', memoryElement.textContent);
+    }
+    
+    if (countElement) {
+      countElement.textContent = this.screenshots.length;
+      console.log('✅ Updated screenshot count:', countElement.textContent);
+    }
+    
+    // Update screenshots list
+    const listElement = document.getElementById('screenshotsList');
+    if (!listElement) {
+      console.error('❌ screenshotsList element not found');
+      return;
+    }
+    
+    if (this.screenshots.length === 0) {
+      console.log('📋 No screenshots - showing empty state');
+      listElement.innerHTML = `
+        <div class="empty-state">
+          No screenshots yet.<br>Click "Capture Current Page" to get started.
+        </div>`;
+      
+      // Disable PDF export when no screenshots
+      const exportBtn = document.getElementById('exportPdfBtn');
+      if (exportBtn) {
+        exportBtn.disabled = true;
+      }
+    } else {
+      console.log(`📋 Rendering ${this.screenshots.length} screenshots`);
+      let html = '';
+      
+      this.screenshots.forEach((screenshot, index) => {
+        const isSelected = this.selectedScreenshot && this.selectedScreenshot.id === screenshot.id;
+        const date = new Date(screenshot.timestamp).toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        });
+        
+        console.log(`  📸 Screenshot ${index + 1}: ${screenshot.title} (${date}) - ${screenshot.annotations ? screenshot.annotations.length : 0} annotations`);
+        
+        // Create annotation indicators for thumbnail
+        let indicators = '';
+        if (screenshot.annotations && screenshot.annotations.length > 0) {
+          screenshot.annotations.forEach((annotation, annotationIndex) => {
+            // Scale annotation position to thumbnail size
+            const thumbnailMaxWidth = 360;
+            const scaleX = thumbnailMaxWidth / screenshot.displayWidth;
+            const scaleY = scaleX;
+            
+            const x = (annotation.x * scaleX) - 6;
+            const y = (annotation.y * scaleY) - 6;
+            
+            indicators += `
+              <div class="annotation-indicator" 
+                   style="position: absolute; 
+                          left: ${x}px; 
+                          top: ${y}px; 
+                          width: 8px; 
+                          height: 8px; 
+                          background: #ff4444; 
+                          border: 1px solid white; 
+                          border-radius: 50%; 
+                          z-index: 10;
+                          box-shadow: 0 1px 2px rgba(0,0,0,0.3);"
+                   title="${annotation.text}">
+              </div>`;
+          });
+        }
+        
+        // Create annotation list for thumbnail
+        let annotationsList = '';
+        if (screenshot.annotations && screenshot.annotations.length > 0) {
+          annotationsList = '<div style="margin-top: 8px; font-size: 11px; color: #666;">';
+          screenshot.annotations.forEach((annotation, annotationIndex) => {
+            const shortText = annotation.text.length > 25 ? 
+              annotation.text.substring(0, 25) + '...' : 
+              annotation.text;
+            annotationsList += `<div style="margin: 2px 0;">📍 ${shortText}</div>`;
+          });
+          annotationsList += '</div>';
+        }
+        
+        html += `
+          <div class="screenshot-item ${isSelected ? 'selected' : ''}" data-id="${screenshot.id}">
+            <div class="screenshot-preview">
+              <div style="position: relative; display: inline-block;">
+                <img src="${screenshot.imageData || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzYwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkxvYWRpbmcuLi48L3RleHQ+PC9zdmc+'}" 
+                     alt="Screenshot preview" 
+                     class="screenshot-preview-img"
+                     style="width: 100%; max-width: 360px; height: auto; border-radius: 4px; margin-bottom: 8px;"
+                     data-screenshot-id="${screenshot.id}"
+                     onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzYwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkVycm9yIExvYWRpbmc8L3RleHQ+PC9zdmc+'">
+                ${indicators}
+              </div>
+              ${annotationsList}
+            </div>
+            <div class="screenshot-title">${screenshot.title}</div>
+            <div class="screenshot-details">
+              <div class="timestamp-info">
+                <span class="capture-date">📅 ${screenshot.captureDate || new Date(screenshot.timestamp).toLocaleDateString()}</span>
+                <span class="capture-time">🕐 ${screenshot.captureTime || new Date(screenshot.timestamp).toLocaleTimeString()}</span>
+              </div>
+              <div class="technical-info">
+                <span>${screenshot.displayWidth}×${screenshot.displayHeight}</span>
+                <span class="annotation-count">${screenshot.annotations ? screenshot.annotations.length : 0} annotations</span>
+              </div>
+            </div>
+          </div>`;
+      });
+      
+      listElement.innerHTML = html;
+      
+      // Add click handlers
+      const screenshotItems = listElement.querySelectorAll('.screenshot-item');
+      const previewImages = listElement.querySelectorAll('.screenshot-preview-img');
+      
+      // Add image error handlers
+      previewImages.forEach((img) => {
+        img.addEventListener('error', (e) => {
+          const screenshotId = e.target.dataset.screenshotId;
+          console.log('📁 Attempting to restore image from temporary storage for:', screenshotId);
+          this.restoreImageForElement(screenshotId, e.target);
+        });
+      });
+      
+      screenshotItems.forEach((item) => {
+        item.addEventListener('click', () => {
+          const screenshotId = item.dataset.id;
+          this.selectedScreenshot = this.screenshots.find(s => s.id === screenshotId);
+          console.log('📸 Selected screenshot:', this.selectedScreenshot?.id);
+          
+          // Clean up unselected screenshots
+          this.cleanupUnselectedScreenshots(screenshotId);
+          
+          // Enable annotation button
+          const annotateBtn = document.getElementById('annotateBtn');
+          if (annotateBtn) {
+            annotateBtn.disabled = false;
+          }
+          
+          this.updateUI(); // Refresh to show selection
+        });
+      });
+      
+      // Enable PDF export when screenshots are available
+      const exportBtn = document.getElementById('exportPdfBtn');
+      if (exportBtn) {
+        exportBtn.disabled = false;
+      }
+    }
+    
+    console.log('✅ UI update completed');
+    console.log('=== UPDATEUI END ===');
+  }
+  
+  showStatus(message, type = 'info') {
+    console.log('Status:', type, message);
+    const statusEl = document.getElementById('status');
+    if (statusEl) {
+      statusEl.textContent = message;
+      statusEl.className = `status ${type}`;
+      statusEl.classList.remove('hidden');
+      
+      setTimeout(() => {
+        statusEl.classList.add('hidden');
+      }, 3000);
+    }
+  }
+}
+
+// Initialize when popup loads
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOM loaded, initializing app...');
+  const annotator = new ScreenshotAnnotator();
+  window.screenshotAnnotator = annotator;
+  
+  // Expose manual cleanup methods for console access
+  window.clearExtensionStorage = () => {
+    annotator.manualStorageClear();
+  };
+  
+  window.extremeCleanup = () => {
+    annotator.extremeEmergencyCleanup();
+  };
+  
+  window.fixCorruptedScreenshots = () => {
+    annotator.fixCorruptedScreenshots();
+  };
+  
+  console.log('💡 Storage management commands available:');
+  console.log('  clearExtensionStorage() - Clear all data');
+  console.log('  extremeCleanup() - Keep only 1 screenshot');
+  console.log('  fixCorruptedScreenshots() - Remove corrupted screenshots');
+});
+
+// Refresh UI when popup becomes visible
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && window.screenshotAnnotator && window.screenshotAnnotator.isInitialized) {
+    console.log('Popup became visible, refreshing UI...');
+    window.screenshotAnnotator.loadScreenshots().then(() => {
+      window.screenshotAnnotator.updateUI();
+    });
+  }
+});
+
+// Handle popup focus
+window.addEventListener('focus', () => {
+  if (window.screenshotAnnotator && window.screenshotAnnotator.isInitialized) {
+    console.log('Popup received focus, refreshing UI...');
+    window.screenshotAnnotator.loadScreenshots().then(() => {
+      window.screenshotAnnotator.updateUI();
+    });
+  }
+});
