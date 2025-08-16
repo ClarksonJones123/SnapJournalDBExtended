@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Schema Repair Fix Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-result { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Schema Repair Fix Test</h1>
+    <div id="results"></div>
+    <button onclick="testFixes()">Test Fixes</button>
+
+    <script src="temp-storage.js"></script>
+    <script>
+        async function testFixes() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+            
+            function addResult(message, type) {
+                const div = document.createElement('div');
+                div.className = `test-result ${type}`;
+                div.textContent = message;
+                resultsDiv.appendChild(div);
+            }
+            
+            addResult('🚀 Starting schema repair fix tests...', 'info');
+            
+            try {
+                // Test 1: Initialize TempStorageManager
+                addResult('Test 1: Creating TempStorageManager instance...', 'info');
+                const tempStorage = new TempStorageManager();
+                
+                // Check initialization flag
+                if (tempStorage.isInitializing === false) {
+                    addResult('✅ Test 1 PASSED: isInitializing flag properly initialized', 'success');
+                } else {
+                    addResult('❌ Test 1 FAILED: isInitializing flag not properly initialized', 'error');
+                }
+                
+                // Test 2: Initialize database
+                addResult('Test 2: Initializing IndexedDB...', 'info');
+                await tempStorage.init();
+                
+                if (tempStorage.db && tempStorage.isReady && !tempStorage.isInitializing) {
+                    addResult('✅ Test 2 PASSED: Database initialized without race conditions', 'success');
+                } else {
+                    addResult(`❌ Test 2 FAILED: Database state incorrect - db: ${!!tempStorage.db}, ready: ${tempStorage.isReady}, initializing: ${tempStorage.isInitializing}`, 'error');
+                }
+                
+                // Test 3: Check object stores
+                addResult('Test 3: Checking object stores...', 'info');
+                const requiredStores = ['screenshots', 'sessions', 'tempImages', 'pdfExports'];
+                const existingStores = [...tempStorage.db.objectStoreNames];
+                const missingStores = requiredStores.filter(store => !existingStores.includes(store));
+                
+                if (missingStores.length === 0) {
+                    addResult('✅ Test 3 PASSED: All required object stores present', 'success');
+                } else {
+                    addResult(`❌ Test 3 FAILED: Missing stores: ${missingStores.join(', ')}`, 'error');
+                }
+                
+                // Test 4: Test PDF export store specifically
+                addResult('Test 4: Testing PDF export store access...', 'info');
+                try {
+                    const transaction = tempStorage.db.transaction(['pdfExports'], 'readonly');
+                    const store = transaction.objectStore('pdfExports');
+                    addResult('✅ Test 4 PASSED: PDF export store accessible', 'success');
+                } catch (pdfError) {
+                    addResult(`❌ Test 4 FAILED: PDF export store error: ${pdfError.message}`, 'error');
+                }
+                
+                // Test 5: Test schema validation method
+                addResult('Test 5: Testing schema validation...', 'info');
+                const validationResult = await tempStorage.validateAndFixSchema();
+                
+                if (validationResult.success && !validationResult.repaired) {
+                    addResult('✅ Test 5 PASSED: Schema validation confirms healthy database', 'success');
+                } else if (validationResult.success && validationResult.repaired) {
+                    addResult('✅ Test 5 PASSED: Schema validation repaired issues successfully', 'success');
+                } else {
+                    addResult(`❌ Test 5 FAILED: Schema validation failed: ${validationResult.error || validationResult.message}`, 'error');
+                }
+                
+                addResult('🎉 All tests completed! Check console for detailed logs.', 'info');
+                
+            } catch (error) {
+                addResult(`❌ CRITICAL ERROR: ${error.message}`, 'error');
+                console.error('Test error:', error);
+            }
+        }
+        
+        // Auto-run tests on page load
+        window.addEventListener('load', () => {
+            setTimeout(testFixes, 1000);
+        });
+    </script>
+</body>
+</html>
