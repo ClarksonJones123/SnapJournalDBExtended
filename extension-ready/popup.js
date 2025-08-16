@@ -3,8 +3,36 @@ class ScreenshotAnnotator {
     this.screenshots = [];
     this.selectedScreenshot = null;
     this.memoryUsage = 0;
+    this.isInitialized = false;
+    
+    // 📁 Initialize temporary storage
+    this.tempStorage = null;
+    this.initTempStorage();
     
     this.init();
+  }
+  
+  async initTempStorage() {
+    try {
+      console.log('📁 Initializing temporary storage system...');
+      
+      // Wait for temp storage to be available
+      const maxWait = 5000; // 5 seconds
+      const startTime = Date.now();
+      
+      while (!window.tempStorage && (Date.now() - startTime) < maxWait) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      if (window.tempStorage) {
+        this.tempStorage = window.tempStorage;
+        console.log('✅ Temporary storage system initialized');
+      } else {
+        console.warn('⚠️ Temporary storage not available, using Chrome storage only');
+      }
+    } catch (error) {
+      console.error('❌ Failed to initialize temporary storage:', error);
+    }
   }
   
   async init() {
