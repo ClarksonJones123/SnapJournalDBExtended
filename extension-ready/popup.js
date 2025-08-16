@@ -281,22 +281,37 @@ class ScreenshotAnnotator {
         img.onload = () => {
           console.log('🖼️ Original image dimensions:', img.width, 'x', img.height);
           
-          // STORAGE-OPTIMIZED: Reduce size aggressively for storage
+          // STORAGE-OPTIMIZED: Reduce size while preserving aspect ratio
           let { width, height } = img;
+          const originalAspectRatio = width / height;
           
-          // Target storage-friendly dimensions
-          const targetWidth = 1400;  // Balanced quality/size
-          const targetHeight = 900;  // Balanced quality/size
+          console.log('📐 Original image:', { width, height, aspectRatio: originalAspectRatio.toFixed(2) });
           
-          if (width > targetWidth || height > targetHeight) {
+          // Target storage-friendly dimensions - preserve aspect ratio
+          const maxWidth = 1400;  // Balanced quality/size
+          const maxHeight = 900;  // Balanced quality/size
+          
+          if (width > maxWidth || height > maxHeight) {
             console.log('📉 Reducing dimensions for storage optimization');
             
-            const scaleX = targetWidth / width;
-            const scaleY = targetHeight / height;
+            // Calculate scale factors for both dimensions
+            const scaleX = maxWidth / width;
+            const scaleY = maxHeight / height;
+            
+            // Use the smaller scale to ensure both dimensions fit within limits
+            // This preserves aspect ratio
             const scale = Math.min(scaleX, scaleY, 1); // Don't upscale
             
             width = Math.round(width * scale);
             height = Math.round(height * scale);
+            
+            const newAspectRatio = width / height;
+            console.log('📐 Resized image:', { 
+              width, 
+              height, 
+              aspectRatio: newAspectRatio.toFixed(2),
+              aspectRatioPreserved: Math.abs(originalAspectRatio - newAspectRatio) < 0.01
+            });
           }
           
           console.log('🎯 Storage-optimized dimensions:', width, 'x', height);
