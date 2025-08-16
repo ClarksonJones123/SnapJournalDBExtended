@@ -1711,6 +1711,20 @@ class ScreenshotAnnotator {
         } catch (storageError) {
             console.error('❌ Failed to save export data to Chrome storage:', storageError);
             if (window.debugError) window.debugError(`Storage error: ${storageError.message}`);
+            
+            // CRITICAL FALLBACK: If Chrome storage fails due to quota, switch to IndexedDB method
+            if (storageError.message && (
+                storageError.message.includes('quota exceeded') || 
+                storageError.message.includes('QUOTA_BYTES') ||
+                storageError.message.includes('storage quota')
+            )) {
+                console.log('🔄 Chrome storage quota exceeded - falling back to IndexedDB method');
+                if (window.debugLog) window.debugLog('🔄 Quota exceeded: switching to IndexedDB fallback');
+                
+                // Use the IndexedDB method instead
+                return await this.exportPdfJournalViaIndexedDB(validScreenshots);
+            }
+            
             this.showStatus(`Failed to save export data: ${storageError.message}`, 'error');
             throw storageError;
         }
