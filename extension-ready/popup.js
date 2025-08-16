@@ -117,6 +117,7 @@ class ScreenshotAnnotator {
   async handleAnnotationSave(annotatedScreenshot) {
     try {
       console.log('📝 Handling annotation save for screenshot:', annotatedScreenshot.id);
+      this.showStatus('💾 Saving annotations...', 'info');
       
       if (!this.tempStorage) {
         throw new Error('Primary storage not available');
@@ -131,17 +132,21 @@ class ScreenshotAnnotator {
         this.screenshots[index] = annotatedScreenshot;
         this.calculateMemoryUsage();
         this.updateUI();
+        console.log('✅ Local screenshot array updated with annotations');
       } else {
         // Reload all screenshots to get the updated one
+        console.log('🔄 Screenshot not found locally, reloading all screenshots');
         await this.loadScreenshots();
         this.updateUI();
       }
       
+      this.showStatus('✅ Annotations saved successfully to unlimited storage!', 'success');
       console.log('✅ Annotation save handled successfully');
       return { success: true };
       
     } catch (error) {
       console.error('❌ Error handling annotation save:', error);
+      this.showStatus('❌ Failed to save annotations - please try again', 'error');
       return { success: false, error: error.message };
     }
   }
