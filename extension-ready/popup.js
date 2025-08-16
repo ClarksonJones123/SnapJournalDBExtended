@@ -451,10 +451,10 @@ class ScreenshotAnnotator {
               textY: Math.round(textY)
             });
             
-            // Calculate sizes for original dimensions
-            const pinRadius = 15;
-            const lineWidth = 4;
-            const fontSize = 20;
+            // Calculate sizes for original dimensions (reduced by 75%)
+            const pinRadius = 4;  // Reduced by 75%: was 15, now ~4
+            const lineWidth = 1;  // Reduced: was 4, now 1
+            const fontSize = 16;  // Slightly reduced: was 20, now 16
             
             // Draw pinpoint circle (no number badge)
             ctx.beginPath();
