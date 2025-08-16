@@ -883,7 +883,7 @@ class ScreenshotAnnotator {
       const shortText = annotation.text.length > 25 ? 
         annotation.text.substring(0, 25) + '...' : 
         annotation.text;
-      listHtml += `<div style="margin: 2px 0;">📍 ${index + 1}: ${shortText}</div>`;
+      listHtml += `<div style="margin: 2px 0;">📍 ${shortText}</div>`;
     });
     listHtml += '</div>';
     
