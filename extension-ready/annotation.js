@@ -644,14 +644,6 @@ class UniversalAnnotator {
         container.appendChild(annotationSystem);
         
         console.log('✅ PIXEL-PERFECT annotation marker created with debug crosshair');
-    }
-        
-        // Assemble annotation system
-        annotationSystem.appendChild(arrow);
-        annotationSystem.appendChild(pinpoint);
-        annotationSystem.appendChild(textLabel);
-        
-        container.appendChild(annotationSystem);
         
         // Initial arrow update
         updateArrow();
