@@ -516,9 +516,27 @@ class UniversalAnnotator {
                 if (type === 'text') {
                     annotation.textX = newX;
                     annotation.textY = newY;
+                    
+                    // 🔍 DEBUG: Track text position changes
+                    if (annotation.debug) {
+                        annotation.debug.coordinateHistory.push({
+                            event: 'TEXT_DRAG',
+                            displayCoords: { textX: newX, textY: newY },
+                            timestamp: new Date().toISOString()
+                        });
+                    }
                 } else {
                     annotation.x = newX;
                     annotation.y = newY;
+                    
+                    // 🔍 DEBUG: Track red dot position changes
+                    if (annotation.debug) {
+                        annotation.debug.coordinateHistory.push({
+                            event: 'RED_DOT_DRAG',
+                            displayCoords: { x: newX, y: newY },
+                            timestamp: new Date().toISOString()
+                        });
+                    }
                 }
                 
                 updateCallback();
