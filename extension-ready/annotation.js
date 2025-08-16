@@ -489,40 +489,40 @@ class UniversalAnnotator {
     
     async saveAnnotationsToStorage() {
         try {
-            console.log('💾 === SAVING ANNOTATIONS TO STORAGE (SIMPLIFIED) ===');
+            console.log('💾 === SAVING ANNOTATIONS TO STORAGE (NO SCALING) ===');
             
-            // Get current image for scale calculations
+            // Get current image for analysis
             const img = document.querySelector('.screenshot-image');
             
-            // Convert display coordinates to storage coordinates for consistency
-            // We need to scale to original capture dimensions for storage
-            const displayToStorageScaleX = this.screenshot.originalCaptureWidth / img.offsetWidth;
-            const displayToStorageScaleY = this.screenshot.originalCaptureHeight / img.offsetHeight;
-            
-            console.log('📐 DETAILED SAVE COORDINATE ANALYSIS:', {
+            console.log('📐 IMAGE DIMENSION ANALYSIS:', {
                 imgDisplaySize: `${img.offsetWidth}x${img.offsetHeight}`,
+                imgNaturalSize: `${img.naturalWidth}x${img.naturalHeight}`,
                 originalCaptureSize: `${this.screenshot.originalCaptureWidth}x${this.screenshot.originalCaptureHeight}`,
-                conversionScale: `${displayToStorageScaleX.toFixed(6)}x, ${displayToStorageScaleY.toFixed(6)}`,
-                isExactMatch: displayToStorageScaleX === 1.0 && displayToStorageScaleY === 1.0,
-                potentialOffsetCause: displayToStorageScaleX !== 1.0 || displayToStorageScaleY !== 1.0
+                storageSize: `${this.screenshot.storageWidth}x${this.screenshot.storageHeight}`
             });
             
-            // Check if scaling is causing the offset issue
-            if (displayToStorageScaleX !== 1.0 || displayToStorageScaleY !== 1.0) {
-                console.warn('⚠️ COORDINATE SCALING DETECTED - This could cause the 0.38 inch offset!');
-                console.warn('   Scale factors are not 1:1, indicating image size changes.');
-            }
+            // FIXED: Use natural dimensions (actual image pixels) as reference instead of original capture
+            // This eliminates the scaling mismatch
+            const displayToStorageScaleX = img.naturalWidth / img.offsetWidth;
+            const displayToStorageScaleY = img.naturalHeight / img.offsetHeight;
             
-            // Convert all annotation coordinates from display to storage coordinates
+            console.log('📐 CORRECTED COORDINATE CONVERSION (using natural dimensions):', {
+                displayToNaturalScale: `${displayToStorageScaleX.toFixed(6)}x, ${displayToStorageScaleY.toFixed(6)}`,
+                isExactMatch: Math.abs(displayToStorageScaleX - 1.0) < 0.001 && Math.abs(displayToStorageScaleY - 1.0) < 0.001,
+                coordinateSystem: 'NATURAL_IMAGE_DIMENSIONS'
+            });
+            
+            // Convert all annotation coordinates using natural image dimensions
             const annotationsForStorage = this.annotations.map((annotation, index) => {
                 const storageX = annotation.x * displayToStorageScaleX;
                 const storageY = annotation.y * displayToStorageScaleY;
                 const storageTextX = annotation.textX * displayToStorageScaleX;
                 const storageTextY = annotation.textY * displayToStorageScaleY;
                 
-                console.log(`📍 Annotation ${index + 1} save conversion:`, {
+                console.log(`📍 Annotation ${index + 1} corrected conversion:`, {
                     displayCoords: `(${annotation.x.toFixed(1)}, ${annotation.y.toFixed(1)})`,
-                    storageCoords: `(${storageX.toFixed(1)}, ${storageY.toFixed(1)})`
+                    naturalCoords: `(${storageX.toFixed(1)}, ${storageY.toFixed(1)})`,
+                    scale: `${displayToStorageScaleX.toFixed(3)}x`
                 });
                 
                 return {
@@ -537,7 +537,7 @@ class UniversalAnnotator {
             // Update the screenshot object with converted coordinates
             this.screenshot.annotations = annotationsForStorage;
             
-            console.log('💾 ANNOTATIONS CONVERTED FOR STORAGE:', annotationsForStorage);
+            console.log('💾 ANNOTATIONS CONVERTED USING NATURAL DIMENSIONS:', annotationsForStorage);
             
             // Save to Chrome storage
             const result = await chrome.storage.local.get('screenshots');
@@ -547,7 +547,7 @@ class UniversalAnnotator {
             if (index !== -1) {
                 screenshots[index].annotations = annotationsForStorage;
                 await chrome.storage.local.set({ screenshots: screenshots });
-                console.log('✅ Annotations saved to storage successfully');
+                console.log('✅ Annotations saved with corrected coordinate system');
                 console.log('💾 === SAVE COMPLETE ===');
             }
         } catch (error) {
