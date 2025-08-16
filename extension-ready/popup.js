@@ -380,24 +380,28 @@ class ScreenshotAnnotator {
       });
       
       if (!screenshot.annotations || screenshot.annotations.length === 0) {
-        console.log('ℹ️ No annotations to render');
-        return screenshot.imageData;
+        console.log('ℹ️ No annotations to render, creating high-quality version...');
+        // Even without annotations, create high-quality version for PDF
+        return await this.createHighQualityImageForPDF(screenshot);
       }
 
-      return new Promise((resolve) => {
+      return new Promise(async (resolve) => {
+        // First, get high-quality base image for PDF
+        const highQualityImageData = await this.createHighQualityImageForPDF(screenshot);
+        
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         const img = new Image();
         
         img.onload = () => {
-          console.log('🖼️ Image loaded - actual dimensions:', img.width, 'x', img.height);
+          console.log('🖼️ High-quality image loaded - dimensions:', img.width, 'x', img.height);
           console.log('📏 Display dimensions used for annotations:', screenshot.displayWidth, 'x', screenshot.displayHeight);
           
-          // Use actual image dimensions (no scaling)
+          // Use actual image dimensions
           canvas.width = img.width;
           canvas.height = img.height;
           
-          // Draw the original image
+          // Draw the high-quality image
           ctx.drawImage(img, 0, 0);
           
           // CRITICAL FIX: Calculate scaling factors properly
@@ -517,13 +521,13 @@ class ScreenshotAnnotator {
             ctx.fillText(annotation.text, finalTextX, finalTextY);
           });
           
-          // Return high-quality annotated image
+          // Return high-quality annotated image for PDF
           const annotatedImage = canvas.toDataURL('image/png', 1.0);
-          console.log('✅ Annotated image created for PDF with corrected scaling');
+          console.log('✅ High-quality annotated image created for PDF');
           resolve(annotatedImage);
         };
         
-        img.src = screenshot.imageData;
+        img.src = highQualityImageData;
       });
       
     } catch (error) {
