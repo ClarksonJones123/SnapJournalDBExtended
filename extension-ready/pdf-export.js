@@ -278,17 +278,19 @@ class PDFJournalExporter {
         pdf.text(`Annotations: ${screenshot.annotations?.length || 0}`, margin, currentY);
         currentY += 15;
         
-        // Add screenshot image
+        // Add screenshot image (now with annotations burned in!)
         try {
             const imageData = screenshot.imageData;
             if (imageData) {
-                // Calculate image dimensions to fit page
+                // Calculate image dimensions to fit page better - larger since we have annotated images
                 const maxImageWidth = contentWidth;
-                const maxImageHeight = 150; // Leave space for annotations
+                const maxImageHeight = 180; // Increased from 150 to show annotations better
                 
-                // Add image to PDF
+                // Add image to PDF (now includes annotations!)
                 pdf.addImage(imageData, 'PNG', margin, currentY, maxImageWidth, maxImageHeight);
                 currentY += maxImageHeight + 15;
+                
+                console.log(`📄 Added annotated image for screenshot ${pageNumber}`);
             }
         } catch (error) {
             console.error('Error adding image to PDF:', error);
