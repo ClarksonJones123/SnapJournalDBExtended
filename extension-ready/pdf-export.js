@@ -244,9 +244,9 @@ class PDFJournalExporter {
             day: 'numeric'
         });
         
-        pdf.text(`Generated: ${exportDate}`, centerX, 120, { align: 'center' });
-        pdf.text(`Total Screenshots: ${this.screenshots.length}`, centerX, 135, { align: 'center' });
-        pdf.text(`Total Annotations: ${this.exportData.totalAnnotations}`, centerX, 150, { align: 'center' });
+        pdf.text(`Generated: ${exportDate}`, centerX, 125, { align: 'center' });
+        pdf.text(`Total Screenshots: ${this.screenshots.length}`, centerX, 140, { align: 'center' });
+        pdf.text(`Total Annotations: ${this.exportData.totalAnnotations}`, centerX, 155, { align: 'center' });
         
         // Add a decorative line
         pdf.setLineWidth(0.5);
