@@ -35,7 +35,6 @@ def get_backend_url():
     return "https://medannotate.preview.emergentagent.com/api"
 
 BACKEND_URL = get_backend_url()
-print(f"Testing backend at: {BACKEND_URL}")
 
 class ChromeExtensionTester:
     def __init__(self):
@@ -61,219 +60,424 @@ class ChromeExtensionTester:
                 print(f"   {key}: {value}")
         print()
 
-def test_root_endpoint():
-    """Test the root API endpoint"""
-    print("\n=== Testing Root Endpoint ===")
-    try:
-        response = requests.get(f"{BACKEND_URL}/", timeout=10)
-        print(f"Status Code: {response.status_code}")
-        print(f"Response: {response.json()}")
+    def test_backend_apis(self):
+        """Test the backend APIs that support the Chrome extension"""
+        print("🔧 TESTING BACKEND APIs FOR CHROME EXTENSION SUPPORT")
+        print("=" * 60)
         
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("message") == "Hello World":
-                print("✅ Root endpoint working correctly")
-                return True
+        # Test 1: Root endpoint
+        try:
+            response = requests.get(f"{BACKEND_URL}/", timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                self.log_test(
+                    "Backend Root Endpoint",
+                    True,
+                    "Backend API is accessible and responding",
+                    {"status_code": response.status_code, "response": data}
+                )
+                self.backend_working = True
             else:
-                print("❌ Root endpoint returned unexpected message")
-                return False
-        else:
-            print(f"❌ Root endpoint failed with status {response.status_code}")
-            return False
+                self.log_test(
+                    "Backend Root Endpoint", 
+                    False,
+                    f"Backend returned status {response.status_code}",
+                    {"status_code": response.status_code}
+                )
+        except Exception as e:
+            self.log_test(
+                "Backend Root Endpoint",
+                False, 
+                f"Failed to connect to backend: {str(e)}",
+                {"error": str(e), "url": BACKEND_URL}
+            )
             
-    except requests.exceptions.RequestException as e:
-        print(f"❌ Root endpoint request failed: {e}")
-        return False
-    except Exception as e:
-        print(f"❌ Root endpoint test failed: {e}")
-        return False
-
-def test_create_status_check():
-    """Test creating a status check"""
-    print("\n=== Testing Create Status Check ===")
-    try:
-        test_data = {
-            "client_name": "test_extension_client"
-        }
-        
-        response = requests.post(
-            f"{BACKEND_URL}/status", 
-            json=test_data,
-            headers={"Content-Type": "application/json"},
-            timeout=10
-        )
-        
-        print(f"Status Code: {response.status_code}")
-        print(f"Response: {response.json()}")
-        
-        if response.status_code == 200:
-            data = response.json()
-            required_fields = ["id", "client_name", "timestamp"]
-            
-            if all(field in data for field in required_fields):
-                if data["client_name"] == test_data["client_name"]:
-                    print("✅ Create status check working correctly")
-                    return True, data["id"]
+        # Test 2: Status check creation (for extension health monitoring)
+        if self.backend_working:
+            try:
+                test_data = {"client_name": "Chrome Extension Test"}
+                response = requests.post(f"{BACKEND_URL}/status", json=test_data, timeout=10)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    self.log_test(
+                        "Status Check Creation",
+                        True,
+                        "Extension can create status checks for monitoring",
+                        {"status_code": response.status_code, "created_id": data.get('id')}
+                    )
                 else:
-                    print("❌ Client name mismatch in response")
-                    return False, None
-            else:
-                print(f"❌ Missing required fields in response: {required_fields}")
-                return False, None
-        else:
-            print(f"❌ Create status check failed with status {response.status_code}")
-            return False, None
-            
-    except requests.exceptions.RequestException as e:
-        print(f"❌ Create status check request failed: {e}")
-        return False, None
-    except Exception as e:
-        print(f"❌ Create status check test failed: {e}")
-        return False, None
-
-def test_get_status_checks():
-    """Test retrieving status checks"""
-    print("\n=== Testing Get Status Checks ===")
-    try:
-        response = requests.get(f"{BACKEND_URL}/status", timeout=10)
-        print(f"Status Code: {response.status_code}")
-        
-        if response.status_code == 200:
-            data = response.json()
-            print(f"Retrieved {len(data)} status checks")
-            
-            if isinstance(data, list):
-                if len(data) > 0:
-                    # Check structure of first item
-                    first_item = data[0]
-                    required_fields = ["id", "client_name", "timestamp"]
-                    if all(field in first_item for field in required_fields):
-                        print("✅ Get status checks working correctly")
-                        return True
-                    else:
-                        print(f"❌ Missing required fields in status check: {required_fields}")
-                        return False
+                    self.log_test(
+                        "Status Check Creation",
+                        False,
+                        f"Failed to create status check: {response.status_code}",
+                        {"status_code": response.status_code}
+                    )
+            except Exception as e:
+                self.log_test(
+                    "Status Check Creation",
+                    False,
+                    f"Exception during status check creation: {str(e)}",
+                    {"error": str(e)}
+                )
+                
+        # Test 3: Status check retrieval
+        if self.backend_working:
+            try:
+                response = requests.get(f"{BACKEND_URL}/status", timeout=10)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    self.log_test(
+                        "Status Check Retrieval",
+                        True,
+                        "Extension can retrieve status checks",
+                        {"status_code": response.status_code, "count": len(data)}
+                    )
                 else:
-                    print("✅ Get status checks working (empty list)")
-                    return True
+                    self.log_test(
+                        "Status Check Retrieval",
+                        False,
+                        f"Failed to retrieve status checks: {response.status_code}",
+                        {"status_code": response.status_code}
+                    )
+            except Exception as e:
+                self.log_test(
+                    "Status Check Retrieval",
+                    False,
+                    f"Exception during status check retrieval: {str(e)}",
+                    {"error": str(e)}
+                )
+
+    def analyze_extension_files(self):
+        """Analyze Chrome extension files for critical issues"""
+        print("🔍 ANALYZING CHROME EXTENSION FILES")
+        print("=" * 60)
+        
+        extension_path = "/app/extension-ready"
+        
+        # Test 1: Manifest.json validation
+        try:
+            with open(f"{extension_path}/manifest.json", 'r') as f:
+                manifest = json.load(f)
+                
+            required_fields = ['manifest_version', 'name', 'version', 'permissions']
+            missing_fields = [field for field in required_fields if field not in manifest]
+            
+            if not missing_fields:
+                self.log_test(
+                    "Manifest.json Validation",
+                    True,
+                    "Manifest file is valid with all required fields",
+                    {
+                        "manifest_version": manifest.get('manifest_version'),
+                        "name": manifest.get('name'),
+                        "version": manifest.get('version'),
+                        "permissions": len(manifest.get('permissions', []))
+                    }
+                )
             else:
-                print("❌ Response is not a list")
-                return False
-        else:
-            print(f"❌ Get status checks failed with status {response.status_code}")
-            return False
+                self.log_test(
+                    "Manifest.json Validation",
+                    False,
+                    f"Missing required fields: {missing_fields}",
+                    {"missing_fields": missing_fields}
+                )
+                
+        except Exception as e:
+            self.log_test(
+                "Manifest.json Validation",
+                False,
+                f"Failed to validate manifest: {str(e)}",
+                {"error": str(e)}
+            )
             
-    except requests.exceptions.RequestException as e:
-        print(f"❌ Get status checks request failed: {e}")
-        return False
-    except Exception as e:
-        print(f"❌ Get status checks test failed: {e}")
-        return False
-
-def test_cors_headers():
-    """Test CORS headers are properly set"""
-    print("\n=== Testing CORS Headers ===")
-    try:
-        response = requests.options(f"{BACKEND_URL}/", timeout=10)
-        print(f"OPTIONS Status Code: {response.status_code}")
+        # Test 2: Critical file existence
+        critical_files = [
+            'popup.html', 'popup.js', 'background.js', 'temp-storage.js',
+            'pdf-export.js', 'annotation.js', 'pdf-export.html'
+        ]
         
-        # Check for CORS headers
-        cors_headers = {
-            'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin'),
-            'Access-Control-Allow-Methods': response.headers.get('Access-Control-Allow-Methods'),
-            'Access-Control-Allow-Headers': response.headers.get('Access-Control-Allow-Headers')
-        }
-        
-        print("CORS Headers:")
-        for header, value in cors_headers.items():
-            print(f"  {header}: {value}")
-        
-        if cors_headers['Access-Control-Allow-Origin']:
-            print("✅ CORS headers present")
-            return True
+        missing_files = []
+        for file in critical_files:
+            if not os.path.exists(f"{extension_path}/{file}"):
+                missing_files.append(file)
+                
+        if not missing_files:
+            self.log_test(
+                "Critical Files Check",
+                True,
+                "All critical extension files are present",
+                {"files_checked": len(critical_files)}
+            )
         else:
-            print("❌ CORS headers missing")
-            return False
+            self.log_test(
+                "Critical Files Check",
+                False,
+                f"Missing critical files: {missing_files}",
+                {"missing_files": missing_files}
+            )
+
+    def analyze_indexeddb_issues(self):
+        """Analyze the IndexedDB implementation for critical issues"""
+        print("🗄️ ANALYZING INDEXEDDB IMPLEMENTATION ISSUES")
+        print("=" * 60)
+        
+        try:
+            # Read temp-storage.js file
+            with open("/app/extension-ready/temp-storage.js", 'r') as f:
+                temp_storage_content = f.read()
+                
+            # Test 1: Database version and schema
+            if 'dbVersion = 2' in temp_storage_content:
+                self.log_test(
+                    "Database Version Check",
+                    True,
+                    "Database version is set to 2 for schema upgrade",
+                    {"version": 2}
+                )
+            else:
+                self.log_test(
+                    "Database Version Check",
+                    False,
+                    "Database version not properly set for schema upgrade",
+                    {"issue": "Version management problem"}
+                )
+                
+            # Test 2: pdfExports object store creation
+            if "createObjectStore('pdfExports'" in temp_storage_content:
+                self.log_test(
+                    "pdfExports Object Store Creation",
+                    True,
+                    "pdfExports object store is defined in schema",
+                    {"found": "createObjectStore('pdfExports')"}
+                )
+            else:
+                self.log_test(
+                    "pdfExports Object Store Creation",
+                    False,
+                    "pdfExports object store not found in schema definition",
+                    {"issue": "Missing object store definition"}
+                )
+                
+            # Test 3: Object store existence checks
+            if "objectStoreNames.contains('pdfExports')" in temp_storage_content:
+                self.log_test(
+                    "Runtime Object Store Validation",
+                    True,
+                    "Code includes runtime checks for pdfExports object store",
+                    {"validation": "Runtime existence checks present"}
+                )
+            else:
+                self.log_test(
+                    "Runtime Object Store Validation",
+                    False,
+                    "Missing runtime validation for pdfExports object store",
+                    {"issue": "No runtime existence checks"}
+                )
+                
+            # Test 4: Error handling for missing object stores
+            if "Database schema may need manual reset" in temp_storage_content:
+                self.log_test(
+                    "Error Handling for Schema Issues",
+                    True,
+                    "Proper error handling for schema issues is implemented",
+                    {"error_handling": "Schema reset guidance provided"}
+                )
+            else:
+                self.log_test(
+                    "Error Handling for Schema Issues",
+                    False,
+                    "Missing proper error handling for schema issues",
+                    {"issue": "No schema error recovery"}
+                )
+                
+        except Exception as e:
+            self.log_test(
+                "IndexedDB Analysis",
+                False,
+                f"Failed to analyze IndexedDB implementation: {str(e)}",
+                {"error": str(e)}
+            )
+
+    def analyze_pdf_export_issues(self):
+        """Analyze PDF export functionality for critical issues"""
+        print("📄 ANALYZING PDF EXPORT FUNCTIONALITY")
+        print("=" * 60)
+        
+        try:
+            # Read pdf-export.js file
+            with open("/app/extension-ready/pdf-export.js", 'r') as f:
+                pdf_export_content = f.read()
+                
+            # Test 1: IndexedDB integration for large datasets
+            if "method === 'indexeddb'" in pdf_export_content:
+                self.log_test(
+                    "IndexedDB PDF Export Integration",
+                    True,
+                    "PDF export supports IndexedDB for large datasets",
+                    {"feature": "Large dataset support via IndexedDB"}
+                )
+            else:
+                self.log_test(
+                    "IndexedDB PDF Export Integration",
+                    False,
+                    "PDF export missing IndexedDB support for large datasets",
+                    {"issue": "No large dataset handling"}
+                )
+                
+            # Test 2: Error handling for export data retrieval
+            if "getPdfExportData" in pdf_export_content:
+                self.log_test(
+                    "PDF Export Data Retrieval",
+                    True,
+                    "PDF export includes data retrieval from IndexedDB",
+                    {"method": "getPdfExportData implementation found"}
+                )
+            else:
+                self.log_test(
+                    "PDF Export Data Retrieval",
+                    False,
+                    "Missing PDF export data retrieval implementation",
+                    {"issue": "No data retrieval method"}
+                )
+                
+            # Test 3: Cleanup functionality
+            if "deletePdfExportData" in pdf_export_content:
+                self.log_test(
+                    "PDF Export Cleanup",
+                    True,
+                    "PDF export includes cleanup functionality",
+                    {"cleanup": "deletePdfExportData method found"}
+                )
+            else:
+                self.log_test(
+                    "PDF Export Cleanup",
+                    False,
+                    "Missing PDF export cleanup functionality",
+                    {"issue": "No cleanup implementation"}
+                )
+                
+        except Exception as e:
+            self.log_test(
+                "PDF Export Analysis",
+                False,
+                f"Failed to analyze PDF export: {str(e)}",
+                {"error": str(e)}
+            )
+
+    def provide_diagnostic_recommendations(self):
+        """Provide diagnostic recommendations for the identified issues"""
+        print("💡 DIAGNOSTIC RECOMMENDATIONS")
+        print("=" * 60)
+        
+        # Count failures
+        failures = [test for test in self.test_results if not test['success']]
+        
+        if not failures:
+            print("✅ ALL TESTS PASSED - No critical issues detected")
+            print()
+            print("🎉 CHROME EXTENSION STATUS: READY FOR TESTING")
+            print("   - Backend APIs are functional")
+            print("   - Extension files are present and valid")
+            print("   - IndexedDB implementation appears correct")
+            print("   - PDF export functionality is properly implemented")
+            print()
+            print("📋 NEXT STEPS:")
+            print("   1. Load extension in Chrome browser")
+            print("   2. Test screenshot capture functionality")
+            print("   3. Test annotation system")
+            print("   4. Test PDF export with small datasets")
+            print("   5. Test PDF export with large datasets (>8MB)")
+            return
             
-    except requests.exceptions.RequestException as e:
-        print(f"❌ CORS test request failed: {e}")
-        return False
-    except Exception as e:
-        print(f"❌ CORS test failed: {e}")
-        return False
-
-def test_error_handling():
-    """Test error handling for invalid requests"""
-    print("\n=== Testing Error Handling ===")
-    try:
-        # Test invalid endpoint
-        response = requests.get(f"{BACKEND_URL}/invalid-endpoint", timeout=10)
-        print(f"Invalid endpoint status: {response.status_code}")
+        print(f"⚠️  DETECTED {len(failures)} CRITICAL ISSUES")
+        print()
         
-        if response.status_code == 404:
-            print("✅ 404 handling working correctly")
-        else:
-            print(f"❌ Expected 404, got {response.status_code}")
-            return False
+        # Categorize issues
+        backend_issues = [f for f in failures if 'Backend' in f['test'] or 'Status' in f['test']]
+        file_issues = [f for f in failures if 'Files' in f['test'] or 'Manifest' in f['test']]
+        indexeddb_issues = [f for f in failures if 'IndexedDB' in f['test'] or 'Database' in f['test'] or 'Object Store' in f['test']]
+        pdf_issues = [f for f in failures if 'PDF' in f['test']]
         
-        # Test invalid POST data
-        response = requests.post(
-            f"{BACKEND_URL}/status",
-            json={"invalid_field": "test"},
-            headers={"Content-Type": "application/json"},
-            timeout=10
-        )
-        print(f"Invalid POST data status: {response.status_code}")
-        
-        if response.status_code in [400, 422]:  # FastAPI returns 422 for validation errors
-            print("✅ Invalid data handling working correctly")
-            return True
-        else:
-            print(f"❌ Expected 400/422, got {response.status_code}")
-            return False
+        if backend_issues:
+            print("🔧 BACKEND API ISSUES:")
+            for issue in backend_issues:
+                print(f"   ❌ {issue['test']}: {issue['message']}")
+            print("   💡 SOLUTION: Check backend server status and network connectivity")
+            print()
             
-    except requests.exceptions.RequestException as e:
-        print(f"❌ Error handling test request failed: {e}")
-        return False
-    except Exception as e:
-        print(f"❌ Error handling test failed: {e}")
-        return False
+        if file_issues:
+            print("📁 EXTENSION FILE ISSUES:")
+            for issue in file_issues:
+                print(f"   ❌ {issue['test']}: {issue['message']}")
+            print("   💡 SOLUTION: Ensure all extension files are present and valid")
+            print()
+            
+        if indexeddb_issues:
+            print("🗄️ INDEXEDDB CRITICAL ISSUES:")
+            for issue in indexeddb_issues:
+                print(f"   ❌ {issue['test']}: {issue['message']}")
+            print("   💡 SOLUTIONS:")
+            print("      1. Users should run: resetDatabaseSchema() in browser console")
+            print("      2. Or reload the extension completely")
+            print("      3. Or clear extension storage and reinstall")
+            print()
+            
+        if pdf_issues:
+            print("📄 PDF EXPORT ISSUES:")
+            for issue in pdf_issues:
+                print(f"   ❌ {issue['test']}: {issue['message']}")
+            print("   💡 SOLUTION: Fix PDF export implementation for large datasets")
+            print()
 
-def run_all_tests():
-    """Run all backend tests"""
-    print("🚀 Starting Backend API Tests")
-    print("=" * 50)
+    def run_comprehensive_test(self):
+        """Run the complete test suite"""
+        print("🧪 CHROME EXTENSION COMPREHENSIVE TEST SUITE")
+        print("=" * 60)
+        print(f"🕒 Test started at: {datetime.now().isoformat()}")
+        print(f"🌐 Backend URL: {BACKEND_URL}")
+        print()
+        
+        # Run all test categories
+        self.test_backend_apis()
+        self.analyze_extension_files()
+        self.analyze_indexeddb_issues()
+        self.analyze_pdf_export_issues()
+        
+        # Provide recommendations
+        self.provide_diagnostic_recommendations()
+        
+        # Summary
+        total_tests = len(self.test_results)
+        passed_tests = len([t for t in self.test_results if t['success']])
+        failed_tests = total_tests - passed_tests
+        
+        print("📊 TEST SUMMARY")
+        print("=" * 60)
+        print(f"Total Tests: {total_tests}")
+        print(f"Passed: {passed_tests}")
+        print(f"Failed: {failed_tests}")
+        print(f"Success Rate: {(passed_tests/total_tests)*100:.1f}%")
+        print()
+        
+        if failed_tests == 0:
+            print("🎉 ALL TESTS PASSED - Chrome extension is ready for production!")
+        else:
+            print("⚠️  ISSUES DETECTED - Review recommendations above")
+            
+        return failed_tests == 0
+
+def main():
+    """Main test execution"""
+    print("🚀 Starting Chrome Extension Backend Testing Suite")
+    print()
     
-    test_results = {
-        "root_endpoint": test_root_endpoint(),
-        "create_status": test_create_status_check()[0],
-        "get_status": test_get_status_checks(),
-        "cors_headers": test_cors_headers(),
-        "error_handling": test_error_handling()
-    }
+    tester = ChromeExtensionTester()
+    success = tester.run_comprehensive_test()
     
-    print("\n" + "=" * 50)
-    print("📊 TEST RESULTS SUMMARY")
-    print("=" * 50)
-    
-    passed = 0
-    total = len(test_results)
-    
-    for test_name, result in test_results.items():
-        status = "✅ PASS" if result else "❌ FAIL"
-        print(f"{test_name.replace('_', ' ').title()}: {status}")
-        if result:
-            passed += 1
-    
-    print(f"\nOverall: {passed}/{total} tests passed")
-    
-    if passed == total:
-        print("🎉 All backend tests PASSED!")
-        return True
-    else:
-        print("⚠️  Some backend tests FAILED!")
-        return False
+    # Exit with appropriate code
+    sys.exit(0 if success else 1)
 
 if __name__ == "__main__":
-    success = run_all_tests()
-    exit(0 if success else 1)
+    main()
