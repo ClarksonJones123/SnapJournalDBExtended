@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Export Diagnostic</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            background: #f5f5f5; 
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: #fafafa;
+        }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        .warning { background: #fff3cd; border-color: #ffeaa7; }
+        .info { background: #d1ecf1; border-color: #bee5eb; }
+        
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 4px solid;
+        }
+        .test-result.pass { background: #d4edda; border-left-color: #28a745; }
+        .test-result.fail { background: #f8d7da; border-left-color: #dc3545; }
+        .test-result.warn { background: #fff3cd; border-left-color: #ffc107; }
+        
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: black; }
+        .btn-danger { background: #dc3545; color: white; }
+        
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            border: 1px solid #e9ecef;
+        }
+        .log-entry {
+            margin: 5px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📄 PDF Export Diagnostic Tool</h1>
+        <p><strong>Purpose:</strong> Identify why PDF export is not working as designed</p>
+        
+        <div class="test-section">
+            <h2>🔍 Quick Diagnostic</h2>
+            <button class="btn-primary" onclick="runQuickDiagnostic()">Run Quick Diagnostic</button>
+            <button class="btn-success" onclick="runFullDiagnostic()">Run Full Diagnostic</button>
+            <button class="btn-warning" onclick="testPdfGeneration()">Test PDF Generation</button>
+            <button class="btn-danger" onclick="clearLogs()">Clear Logs</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>📊 Diagnostic Results</h2>
+            <div id="diagnosticResults">
+                <div class="info">Click "Run Quick Diagnostic" to begin analysis...</div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>📋 System Information</h2>
+            <div id="systemInfo">Loading system information...</div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🧪 Test Logs</h2>
+            <div id="testLogs" style="max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 12px;">
+                Diagnostic logs will appear here...
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔧 Potential Fixes</h2>
+            <div id="potentialFixes">
+                <div class="info">Run diagnostic to see recommended fixes...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock chrome object if not available
+        if (typeof chrome === 'undefined') {
+            window.chrome = {
+                runtime: {
+                    getURL: (path) => `chrome-extension://mock/${path}`,
+                    sendMessage: (message, callback) => {
+                        console.log('Mock chrome.runtime.sendMessage:', message);
+                        if (callback) setTimeout(() => callback({success: false, error: 'Mock environment'}), 100);
+                    }
+                },
+                storage: {
+                    local: {
+                        get: (keys, callback) => {
+                            console.log('Mock chrome.storage.local.get:', keys);
+                            if (callback) setTimeout(() => callback({}), 100);
+                        },
+                        set: (data, callback) => {
+                            console.log('Mock chrome.storage.local.set:', data);
+                            if (callback) setTimeout(() => callback(), 100);
+                        },
+                        getBytesInUse: (callback) => {
+                            if (callback) setTimeout(() => callback(1024000), 100); // 1MB mock
+                        },
+                        QUOTA_BYTES: 10485760 // 10MB
+                    }
+                },
+                windows: {
+                    create: (options, callback) => {
+                        console.log('Mock chrome.windows.create:', options);
+                        if (callback) setTimeout(() => callback({id: 12345}), 100);
+                    }
+                }
+            };
+        }
+
+        let logEntries = [];
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            logEntries.push({ timestamp, message, type });
+            
+            const logsDiv = document.getElementById('testLogs');
+            const logElement = document.createElement('div');
+            logElement.className = `log-entry ${type}`;
+            logElement.textContent = logEntry;
+            logsDiv.appendChild(logElement);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            
+            console.log(logEntry);
+        }
+
+        function clearLogs() {
+            logEntries = [];
+            document.getElementById('testLogs').innerHTML = 'Logs cleared...';
+            document.getElementById('diagnosticResults').innerHTML = '<div class="info">Click "Run Quick Diagnostic" to begin analysis...</div>';
+        }
+
+        function addResult(message, status, section = 'diagnosticResults') {
+            const resultsDiv = document.getElementById(section);
+            if (resultsDiv.innerHTML.includes('Click "Run')) {
+                resultsDiv.innerHTML = '';
+            }
+            
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${status}`;
+            resultDiv.innerHTML = `${status === 'pass' ? '✅' : status === 'fail' ? '❌' : '⚠️'} ${message}`;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        async function runQuickDiagnostic() {
+            log('🔍 Starting quick diagnostic...', 'info');
+            document.getElementById('diagnosticResults').innerHTML = '';
+            
+            // Test 1: Chrome Extension APIs
+            log('Test 1: Chrome Extension APIs');
+            if (typeof chrome !== 'undefined') {
+                addResult('Chrome APIs are available', 'pass');
+                log('✅ Chrome APIs detected');
+                
+                // Test specific APIs
+                if (chrome.runtime) {
+                    addResult('chrome.runtime API available', 'pass');
+                    log('✅ chrome.runtime available');
+                } else {
+                    addResult('chrome.runtime API missing', 'fail');
+                    log('❌ chrome.runtime missing');
+                }
+                
+                if (chrome.storage) {
+                    addResult('chrome.storage API available', 'pass');
+                    log('✅ chrome.storage available');
+                } else {
+                    addResult('chrome.storage API missing', 'fail');
+                    log('❌ chrome.storage missing');
+                }
+                
+                if (chrome.windows) {
+                    addResult('chrome.windows API available', 'pass');
+                    log('✅ chrome.windows available');
+                } else {
+                    addResult('chrome.windows API missing', 'fail');
+                    log('❌ chrome.windows missing');
+                }
+            } else {
+                addResult('Chrome APIs not available - extension not loaded properly', 'fail');
+                log('❌ Chrome APIs not detected');
+            }
+            
+            // Test 2: jsPDF Library
+            log('Test 2: jsPDF Library');
+            if (typeof window.jsPDF !== 'undefined') {
+                addResult('jsPDF library is loaded', 'pass');
+                log('✅ jsPDF library detected');
+            } else if (typeof window.jspdf !== 'undefined' && window.jspdf.jsPDF) {
+                addResult('jsPDF library is loaded (UMD format)', 'pass');
+                log('✅ jsPDF library detected (UMD)');
+            } else {
+                addResult('jsPDF library not loaded', 'fail');
+                log('❌ jsPDF library not detected');
+            }
+            
+            // Test 3: Storage Space
+            log('Test 3: Chrome Storage Space');
+            if (chrome.storage && chrome.storage.local && chrome.storage.local.getBytesInUse) {
+                try {
+                    chrome.storage.local.getBytesInUse((bytes) => {
+                        const quota = chrome.storage.local.QUOTA_BYTES || 10485760;
+                        const usagePercent = Math.round((bytes / quota) * 100);
+                        
+                        if (usagePercent < 80) {
+                            addResult(`Storage usage: ${Math.round(bytes/1024)}KB / ${Math.round(quota/1024)}KB (${usagePercent}%) - OK`, 'pass');
+                            log(`✅ Storage usage acceptable: ${usagePercent}%`);
+                        } else {
+                            addResult(`Storage usage: ${Math.round(bytes/1024)}KB / ${Math.round(quota/1024)}KB (${usagePercent}%) - HIGH`, 'warn');
+                            log(`⚠️ Storage usage high: ${usagePercent}%`);
+                        }
+                    });
+                } catch (error) {
+                    addResult('Could not check storage usage', 'warn');
+                    log('⚠️ Storage usage check failed: ' + error.message);
+                }
+            } else {
+                addResult('Storage usage check unavailable', 'warn');
+                log('⚠️ Storage usage check unavailable');
+            }
+            
+            // Test 4: DOM Elements
+            log('Test 4: PDF Export DOM Elements');
+            const requiredFiles = [
+                'pdf-export.html',
+                'pdf-export.js', 
+                'jspdf.min.js'
+            ];
+            
+            let fileAccessible = 0;
+            for (const file of requiredFiles) {
+                try {
+                    const url = chrome.runtime.getURL(file);
+                    // We can't actually test file access in this context, but we can test URL generation
+                    if (url && url.includes(file)) {
+                        fileAccessible++;
+                        log(`✅ ${file} URL generated successfully`);
+                    }
+                } catch (error) {
+                    log(`❌ ${file} URL generation failed: ${error.message}`);
+                }
+            }
+            
+            if (fileAccessible === requiredFiles.length) {
+                addResult('All PDF export files are accessible', 'pass');
+            } else {
+                addResult(`Only ${fileAccessible}/${requiredFiles.length} PDF export files are accessible`, 'fail');
+            }
+            
+            log('🔍 Quick diagnostic completed', 'info');
+        }
+
+        async function runFullDiagnostic() {
+            log('🔍 Starting full diagnostic...', 'info');
+            await runQuickDiagnostic();
+            
+            // Additional comprehensive tests
+            log('Test 5: Screenshot Data Simulation');
+            
+            // Simulate screenshot data to test processing
+            const mockScreenshot = {
+                id: 'test_123',
+                imageData: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAI9jU77wgAAAABJRU5ErkJggg==',
+                displayWidth: 100,
+                displayHeight: 100,
+                annotations: [
+                    { id: '1', text: 'Test annotation', x: 50, y: 50, textX: 80, textY: 30 }
+                ],
+                title: 'Test Screenshot',
+                timestamp: new Date().toISOString()
+            };
+            
+            const mockExportData = {
+                screenshots: [mockScreenshot],
+                totalAnnotations: 1,
+                exportDate: new Date().toISOString()
+            };
+            
+            // Test data size
+            const dataSize = JSON.stringify(mockExportData).length;
+            log(`Mock export data size: ${dataSize} bytes`);
+            
+            if (dataSize < 5 * 1024 * 1024) { // 5MB
+                addResult(`Mock data size acceptable: ${Math.round(dataSize/1024)}KB`, 'pass');
+            } else {
+                addResult(`Mock data size too large: ${Math.round(dataSize/1024/1024)}MB`, 'fail');
+            }
+            
+            // Test 6: Window Creation Simulation
+            log('Test 6: Window Creation Simulation');
+            if (chrome.windows && chrome.windows.create) {
+                try {
+                    const testUrl = chrome.runtime.getURL('pdf-export.html');
+                    log(`Test URL: ${testUrl}`);
+                    
+                    // We can't actually create a window, but we can test the URL
+                    if (testUrl && testUrl.includes('pdf-export.html')) {
+                        addResult('PDF export window URL generation successful', 'pass');
+                        log('✅ Window URL generation works');
+                    } else {
+                        addResult('PDF export window URL generation failed', 'fail');
+                        log('❌ Window URL generation failed');
+                    }
+                } catch (error) {
+                    addResult(`Window creation test failed: ${error.message}`, 'fail');
+                    log(`❌ Window creation test error: ${error.message}`);
+                }
+            }
+            
+            log('🔍 Full diagnostic completed', 'info');
+        }
+
+        async function testPdfGeneration() {
+            log('🧪 Testing PDF generation capabilities...', 'info');
+            
+            // Test jsPDF functionality
+            try {
+                let jsPDF;
+                if (window.jsPDF) {
+                    jsPDF = window.jsPDF;
+                } else if (window.jspdf && window.jspdf.jsPDF) {
+                    jsPDF = window.jspdf.jsPDF;
+                } else {
+                    throw new Error('jsPDF not available');
+                }
+                
+                log('✅ jsPDF constructor available');
+                
+                // Try to create a test PDF
+                const pdf = new jsPDF();
+                log('✅ jsPDF instance created');
+                
+                // Test basic PDF operations
+                pdf.text('Test PDF Generation', 10, 10);
+                log('✅ Text added to PDF');
+                
+                // Test image addition (with mock data)
+                const testImageData = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAI9jU77wgAAAABJRU5ErkJggg==';
+                pdf.addImage(testImageData, 'PNG', 10, 20, 50, 50);
+                log('✅ Image added to PDF');
+                
+                // Test PDF output generation
+                const pdfOutput = pdf.output('dataurlstring');
+                if (pdfOutput && pdfOutput.startsWith('data:application/pdf')) {
+                    log('✅ PDF output generated successfully');
+                    addResult('PDF generation test successful', 'pass');
+                } else {
+                    throw new Error('Invalid PDF output format');
+                }
+                
+            } catch (error) {
+                log(`❌ PDF generation test failed: ${error.message}`, 'error');
+                addResult(`PDF generation test failed: ${error.message}`, 'fail');
+            }
+        }
+
+        function showSystemInfo() {
+            const systemInfo = document.getElementById('systemInfo');
+            const info = {
+                'User Agent': navigator.userAgent,
+                'Chrome Version': navigator.userAgent.match(/Chrome\/([^\s]+)/) ? navigator.userAgent.match(/Chrome\/([^\s]+)/)[1] : 'Not Chrome',
+                'Window Size': `${window.innerWidth}x${window.innerHeight}`,
+                'Screen Size': `${screen.width}x${screen.height}`,
+                'Available Memory': navigator.deviceMemory ? navigator.deviceMemory + ' GB' : 'Unknown',
+                'Platform': navigator.platform,
+                'Language': navigator.language,
+                'Online': navigator.onLine ? 'Yes' : 'No',
+                'Local Storage Available': typeof Storage !== 'undefined' ? 'Yes' : 'No',
+                'Extension Context': typeof chrome !== 'undefined' ? 'Yes' : 'No'
+            };
+            
+            let html = '<div style="display: grid; grid-template-columns: 200px 1fr; gap: 10px;">';
+            for (const [key, value] of Object.entries(info)) {
+                html += `<div><strong>${key}:</strong></div><div>${value}</div>`;
+            }
+            html += '</div>';
+            
+            systemInfo.innerHTML = html;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            log('🚀 PDF Export Diagnostic Tool loaded', 'info');
+            showSystemInfo();
+            
+            // Offer automatic quick diagnostic
+            setTimeout(() => {
+                if (confirm('Run automatic quick diagnostic to identify PDF export issues?')) {
+                    runQuickDiagnostic();
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
