@@ -560,15 +560,21 @@ class PDFJournalExporter {
     
     showStatus(message, type) {
         const status = document.getElementById('status');
-        status.textContent = message;
-        status.className = `status ${type}`;
-        status.style.display = 'block';
-        
-        // Auto-hide success messages
-        if (type === 'success') {
-            setTimeout(() => {
-                status.style.display = 'none';
-            }, 5000);
+        if (status) {
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+            
+            // Auto-hide success messages
+            if (type === 'success') {
+                setTimeout(() => {
+                    if (status) {
+                        status.style.display = 'none';
+                    }
+                }, 5000);
+            }
+        } else {
+            console.warn('⚠️ Status element not found, logging to console:', `[${type}] ${message}`);
         }
     }
 }
