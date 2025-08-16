@@ -257,7 +257,7 @@ class ScreenshotAnnotator {
   
   async compressImageData(imageData, quality = 1.0) {
     try {
-      console.log('🗜️ Processing image (quality preservation mode)...');
+      console.log('🗜️ Processing image (storage-optimized mode)...');
       console.log('📊 Original size:', this.formatMemorySize(imageData.length));
       
       return new Promise((resolve) => {
@@ -268,41 +268,39 @@ class ScreenshotAnnotator {
         img.onload = () => {
           console.log('🖼️ Original image dimensions:', img.width, 'x', img.height);
           
-          // MINIMAL processing - preserve original dimensions when possible
+          // STORAGE-OPTIMIZED: Reduce size aggressively for storage
           let { width, height } = img;
           
-          // Only resize if MASSIVELY larger than reasonable limits
-          const maxWidth = 2560;  // 2.5K width
-          const maxHeight = 1440; // 1440p height
+          // Target storage-friendly dimensions
+          const targetWidth = 1400;  // Balanced quality/size
+          const targetHeight = 900;  // Balanced quality/size
           
-          if (width > maxWidth * 2) {
-            console.log('⚠️ Image extremely wide, reducing width');
-            height = (height * maxWidth) / width;
-            width = maxWidth;
+          if (width > targetWidth || height > targetHeight) {
+            console.log('📉 Reducing dimensions for storage optimization');
+            
+            const scaleX = targetWidth / width;
+            const scaleY = targetHeight / height;
+            const scale = Math.min(scaleX, scaleY, 1); // Don't upscale
+            
+            width = Math.round(width * scale);
+            height = Math.round(height * scale);
           }
           
-          if (height > maxHeight * 2) {
-            console.log('⚠️ Image extremely tall, reducing height');
-            width = (width * maxHeight) / height;
-            height = maxHeight;
-          }
-          
-          console.log('🎯 Final dimensions:', width, 'x', height);
+          console.log('🎯 Storage-optimized dimensions:', width, 'x', height);
           
           canvas.width = width;
           canvas.height = height;
           
-          // Maximum quality settings
+          // Good quality settings (not maximum to save space)
           ctx.imageSmoothingEnabled = true;
           ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(img, 0, 0, width, height);
           
-          // Use PNG with maximum quality (lossless)
-          const processedData = canvas.toDataURL('image/png', 1.0);
+          // Use JPEG for better compression (75% quality for storage)
+          const processedData = canvas.toDataURL('image/jpeg', 0.75);
           
-          console.log('✅ Processed size:', this.formatMemorySize(processedData.length));
-          console.log('📏 Dimensions preserved:', width === img.width && height === img.height ? 'YES' : 'NO');
-          console.log('📊 Size change:', Math.round((processedData.length / imageData.length - 1) * 100) + '%');
+          console.log('✅ Storage-optimized size:', this.formatMemorySize(processedData.length));
+          console.log('📊 Size reduction:', Math.round((1 - processedData.length / imageData.length) * 100) + '%');
           
           resolve(processedData);
         };
@@ -314,6 +312,59 @@ class ScreenshotAnnotator {
       console.error('❌ Image processing failed:', error);
       console.log('⚠️ Using original image data');
       return imageData; // Fallback to original
+    }
+  }
+
+  async createHighQualityImageForPDF(screenshot) {
+    try {
+      console.log('🎨 Creating high-quality image for PDF from original...');
+      
+      // For PDF export, we'll re-process from original data with higher quality
+      return new Promise((resolve) => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        
+        img.onload = () => {
+          console.log('🖼️ Re-processing for PDF - dimensions:', img.width, 'x', img.height);
+          
+          // For PDF, use higher quality dimensions
+          let { width, height } = img;
+          
+          // Less aggressive sizing for PDF
+          const maxWidth = 1920;
+          const maxHeight = 1200;
+          
+          if (width > maxWidth || height > maxHeight) {
+            const scaleX = maxWidth / width;
+            const scaleY = maxHeight / height;
+            const scale = Math.min(scaleX, scaleY, 1);
+            
+            width = Math.round(width * scale);
+            height = Math.round(height * scale);
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          // Maximum quality for PDF
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // High quality PNG for PDF
+          const highQualityData = canvas.toDataURL('image/png', 1.0);
+          
+          console.log('✅ High-quality image created for PDF');
+          resolve(highQualityData);
+        };
+        
+        img.src = screenshot.imageData;
+      });
+      
+    } catch (error) {
+      console.error('❌ Error creating high-quality image:', error);
+      return screenshot.imageData;
     }
   }
 
