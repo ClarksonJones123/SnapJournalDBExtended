@@ -183,12 +183,13 @@ class TempStorageManager {
         }
       } else {
         console.log('✅ SCHEMA VALIDATION PASSED - All required object stores present and functional');
-        console.log('📊 Database health check:', {
+        console.log('📊 Database health check:');
+        console.log(JSON.stringify({
           allStoresPresent: true,
           pdfExportReady: pdfExportWorking,
           version: this.db.version,
           stores: existingStores
-        });
+        }, null, 2));
         
         return { 
           repaired: false, 
