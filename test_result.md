@@ -242,6 +242,9 @@ frontend:
         - working: "implemented"
         - agent: "main"
         - comment: "FIXED: Completely redesigned coordinate system to use display-relative coordinates instead of complex scaling system. This should resolve red dot coordinate precision issues."
+        - working: "updated"
+        - agent: "main"
+        - comment: "PRECISION IMPROVED: Added Math.round() to click coordinates and drag coordinates to eliminate sub-pixel positioning issues. Coordinates now use integer values for precise positioning. Also accounted for CSS transform centering."
 
   - task: "PDF journal formatting with no borders"
     implemented: true
