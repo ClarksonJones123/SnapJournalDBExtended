@@ -297,13 +297,7 @@ class UniversalAnnotator {
         textLabel.style.left = displayTextX + 'px';
         textLabel.style.top = displayTextY + 'px';
         
-        // Number badge
-        const numberBadge = document.createElement('div');
-        numberBadge.className = 'number-badge';
-        numberBadge.textContent = (index + 1).toString();
-        textLabel.appendChild(numberBadge);
-        
-        // Text content
+        // Text content only (no number badge)
         const textContent = document.createElement('div');
         textContent.className = 'annotation-text-content';
         textContent.textContent = annotation.text || 'No text';
