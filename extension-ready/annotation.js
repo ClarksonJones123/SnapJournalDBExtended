@@ -178,15 +178,16 @@ class UniversalAnnotator {
             
             const rect = img.getBoundingClientRect();
             
-            // Get click position relative to the displayed image
-            const clickX = e.clientX - rect.left;
-            const clickY = e.clientY - rect.top;
+            // Get PRECISE click position relative to the displayed image
+            // Use Math.round to avoid sub-pixel positioning issues
+            const clickX = Math.round(e.clientX - rect.left);
+            const clickY = Math.round(e.clientY - rect.top);
             
-            console.log('🖱️ Raw click coordinates:', { clickX, clickY });
+            console.log('🖱️ PRECISE click coordinates (rounded):', { clickX, clickY });
             console.log('📐 Image display info:', {
                 displaySize: `${img.offsetWidth}x${img.offsetHeight}`,
                 naturalSize: `${img.naturalWidth}x${img.naturalHeight}`,
-                boundingRect: rect
+                boundingRect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height }
             });
             
             let annotationText = this.pendingAnnotationText;
