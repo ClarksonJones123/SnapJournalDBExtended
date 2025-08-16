@@ -475,10 +475,6 @@ class ScreenshotAnnotator {
             coordinateReference: 'DIRECT_ORIGINAL_COORDINATES'
           });
           
-          // Render each annotation with coordinate offset correction
-          screenshot.annotations.forEach((annotation, index) => {
-            console.log(`🎯 Annotation ${index + 1} - Investigating coordinate offset`);
-            
           // Get coordinate correction for this image
           const correction = this.getCoordinateCorrection(canvas.width, canvas.height);
           
@@ -510,7 +506,7 @@ class ScreenshotAnnotator {
               textY = y - 30;
             }
             
-            console.log(`📍 Direct coordinates (1:1):`, { 
+            console.log(`📍 Final coordinates:`, { 
               x: Math.round(x), 
               y: Math.round(y), 
               textX: Math.round(textX), 
