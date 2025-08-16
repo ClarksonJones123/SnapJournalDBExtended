@@ -231,3 +231,5 @@ test_plan:
 agent_communication:
     - agent: "testing"
     - message: "Starting comprehensive testing of screenshot annotation extension popup interface. Will focus on storage quota management system as it was recently implemented. Testing will include UI functionality, error handling, and user experience."
+    - agent: "main"
+    - message: "MAJOR FIXES IMPLEMENTED: 1) Added automatic memory clearing when images are saved to journal queue and when PDF export completes, 2) Fixed image compression to properly preserve aspect ratio, 3) Completely simplified coordinate system to use display-relative coordinates instead of complex scaling system for better precision. All three critical issues identified by user have been addressed. Ready for testing."
