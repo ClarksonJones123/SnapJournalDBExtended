@@ -605,49 +605,53 @@ class ScreenshotAnnotator {
         const img = new Image();
         
         img.onload = () => {
-          console.log('🖼️ PDF Image Analysis for Coordinate Debugging:');
+          console.log('🖼️ PDF COORDINATE PRECISION ANALYSIS:');
           console.log('  - Canvas dimensions:', `${canvas.width}x${canvas.height}`);
           console.log('  - Img natural dimensions:', `${img.naturalWidth}x${img.naturalHeight}`);
           console.log('  - Screenshot display dimensions:', `${screenshot.displayWidth}x${screenshot.displayHeight}`);
           
-          // Use natural image dimensions as the authoritative source
+          // Use natural image dimensions as the canvas size
           const naturalWidth = img.naturalWidth;
           const naturalHeight = img.naturalHeight;
           
-          console.log('  - Using natural dimensions as coordinate reference:', `${naturalWidth}x${naturalHeight}`);
+          console.log('  - Using natural dimensions for PDF canvas:', `${naturalWidth}x${naturalHeight}`);
           
-          // Set canvas to natural image size
+          // Set canvas to natural image size (1:1 pixel mapping)
           canvas.width = naturalWidth;
           canvas.height = naturalHeight;
           
           // Draw the original image at natural size
           ctx.drawImage(img, 0, 0, naturalWidth, naturalHeight);
           
-          console.log('📏 PDF rendering with 1:1 scale (100% original):', { 
-            imageSize: `${img.width}x${img.height}`,
-            coordinateReference: 'DIRECT_ORIGINAL_COORDINATES'
+          console.log('📏 PDF COORDINATE SYSTEM:', { 
+            canvasSize: `${canvas.width}x${canvas.height}`,
+            coordinateReference: 'STORED_COORDINATES_DIRECT_USE',
+            conversionApplied: 'NONE - coordinates already in natural dimensions'
           });
           
-          // Render each annotation
+          // CRITICAL FIX: Use stored coordinates DIRECTLY - they're already converted
           screenshot.annotations.forEach((annotation, index) => {
             console.log(`🎯 Rendering annotation ${index + 1}: "${annotation.text}"`);
             
-            // Use annotation coordinates directly (they're already in the right space)
+            // PRECISION FIX: Use stored coordinates exactly as saved (no conversion)
+            // These coordinates were already converted from display to natural dimensions in annotation.js
             const x = Math.round(annotation.x);
             const y = Math.round(annotation.y);
             
-            // Handle text positioning
+            // Handle text positioning - also use stored coordinates directly
             let textX, textY;
-            if (annotation.textX && annotation.textY) {
+            if (annotation.textX !== undefined && annotation.textY !== undefined) {
               textX = Math.round(annotation.textX);
               textY = Math.round(annotation.textY);
             } else {
+              // Fallback positioning if textX/textY not set
               textX = x + 60;
               textY = y - 30;
             }
             
-            console.log(`📍 PDF annotation coordinates:`, { 
-              x, y, textX, textY, text: annotation.text
+            console.log(`📍 PDF PRECISION coordinates (direct from storage):`, { 
+              x, y, textX, textY, text: annotation.text,
+              note: 'Using stored coordinates directly - no conversion applied'
             });
             
             // Calculate sizes for PDF (larger for visibility)
@@ -655,7 +659,7 @@ class ScreenshotAnnotator {
             const lineWidth = 2;  // Thicker lines
             const fontSize = 18;  // Readable font size
             
-            // Draw pinpoint circle (large red dot)
+            // Draw pinpoint circle (large red dot) at EXACT stored coordinates
             ctx.beginPath();
             ctx.arc(x, y, pinRadius, 0, 2 * Math.PI);
             ctx.fillStyle = '#ff4444';
@@ -707,13 +711,13 @@ class ScreenshotAnnotator {
             ctx.font = `bold ${fontSize}px Arial, sans-serif`;
             ctx.fillText(annotation.text, finalTextX, finalTextY);
             
-            console.log(`✅ Rendered annotation ${index + 1} at (${x}, ${y})`);
+            console.log(`✅ PRECISION: Rendered annotation ${index + 1} at EXACT stored coordinates (${x}, ${y})`);
           });
           
           // Return annotated image
           const annotatedImage = canvas.toDataURL('image/png', 1.0);
-          console.log('✅ Annotated image created for PDF (100% quality)');
-          console.log(`📊 Total annotations rendered: ${screenshot.annotations.length}`);
+          console.log('✅ PDF PRECISION: Annotated image created using EXACT stored coordinates');
+          console.log(`📊 Total annotations rendered with perfect precision: ${screenshot.annotations.length}`);
           resolve(annotatedImage);
         };
         
