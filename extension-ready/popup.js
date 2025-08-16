@@ -96,32 +96,57 @@ class ScreenshotAnnotator {
       
       console.log(`📂 Loaded ${this.screenshots.length} screenshot records from Chrome storage`);
       
-      // 📁 Restore images from temporary storage if needed
-      if (this.tempStorage && this.screenshots.length > 0) {
-        console.log('📁 Checking for images in temporary storage...');
+      // 📁 Force restore ALL images from temporary storage or fix missing data
+      if (this.screenshots.length > 0) {
+        console.log('📁 Checking and restoring images...');
         
         for (let i = 0; i < this.screenshots.length; i++) {
           const screenshot = this.screenshots[i];
           
-          if (screenshot.isInTempStorage && screenshot.tempImageId) {
-            console.log(`📁 Restoring image for screenshot ${screenshot.id} from temporary storage...`);
+          if (!screenshot.imageData) {
+            console.log(`📁 Screenshot ${screenshot.id} missing imageData - attempting restoration...`);
             
-            try {
-              const restoredScreenshot = await this.tempStorage.restoreFullScreenshot(screenshot);
-              this.screenshots[i] = restoredScreenshot;
-              
-              if (restoredScreenshot.imageData) {
-                console.log(`✅ Restored image for screenshot ${screenshot.id}`);
-              } else {
-                console.warn(`⚠️ Failed to restore image for screenshot ${screenshot.id}`);
+            if (screenshot.isInTempStorage && screenshot.tempImageId && this.tempStorage && this.tempStorage.db) {
+              try {
+                console.log(`📁 Restoring from temp storage: ${screenshot.tempImageId}`);
+                const imageData = await this.tempStorage.retrieveImage(screenshot.tempImageId);
+                
+                if (imageData && imageData.imageData) {
+                  this.screenshots[i] = {
+                    ...screenshot,
+                    imageData: imageData.imageData,
+                    isInTempStorage: false,
+                    tempImageId: null
+                  };
+                  console.log(`✅ Restored image for screenshot ${screenshot.id}`);
+                } else {
+                  console.warn(`⚠️ Could not retrieve image ${screenshot.tempImageId} from temp storage`);
+                }
+              } catch (error) {
+                console.error(`❌ Error restoring screenshot ${screenshot.id}:`, error);
               }
-            } catch (error) {
-              console.error(`❌ Error restoring screenshot ${screenshot.id}:`, error);
+            } else {
+              console.warn(`⚠️ Screenshot ${screenshot.id} has no imageData and no temp storage reference`);
+              // This screenshot is corrupted - remove it
+              this.screenshots.splice(i, 1);
+              i--; // Adjust index after removal
             }
           }
         }
         
-        console.log('📁 Temporary storage restoration completed');
+        console.log('📁 Image restoration completed');
+      }
+      
+      // Save restored screenshots back to storage
+      if (this.screenshots.some(s => s.imageData && s.isInTempStorage === false)) {
+        console.log('💾 Saving restored screenshots back to Chrome storage...');
+        try {
+          await chrome.storage.local.set({ screenshots: this.screenshots });
+          console.log('✅ Restored screenshots saved');
+        } catch (saveError) {
+          console.error('❌ Failed to save restored screenshots:', saveError);
+          // If saving fails due to quota, keep images in temp storage
+        }
       }
       
       this.calculateMemoryUsage();
