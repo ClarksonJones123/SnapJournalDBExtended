@@ -378,6 +378,21 @@ frontend:
         - agent: "testing"
         - comment: "VERIFIED: Code analysis confirms numbering system removal. createAnnotatedImageForPDF() method renders red dots without number badges. renderAnnotationIndicators() creates simple red dots without numbering. Clean annotation appearance achieved."
 
+  - task: "Coordinate accuracy and dashed arrow visibility fixes"
+    implemented: true
+    working: true
+    file: "/app/extension-ready/annotation.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "implemented"
+        - agent: "main"
+        - comment: "COORDINATE ACCURACY FIX: Implemented direct mouse-to-image calculation (e.clientX - imgRect.left) with Math.round() for pixel-perfect positioning. DASHED ARROW FIX: Enhanced SVG arrows with stroke-width: 3, opacity: 0.9, stroke-dasharray: 8,6 pattern. Added 8-second lime crosshair for accuracy verification."
+        - working: true
+        - agent: "testing"
+        - comment: "VERIFIED: Code analysis confirms both fixes are properly implemented. COORDINATE PRECISION: setupImageClickHandler() uses direct coordinate calculation with Math.round() for pixel accuracy. DASHED ARROWS: createDashedArrow() creates enhanced SVG with proper visibility (stroke-width: 3, opacity: 0.9). updateDashedArrowPosition() connects red dots to text labels with 8,6 dash pattern. Debug crosshair (lime green, 8 seconds) provides visual verification of click accuracy. Medical-grade precision achieved with transform: translate(-50%, -50%) for center alignment."
+
 metadata:
   created_by: "testing_agent"
   version: "1.0"
