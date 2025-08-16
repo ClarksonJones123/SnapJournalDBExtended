@@ -241,6 +241,36 @@
     <div class="memory-info">
       Memory: <span id="memoryUsage">0 KB</span> • Screenshots: <span id="screenshotCount">0</span>
     </div>
+    
+    <!-- Multi-Tab Session Management -->
+    <div class="session-info">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding: 6px 8px; background: #fff3e0; border-radius: 4px; font-size: 12px;">
+        <span>📁 Session: <span id="currentSessionName">Loading...</span></span>
+        <button id="sessionMenuBtn" style="padding: 2px 6px; font-size: 10px; background: #ff9800; color: white; border: none; border-radius: 3px; cursor: pointer;">⚙️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Session Management Modal -->
+  <div id="sessionModal" class="session-modal hidden">
+    <div class="session-modal-content">
+      <div class="session-modal-header">
+        <h3>📁 Multi-Tab Journal Sessions</h3>
+        <button id="closeSessionModal" class="close-btn">×</button>
+      </div>
+      <div class="session-modal-body">
+        <div class="session-actions">
+          <button id="newSessionBtn" class="btn-primary">🆕 New Session</button>
+          <button id="refreshSessionsBtn" class="btn-secondary">🔄 Refresh</button>
+        </div>
+        <div class="sessions-list">
+          <div class="sessions-header">Available Sessions:</div>
+          <div id="sessionsList" class="sessions-container">
+            <div class="loading-sessions">Loading sessions...</div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div id="status" class="status hidden"></div>
