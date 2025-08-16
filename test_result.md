@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Test the screenshot annotation extension popup interface and functionality. The extension is located in /app/extension-ready/ directory with key files: popup.html, popup.js, styles.css. Key functionality to test: 1. Popup interface loads correctly 2. UI elements are properly styled and functional 3. Storage management works (check console for quota management) 4. Error handling for storage operations 5. Interface responsiveness and user experience. The extension should have: Capture Current Page button, Screenshot list display, Memory usage display, Export PDF Journal button, Clear All Screenshots button. Focus on the storage quota management system that was just implemented."
+user_problem_statement: "Implement unlimited storage migration and multi-tab journal collection. Replace Chrome local storage with IndexedDB as primary storage. Add session management to capture screenshots from different tabs and consolidate them into single journal sessions. Current TempStorageManager already has IndexedDB support - need to integrate it as PRIMARY storage in popup.js and add multi-tab session UI."
 
 backend:
   - task: "FastAPI root endpoint functionality"
