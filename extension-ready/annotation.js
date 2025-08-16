@@ -205,12 +205,10 @@ class UniversalAnnotator {
                 }
             }
             
-            // SIMPLIFIED: Store coordinates directly relative to the displayed image
-            // We'll scale them when needed for storage/PDF, but keep display coordinates as primary
             const annotation = {
                 id: Date.now().toString(),
                 text: annotationText.trim(),
-                // Store display coordinates directly
+                // Store PRECISE display coordinates (rounded to avoid sub-pixel issues)
                 x: clickX,
                 y: clickY,
                 textX: clickX + 60,  // Default text offset
@@ -223,12 +221,13 @@ class UniversalAnnotator {
                         clientY: e.clientY,
                         rectLeft: rect.left,
                         rectTop: rect.top,
-                        clickRelativeToImage: { x: clickX, y: clickY }
+                        clickRelativeToImage: { x: clickX, y: clickY },
+                        rounded: true
                     },
                     imageInfo: {
                         displaySize: `${img.offsetWidth}x${img.offsetHeight}`,
                         naturalSize: `${img.naturalWidth}x${img.naturalHeight}`,
-                        coordinates: 'DISPLAY_RELATIVE'
+                        coordinates: 'PRECISE_DISPLAY_RELATIVE'
                     },
                     timestamp: new Date().toISOString()
                 }
