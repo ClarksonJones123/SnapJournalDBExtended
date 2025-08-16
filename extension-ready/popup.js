@@ -2110,11 +2110,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
   
-  // NEW: Database schema reset for PDF export issues
+  // Enhanced manual database schema reset (now also available automatically on startup)
   window.resetDatabaseSchema = async () => {
     if (annotator.tempStorage) {
       try {
-        console.log('🔄 Resetting IndexedDB schema to fix PDF export issues...');
+        console.log('🔄 === MANUAL DATABASE SCHEMA RESET START ===');
+        console.log('💡 NOTE: This function is now also executed AUTOMATICALLY on popup opening when needed');
+        
+        annotator.showStatus('🔄 Manually resetting database schema...', 'info');
         
         // Close current database connection
         if (annotator.tempStorage.db) {
@@ -2125,30 +2128,58 @@ document.addEventListener('DOMContentLoaded', () => {
         const deleteRequest = indexedDB.deleteDatabase('ScreenshotAnnotatorDB');
         
         deleteRequest.onsuccess = async () => {
-          console.log('✅ Database deleted successfully');
+          console.log('✅ Database deleted successfully for manual reset');
+          annotator.showStatus('🏗️ Recreating database with correct schema...', 'info');
           
           // Reinitialize with fresh schema
           try {
             await annotator.tempStorage.init();
-            console.log('✅ Database reinitialized with correct schema');
-            console.log('💡 PDF export should now work properly');
             
-            // Reload screenshots from fresh database
-            await annotator.loadScreenshots();
-            annotator.updateUI();
+            // Verify schema repair success
+            const stores = [...annotator.tempStorage.db.objectStoreNames];
+            const requiredStores = ['screenshots', 'sessions', 'tempImages', 'pdfExports'];
+            const allPresent = requiredStores.every(store => stores.includes(store));
+            
+            if (allPresent) {
+              console.log('✅ Manual database reset completed successfully');
+              console.log('📊 All required object stores created:', stores);
+              annotator.showStatus('✅ Database manually reset - PDF export ready!', 'success');
+              
+              // Reload screenshots from fresh database
+              await annotator.loadScreenshots();
+              annotator.updateUI();
+              
+              console.log('💡 SUCCESS: Manual database reset completed');
+              console.log('💡 TIP: This repair now happens AUTOMATICALLY when you open the popup');
+            } else {
+              const missing = requiredStores.filter(store => !stores.includes(store));
+              console.error('❌ Manual reset incomplete - missing stores:', missing);
+              annotator.showStatus(`⚠️ Manual reset incomplete - missing: ${missing.join(', ')}`, 'warning');
+            }
             
           } catch (initError) {
-            console.error('❌ Failed to reinitialize database:', initError);
+            console.error('❌ Failed to reinitialize database after manual reset:', initError);
+            annotator.showStatus('❌ Manual database reset failed during reinitialization', 'error');
           }
         };
         
         deleteRequest.onerror = (error) => {
-          console.error('❌ Failed to delete database:', error);
+          console.error('❌ Failed to delete database for manual reset:', error);
+          annotator.showStatus('❌ Manual database reset failed', 'error');
+        };
+        
+        deleteRequest.onblocked = (event) => {
+          console.warn('⚠️ Manual database reset blocked - other connections open');
+          annotator.showStatus('⚠️ Manual reset blocked - please close other tabs and try again', 'warning');
         };
         
       } catch (error) {
-        console.error('❌ Database reset failed:', error);
+        console.error('❌ Manual database reset failed:', error);
+        annotator.showStatus('❌ Manual database reset failed', 'error');
       }
+    } else {
+      console.error('❌ Cannot perform manual reset - temp storage not available');
+      annotator.showStatus('❌ Manual reset not available - temp storage missing', 'error');
     }
   };
   
