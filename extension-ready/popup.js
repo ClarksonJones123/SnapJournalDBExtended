@@ -456,7 +456,7 @@ class ScreenshotAnnotator {
             const lineWidth = 4;
             const fontSize = 20;
             
-            // Draw pinpoint circle
+            // Draw pinpoint circle (no number badge)
             ctx.beginPath();
             ctx.arc(x, y, pinRadius, 0, 2 * Math.PI);
             ctx.fillStyle = '#ff4444';
@@ -464,13 +464,6 @@ class ScreenshotAnnotator {
             ctx.strokeStyle = 'white';
             ctx.lineWidth = lineWidth;
             ctx.stroke();
-            
-            // Draw number badge
-            ctx.fillStyle = 'white';
-            ctx.font = `bold ${Math.round(fontSize * 0.8)}px Arial`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText((index + 1).toString(), x, y);
             
             // Draw connecting line
             const distance = Math.sqrt((textX - x) ** 2 + (textY - y) ** 2);
