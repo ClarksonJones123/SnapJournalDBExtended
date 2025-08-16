@@ -95,7 +95,7 @@ class ScreenshotAnnotator {
         console.log('Storage listener setup complete');
       }
       
-      // Add runtime message listener for annotation saving
+      // Add runtime message listener for annotation saving and window events
       if (chrome && chrome.runtime && chrome.runtime.onMessage) {
         chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           if (request.action === 'saveAnnotatedScreenshot') {
@@ -106,8 +106,25 @@ class ScreenshotAnnotator {
             });
             return true; // Keep message channel open for async response
           }
+          
+          if (request.action === 'annotationComplete' || request.action === 'annotationWindowClosed') {
+            console.log('🎯 Annotation window closed - maintaining popup continuity');
+            
+            // Log to persistent debug system
+            if (window.debugLog) {
+              window.debugLog('🎯 Annotation window closed - popup continuity maintained');
+              window.debugLog('✅ Debug log persists across annotation sessions');
+            }
+            
+            // Refresh the UI to show any updated annotations
+            this.updateUI();
+            this.showStatus('✅ Annotation completed - popup stays open for more captures!', 'success');
+            
+            sendResponse({ success: true, message: 'Popup continuity maintained' });
+            return true;
+          }
         });
-        console.log('Runtime message listener setup for annotation saving');
+        console.log('Runtime message listener setup for annotation saving and window events');
       }
     } catch (error) {
       console.log('Storage listener not available (expected outside extension context)');
