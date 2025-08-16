@@ -105,10 +105,6 @@ class ScreenshotAnnotator {
       const annotateBtn = document.getElementById('annotateBtn');
       const exportPdfBtn = document.getElementById('exportPdfBtn');
       const clearBtn = document.getElementById('clearBtn');
-      const sessionMenuBtn = document.getElementById('sessionMenuBtn');
-      const closeSessionModal = document.getElementById('closeSessionModal');
-      const newSessionBtn = document.getElementById('newSessionBtn');
-      const refreshSessionsBtn = document.getElementById('refreshSessionsBtn');
       
       if (captureBtn) {
         captureBtn.addEventListener('click', () => this.captureScreenshot());
@@ -124,23 +120,6 @@ class ScreenshotAnnotator {
       
       if (clearBtn) {
         clearBtn.addEventListener('click', () => this.clearAllScreenshots());
-      }
-      
-      // Multi-tab session management
-      if (sessionMenuBtn) {
-        sessionMenuBtn.addEventListener('click', () => this.showSessionModal());
-      }
-      
-      if (closeSessionModal) {
-        closeSessionModal.addEventListener('click', () => this.hideSessionModal());
-      }
-      
-      if (newSessionBtn) {
-        newSessionBtn.addEventListener('click', () => this.createNewSession());
-      }
-      
-      if (refreshSessionsBtn) {
-        refreshSessionsBtn.addEventListener('click', () => this.refreshSessionsList());
       }
       
       console.log('Event listeners setup complete');
