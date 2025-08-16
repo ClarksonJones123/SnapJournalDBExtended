@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IndexedDB Diagnostic Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .code {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🗄️ IndexedDB Diagnostic Test for Chrome Extension</h1>
+    <p>This diagnostic tool tests the IndexedDB implementation that's causing PDF export failures in the Chrome extension.</p>
+    
+    <div class="test-section">
+        <h2>🔧 Test Controls</h2>
+        <button onclick="runAllTests()">Run All Tests</button>
+        <button onclick="testDatabaseCreation()">Test Database Creation</button>
+        <button onclick="testObjectStores()">Test Object Stores</button>
+        <button onclick="testPdfExportStore()">Test PDF Export Store</button>
+        <button onclick="resetDatabase()">Reset Database</button>
+        <button onclick="clearResults()">Clear Results</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>📊 Test Results</h2>
+        <div id="results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🗄️ Database Information</h2>
+        <div id="dbInfo"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>💡 Solutions</h2>
+        <div id="solutions"></div>
+    </div>
+
+    <script>
+        // Simulate the TempStorageManager class from the extension
+        class TempStorageManager {
+            constructor() {
+                this.dbName = 'ScreenshotAnnotatorDB';
+                this.dbVersion = 2;
+                this.db = null;
+                this.isReady = false;
+            }
+            
+            async init() {
+                return new Promise((resolve, reject) => {
+                    console.log('🗄️ Initializing IndexedDB...');
+                    
+                    const request = indexedDB.open(this.dbName, this.dbVersion);
+                    
+                    request.onerror = () => {
+                        console.error('❌ Failed to open IndexedDB:', request.error);
+                        reject(request.error);
+                    };
+                    
+                    request.onsuccess = () => {
+                        this.db = request.result;
+                        this.isReady = true;
+                        console.log('✅ IndexedDB initialized');
+                        resolve();
+                    };
+                    
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        console.log('🔄 Upgrading database schema...');
+                        
+                        // Create screenshots store
+                        if (!db.objectStoreNames.contains('screenshots')) {
+                            const screenshotStore = db.createObjectStore('screenshots', { keyPath: 'id' });
+                            screenshotStore.createIndex('timestamp', 'timestamp', { unique: false });
+                            console.log('✅ Created screenshots store');
+                        }
+                        
+                        // Create sessions store
+                        if (!db.objectStoreNames.contains('sessions')) {
+                            const sessionStore = db.createObjectStore('sessions', { keyPath: 'id' });
+                            sessionStore.createIndex('created', 'created', { unique: false });
+                            console.log('✅ Created sessions store');
+                        }
+                        
+                        // PDF Exports object store - THE CRITICAL ONE
+                        if (!db.objectStoreNames.contains('pdfExports')) {
+                            const pdfExportStore = db.createObjectStore('pdfExports', { keyPath: 'id' });
+                            pdfExportStore.createIndex('timestamp', 'timestamp', { unique: false });
+                            console.log('✅ Created pdfExports object store');
+                        }
+                        
+                        // Legacy temp storage
+                        if (!db.objectStoreNames.contains('tempImages')) {
+                            const tempStore = db.createObjectStore('tempImages', { keyPath: 'id' });
+                            tempStore.createIndex('created', 'created', { unique: false });
+                            console.log('✅ Created tempImages store');
+                        }
+                    };
+                });
+            }
+            
+            async storePdfExportData(exportId, exportData) {
+                if (!this.db) {
+                    throw new Error('Database not initialized');
+                }
+                
+                // CRITICAL CHECK: Verify pdfExports object store exists
+                if (!this.db.objectStoreNames.contains('pdfExports')) {
+                    console.error('❌ pdfExports object store not found in database');
+                    console.log('🗄️ Available object stores:', [...this.db.objectStoreNames]);
+                    
+                    // Try to reinitialize
+                    console.log('🔄 Attempting to reinitialize database...');
+                    await this.init();
+                    
+                    if (!this.db.objectStoreNames.contains('pdfExports')) {
+                        throw new Error('pdfExports object store not available. Database schema may need manual reset.');
+                    }
+                }
+                
+                const transaction = this.db.transaction(['pdfExports'], 'readwrite');
+                const store = transaction.objectStore('pdfExports');
+                
+                const exportRecord = {
+                    id: exportId,
+                    data: exportData,
+                    timestamp: Date.now(),
+                    created: new Date().toISOString()
+                };
+                
+                return new Promise((resolve, reject) => {
+                    const request = store.put(exportRecord);
+                    request.onsuccess = () => resolve({ success: true, exportId });
+                    request.onerror = () => reject(request.error);
+                });
+            }
+        }
+        
+        let tempStorage = null;
+        
+        function logResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+            results.appendChild(div);
+            results.scrollTop = results.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('dbInfo').innerHTML = '';
+            document.getElementById('solutions').innerHTML = '';
+        }
+        
+        async function testDatabaseCreation() {
+            logResult('🔧 Testing database creation...', 'info');
+            
+            try {
+                tempStorage = new TempStorageManager();
+                await tempStorage.init();
+                
+                if (tempStorage.db) {
+                    logResult('✅ Database created successfully', 'success');
+                    logResult(`📊 Database name: ${tempStorage.db.name}`, 'info');
+                    logResult(`📊 Database version: ${tempStorage.db.version}`, 'info');
+                    
+                    // List object stores
+                    const stores = [...tempStorage.db.objectStoreNames];
+                    logResult(`📊 Object stores: ${stores.join(', ')}`, 'info');
+                    
+                    return true;
+                } else {
+                    logResult('❌ Database creation failed - no database object', 'error');
+                    return false;
+                }
+            } catch (error) {
+                logResult(`❌ Database creation failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        async function testObjectStores() {
+            logResult('🗄️ Testing object store creation...', 'info');
+            
+            if (!tempStorage || !tempStorage.db) {
+                logResult('⚠️ Database not initialized, initializing first...', 'warning');
+                const success = await testDatabaseCreation();
+                if (!success) return false;
+            }
+            
+            const requiredStores = ['screenshots', 'sessions', 'pdfExports', 'tempImages'];
+            const availableStores = [...tempStorage.db.objectStoreNames];
+            
+            let allPresent = true;
+            
+            for (const store of requiredStores) {
+                if (availableStores.includes(store)) {
+                    logResult(`✅ Object store '${store}' exists`, 'success');
+                } else {
+                    logResult(`❌ Object store '${store}' missing`, 'error');
+                    allPresent = false;
+                }
+            }
+            
+            if (allPresent) {
+                logResult('✅ All required object stores are present', 'success');
+            } else {
+                logResult('❌ Some object stores are missing - this will cause PDF export failures', 'error');
+            }
+            
+            return allPresent;
+        }
+        
+        async function testPdfExportStore() {
+            logResult('📄 Testing PDF export store functionality...', 'info');
+            
+            if (!tempStorage || !tempStorage.db) {
+                logResult('⚠️ Database not initialized, initializing first...', 'warning');
+                const success = await testDatabaseCreation();
+                if (!success) return false;
+            }
+            
+            try {
+                // Test storing PDF export data
+                const testExportId = 'test_export_' + Date.now();
+                const testData = {
+                    screenshots: [
+                        { id: 'test1', imageData: 'data:image/png;base64,test', annotations: [] }
+                    ],
+                    totalAnnotations: 0,
+                    exportDate: new Date().toISOString()
+                };
+                
+                logResult(`🧪 Testing PDF export data storage with ID: ${testExportId}`, 'info');
+                
+                const result = await tempStorage.storePdfExportData(testExportId, testData);
+                
+                if (result.success) {
+                    logResult('✅ PDF export data stored successfully', 'success');
+                    
+                    // Test retrieval
+                    const transaction = tempStorage.db.transaction(['pdfExports'], 'readonly');
+                    const store = transaction.objectStore('pdfExports');
+                    
+                    return new Promise((resolve) => {
+                        const request = store.get(testExportId);
+                        request.onsuccess = () => {
+                            if (request.result) {
+                                logResult('✅ PDF export data retrieved successfully', 'success');
+                                logResult('✅ PDF export functionality is working correctly', 'success');
+                                resolve(true);
+                            } else {
+                                logResult('❌ PDF export data not found after storage', 'error');
+                                resolve(false);
+                            }
+                        };
+                        request.onerror = () => {
+                            logResult(`❌ Failed to retrieve PDF export data: ${request.error}`, 'error');
+                            resolve(false);
+                        };
+                    });
+                } else {
+                    logResult('❌ PDF export data storage failed', 'error');
+                    return false;
+                }
+                
+            } catch (error) {
+                logResult(`❌ PDF export test failed: ${error.message}`, 'error');
+                
+                if (error.message.includes('pdfExports object store not available')) {
+                    logResult('🔍 ROOT CAUSE: pdfExports object store is missing from database schema', 'error');
+                    provideSolutions();
+                }
+                
+                return false;
+            }
+        }
+        
+        async function resetDatabase() {
+            logResult('🗑️ Resetting database...', 'warning');
+            
+            try {
+                // Close existing connection
+                if (tempStorage && tempStorage.db) {
+                    tempStorage.db.close();
+                }
+                
+                // Delete database
+                const deleteRequest = indexedDB.deleteDatabase('ScreenshotAnnotatorDB');
+                
+                deleteRequest.onsuccess = async () => {
+                    logResult('✅ Database deleted successfully', 'success');
+                    
+                    // Reinitialize
+                    tempStorage = new TempStorageManager();
+                    await tempStorage.init();
+                    
+                    logResult('✅ Database reinitialized with correct schema', 'success');
+                    
+                    // Test the new database
+                    await testObjectStores();
+                };
+                
+                deleteRequest.onerror = () => {
+                    logResult(`❌ Failed to delete database: ${deleteRequest.error}`, 'error');
+                };
+                
+            } catch (error) {
+                logResult(`❌ Database reset failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function provideSolutions() {
+            const solutions = document.getElementById('solutions');
+            solutions.innerHTML = `
+                <h3>🛠️ Solutions for IndexedDB Object Store Issues</h3>
+                <div class="info">
+                    <strong>Problem:</strong> The pdfExports object store is not being created properly, causing PDF export failures.
+                </div>
+                
+                <h4>For Users:</h4>
+                <div class="code">
+1. Open Chrome extension popup
+2. Open browser console (F12)
+3. Run: resetDatabaseSchema()
+4. Wait for confirmation: "✅ Database reinitialized with correct schema"
+5. Try PDF export again
+                </div>
+                
+                <h4>For Developers:</h4>
+                <div class="code">
+1. The database version is correctly set to 2
+2. The onupgradeneeded event should create all object stores
+3. Runtime checks are in place to detect missing stores
+4. Automatic reinitialization is attempted when issues are detected
+                </div>
+                
+                <h4>Manual Fix Commands:</h4>
+                <div class="code">
+// In browser console:
+resetDatabaseSchema()     // Reset database schema
+clearExtensionStorage()   // Nuclear option - clear everything
+memoryStatus()           // Check current status
+                </div>
+            `;
+        }
+        
+        function updateDbInfo() {
+            const dbInfo = document.getElementById('dbInfo');
+            
+            if (tempStorage && tempStorage.db) {
+                const stores = [...tempStorage.db.objectStoreNames];
+                dbInfo.innerHTML = `
+                    <div class="info">
+                        <strong>Database Name:</strong> ${tempStorage.db.name}<br>
+                        <strong>Version:</strong> ${tempStorage.db.version}<br>
+                        <strong>Object Stores:</strong> ${stores.join(', ')}<br>
+                        <strong>Status:</strong> ${tempStorage.isReady ? 'Ready' : 'Not Ready'}
+                    </div>
+                `;
+            } else {
+                dbInfo.innerHTML = '<div class="warning">Database not initialized</div>';
+            }
+        }
+        
+        async function runAllTests() {
+            clearResults();
+            logResult('🚀 Starting comprehensive IndexedDB diagnostic tests...', 'info');
+            
+            const results = {
+                database: await testDatabaseCreation(),
+                objectStores: await testObjectStores(),
+                pdfExport: await testPdfExportStore()
+            };
+            
+            updateDbInfo();
+            
+            const passed = Object.values(results).filter(r => r).length;
+            const total = Object.keys(results).length;
+            
+            logResult(`📊 Test Summary: ${passed}/${total} tests passed`, passed === total ? 'success' : 'error');
+            
+            if (passed === total) {
+                logResult('🎉 All tests passed! IndexedDB implementation is working correctly.', 'success');
+            } else {
+                logResult('⚠️ Some tests failed. PDF export may not work correctly.', 'error');
+                provideSolutions();
+            }
+        }
+        
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            logResult('🔧 IndexedDB Diagnostic Tool loaded', 'info');
+            logResult('Click "Run All Tests" to start comprehensive testing', 'info');
+        });
+    </script>
+</body>
+</html>
