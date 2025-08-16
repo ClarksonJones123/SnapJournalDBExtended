@@ -245,18 +245,28 @@ class UniversalAnnotator {
                 textY = y + 40; // Below if not enough space
             }
             
-            // Create annotation object
+            // Scale text position too
+            const scaledTextX = textX * scaleFactorX;
+            const scaledTextY = textY * scaleFactorY;
+            
+            console.log('📝 TEXT POSITION CALCULATIONS:', {
+                rawTextPos: `(${textX}, ${textY})`,
+                scaledTextPos: `(${scaledTextX.toFixed(1)}, ${scaledTextY.toFixed(1)})`
+            });
+            
+            // Create annotation object with SCALED coordinates
             const annotation = {
                 id: Date.now().toString(),
                 text: annotationText.trim(),
-                x: x,
-                y: y,
-                textX: textX,
-                textY: textY,
+                x: scaledX,        // USE SCALED COORDINATES
+                y: scaledY,        // USE SCALED COORDINATES  
+                textX: scaledTextX, // USE SCALED TEXT POSITION
+                textY: scaledTextY, // USE SCALED TEXT POSITION
                 timestamp: new Date().toISOString()
             };
             
-            console.log('🎯 Creating annotation:', annotation);
+            console.log('🎯 FINAL ANNOTATION OBJECT:', annotation);
+            console.log('🔍 === COORDINATE DEBUG END ===');
             
             await this.addAnnotation(annotation, container, img);
             
