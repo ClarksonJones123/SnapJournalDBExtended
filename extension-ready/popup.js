@@ -1080,40 +1080,15 @@ class ScreenshotAnnotator {
   
   async exportPdfJournal() {
     if (this.screenshots.length === 0) {
-      this.showStatus('No screenshots to export', 'info');
+      this.showStatus('No screenshots to export in this session', 'info');
       return;
     }
     
     try {
-      console.log('🔄 Starting PDF journal export...');
+      console.log('🔄 Starting PDF journal export for session:', this.currentSessionName);
       this.showStatus('Generating PDF journal with annotations...', 'info');
       
-      // Restore all images from temporary storage if needed
-      console.log('📁 Restoring images from temporary storage for PDF export...');
-      
-      for (let i = 0; i < this.screenshots.length; i++) {
-        const screenshot = this.screenshots[i];
-        
-        if (screenshot.isInTempStorage && screenshot.tempImageId && this.tempStorage) {
-          console.log(`📁 Restoring screenshot ${i + 1}/${this.screenshots.length} from temp storage...`);
-          
-          try {
-            const restoredScreenshot = await this.tempStorage.restoreFullScreenshot(screenshot);
-            if (restoredScreenshot && restoredScreenshot.imageData) {
-              this.screenshots[i] = restoredScreenshot;
-              console.log(`✅ Restored screenshot ${i + 1} for PDF export`);
-            } else {
-              console.warn(`⚠️ Failed to restore screenshot ${i + 1}, will skip in PDF`);
-            }
-          } catch (error) {
-            console.error(`❌ Error restoring screenshot ${i + 1}:`, error);
-          }
-        }
-        
-        this.showStatus(`Restoring images: ${i + 1}/${this.screenshots.length}`, 'info');
-      }
-      
-      // Filter out screenshots that don't have image data
+      // All screenshots are already in memory since we're using IndexedDB as primary
       const validScreenshots = this.screenshots.filter(s => s.imageData);
       console.log(`📊 Valid screenshots for PDF: ${validScreenshots.length}/${this.screenshots.length}`);
       
@@ -1161,6 +1136,8 @@ class ScreenshotAnnotator {
       }
       
       console.log('📊 Final export data summary:', {
+        sessionName: this.currentSessionName,
+        sessionId: this.currentSessionId,
         totalScreenshotsProcessed: annotatedScreenshots.length,
         originalScreenshotCount: this.screenshots.length,
         totalAnnotations: annotatedScreenshots.reduce((sum, s) => sum + (s.annotations?.length || 0), 0)
@@ -1175,12 +1152,15 @@ class ScreenshotAnnotator {
       // Create PDF export window with annotated screenshots
       const exportData = {
         screenshots: annotatedScreenshots, // Use annotated versions
+        sessionName: this.currentSessionName || 'Multi-Tab Journal',
+        sessionId: this.currentSessionId,
         exportDate: new Date().toISOString(),
         totalScreenshots: annotatedScreenshots.length,
         totalAnnotations: annotatedScreenshots.reduce((sum, s) => sum + (s.annotations?.length || 0), 0)
       };
       
       console.log('📊 Export data prepared:', {
+        sessionName: exportData.sessionName,
         screenshots: exportData.screenshots.length,
         totalAnnotations: exportData.totalAnnotations
       });
@@ -1210,10 +1190,10 @@ class ScreenshotAnnotator {
       
       console.log('🪟 Export window created:', windowInfo.id);
       
-      // Monitor PDF export completion and clean up
+      // Monitor PDF export completion
       this.monitorPdfExportCompletion(exportId, windowInfo.id);
       
-      this.showStatus('📄 PDF journal export opened with annotations!', 'success');
+      this.showStatus(`📄 PDF journal export opened: "${exportData.sessionName}"!`, 'success');
       console.log('✅ PDF export window opened successfully');
       
     } catch (error) {
