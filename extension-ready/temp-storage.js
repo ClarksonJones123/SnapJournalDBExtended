@@ -226,12 +226,13 @@ class TempStorageManager {
     return new Promise((resolve, reject) => {
       try {
         console.log('🔧 === ENHANCED AUTOMATIC DATABASE SCHEMA REPAIR START ===');
-        console.log('📊 Current database state:', {
+        console.log('📊 Current database state:');
+        console.log(JSON.stringify({
           name: this.dbName,
           version: this.db?.version,
           targetVersion: this.dbVersion,
           existingStores: this.db ? [...this.db.objectStoreNames] : []
-        });
+        }, null, 2));
         
         // Close current database connection safely
         if (this.db) {
