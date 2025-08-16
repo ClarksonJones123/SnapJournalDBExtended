@@ -697,92 +697,166 @@ class ScreenshotAnnotator {
   async captureScreenshot() {
     try {
       this.showStatus('Capturing screenshot...', 'info');
-      console.log('Starting screenshot capture...');
+      console.log('🔄 Starting screenshot capture...');
       
       // Check if Chrome APIs are available
       if (typeof chrome === 'undefined' || !chrome.tabs || !chrome.runtime) {
-        throw new Error('Chrome extension APIs not available. Please install as Chrome extension.');
+        const errorMsg = 'Chrome extension APIs not available. Please install as Chrome extension.';
+        console.error('❌', errorMsg);
+        this.showStatus(errorMsg, 'error');
+        throw new Error(errorMsg);
       }
+      
+      console.log('✅ Chrome APIs available');
       
       // Get current tab info
+      console.log('🔍 Getting current tab info...');
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      console.log('Current tab:', tab.title, tab.url);
       
-      // Capture screenshot via background script
-      const response = await chrome.runtime.sendMessage({ 
-        action: 'captureVisibleTab' 
+      if (!tab) {
+        const errorMsg = 'No active tab found';
+        console.error('❌', errorMsg);
+        this.showStatus(errorMsg, 'error');
+        throw new Error(errorMsg);
+      }
+      
+      console.log('✅ Current tab found:', {
+        title: tab.title,
+        url: tab.url,
+        id: tab.id
       });
       
-      console.log('Capture response:', response ? 'Success' : 'Failed');
+      // Capture screenshot via background script
+      console.log('📸 Sending capture message to background script...');
       
-      if (response && response.imageData) {
-        // Create screenshot object with detailed timestamp
-        const now = new Date();
-        
-        // Get original dimensions
-        const originalDimensions = await this.getImageDimensions(response.imageData);
-        console.log('📐 Original capture dimensions (100% quality):', originalDimensions);
-        
-        const screenshot = {
-          id: Date.now().toString(),
-          imageData: response.imageData, // 100% original quality
-          originalCaptureWidth: originalDimensions.width,
-          originalCaptureHeight: originalDimensions.height,
-          storageWidth: originalDimensions.width,
-          storageHeight: originalDimensions.height,
-          displayWidth: originalDimensions.width,
-          displayHeight: originalDimensions.height,
-          url: tab.url,
-          title: tab.title,
-          timestamp: now.toISOString(),
-          captureDate: now.toLocaleDateString('en-US', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-          }),
-          captureTime: now.toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
-            minute: '2-digit', 
-            second: '2-digit',
-            hour12: true 
-          }),
-          captureTimestamp: now.getTime(),
-          annotations: []
-        };
-        
-        console.log('✅ Screenshot object created:', {
-          id: screenshot.id,
-          dimensions: `${screenshot.displayWidth}x${screenshot.displayHeight}`,
-          imageDataSize: screenshot.imageData.length,
-          title: screenshot.title.substring(0, 50) + '...'
+      const response = await new Promise((resolve) => {
+        chrome.runtime.sendMessage({ 
+          action: 'captureVisibleTab' 
+        }, (response) => {
+          if (chrome.runtime.lastError) {
+            console.error('❌ Runtime error:', chrome.runtime.lastError);
+            resolve({ error: chrome.runtime.lastError.message });
+          } else {
+            console.log('✅ Background script response received:', {
+              success: response?.success,
+              hasImageData: !!response?.imageData,
+              imageDataSize: response?.imageData?.length,
+              error: response?.error
+            });
+            resolve(response);
+          }
         });
-        
-        this.screenshots.push(screenshot);
-        await this.saveScreenshots();
-        
-        this.showStatus('Screenshot captured! Starting annotation mode...', 'success');
-        this.selectedScreenshot = screenshot;
-        
-        // Enable annotation button
-        const annotateBtn = document.getElementById('annotateBtn');
-        if (annotateBtn) {
-          annotateBtn.disabled = false;
-        }
-        
-        console.log('Screenshot capture completed successfully');
-        
-        // Auto-start annotation mode
-        console.log('🎯 Auto-starting annotation mode...');
-        setTimeout(() => {
-          this.startAnnotation();
-        }, 500);
-        
-      } else {
-        throw new Error(response?.error || 'Failed to capture screenshot');
+      });
+      
+      console.log('📊 Full capture response:', {
+        responseExists: !!response,
+        responseType: typeof response,
+        responseKeys: response ? Object.keys(response) : 'none',
+        success: response?.success,
+        hasImageData: !!response?.imageData,
+        hasError: !!response?.error
+      });
+      
+      if (!response) {
+        const errorMsg = 'No response from background script';
+        console.error('❌', errorMsg);
+        this.showStatus(errorMsg, 'error');
+        throw new Error(errorMsg);
       }
+      
+      if (response.error) {
+        const errorMsg = `Capture failed: ${response.error}`;
+        console.error('❌', errorMsg);
+        this.showStatus(errorMsg, 'error');
+        throw new Error(errorMsg);
+      }
+      
+      if (!response.success || !response.imageData) {
+        const errorMsg = 'Invalid response from background script';
+        console.error('❌', errorMsg, { response });
+        this.showStatus(errorMsg, 'error');
+        throw new Error(errorMsg);
+      }
+      
+      console.log('✅ Screenshot data received successfully');
+      console.log('📏 Image data size:', response.imageData.length, 'characters');
+      
+      // Create screenshot object with detailed timestamp
+      const now = new Date();
+      
+      console.log('📐 Getting image dimensions...');
+      
+      // Get original dimensions
+      const originalDimensions = await this.getImageDimensions(response.imageData);
+      console.log('✅ Original capture dimensions (100% quality):', originalDimensions);
+      
+      const screenshot = {
+        id: Date.now().toString(),
+        imageData: response.imageData, // 100% original quality
+        originalCaptureWidth: originalDimensions.width,
+        originalCaptureHeight: originalDimensions.height,
+        storageWidth: originalDimensions.width,
+        storageHeight: originalDimensions.height,
+        displayWidth: originalDimensions.width,
+        displayHeight: originalDimensions.height,
+        url: tab.url,
+        title: tab.title,
+        timestamp: now.toISOString(),
+        captureDate: now.toLocaleDateString('en-US', { 
+          weekday: 'long', 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        }),
+        captureTime: now.toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          second: '2-digit',
+          hour12: true 
+        }),
+        captureTimestamp: now.getTime(),
+        annotations: []
+      };
+      
+      console.log('✅ Screenshot object created:', {
+        id: screenshot.id,
+        dimensions: `${screenshot.displayWidth}x${screenshot.displayHeight}`,
+        imageDataSize: screenshot.imageData.length,
+        title: screenshot.title.substring(0, 50) + '...'
+      });
+      
+      console.log('💾 Adding screenshot to array (current count:', this.screenshots.length, ')');
+      this.screenshots.push(screenshot);
+      
+      console.log('💾 Saving screenshots to storage...');
+      await this.saveScreenshots();
+      
+      console.log('🎯 Setting selected screenshot...');
+      this.selectedScreenshot = screenshot;
+      
+      // Enable annotation button
+      const annotateBtn = document.getElementById('annotateBtn');
+      if (annotateBtn) {
+        annotateBtn.disabled = false;
+        console.log('✅ Annotation button enabled');
+      }
+      
+      console.log('🔄 Updating UI...');
+      this.updateUI();
+      
+      this.showStatus('Screenshot captured! Starting annotation mode...', 'success');
+      console.log('✅ Screenshot capture completed successfully');
+      console.log('📊 Total screenshots now:', this.screenshots.length);
+      
+      // Auto-start annotation mode
+      console.log('🎯 Auto-starting annotation mode...');
+      setTimeout(() => {
+        this.startAnnotation();
+      }, 500);
+      
     } catch (error) {
-      console.error('Capture error:', error);
+      console.error('❌ Capture error details:', error);
+      console.error('❌ Error stack:', error.stack);
       this.showStatus(`Failed to capture: ${error.message}`, 'error');
     }
   }
