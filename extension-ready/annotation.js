@@ -97,8 +97,25 @@ class UniversalAnnotator {
         // Settings panel setup
         this.setupSettingsPanel(settingsBtn);
         
-        // Close button
+        // Close button - Send message to popup instead of closing everything
         closeBtn.addEventListener('click', () => {
+            console.log('🔄 Annotation window closing - maintaining popup continuity');
+            
+            try {
+                // Try to notify the popup that annotation is done
+                if (typeof chrome !== 'undefined' && chrome.runtime) {
+                    chrome.runtime.sendMessage({
+                        action: 'annotationWindowClosed',
+                        timestamp: new Date().toISOString()
+                    }, (response) => {
+                        console.log('✅ Notified popup of annotation window closure');
+                    });
+                }
+            } catch (error) {
+                console.log('ℹ️ Could not notify popup (expected if popup closed):', error.message);
+            }
+            
+            // Close only the annotation window, not the popup
             window.close();
         });
         
