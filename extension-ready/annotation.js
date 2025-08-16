@@ -582,8 +582,6 @@ class UniversalAnnotator {
         console.log('✅ COMPLETE annotation system created: red dot + text + dashed arrow + lime crosshair');
         console.log('🎯 Compare lime crosshair (5 sec) with red dot position for accuracy verification');
     }
-    }
-    }
     
     createArrow() {
         const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
