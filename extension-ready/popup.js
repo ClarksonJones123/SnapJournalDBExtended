@@ -739,34 +739,41 @@ class ScreenshotAnnotator {
     
     try {
       console.log('🔄 Starting PDF journal export with annotated images...');
+      console.log('📊 Export starting with screenshots:', this.screenshots.length);
       this.showStatus('Generating PDF journal with annotations...', 'info');
       
-      // 🧹 AGGRESSIVE STORAGE CLEANUP: Clear storage before export to prevent quota issues
-      console.log('🧹 Pre-export aggressive storage cleanup...');
-      await this.emergencyStorageCleanup(); // Use emergency cleanup for maximum space
+      // 🧹 MINIMAL CLEANUP: Only clear temporary data, keep all screenshots
+      console.log('🧹 Pre-export cleanup of temporary data only...');
+      
+      // Clear only temporary export data, not screenshots
+      const storage = await chrome.storage.local.get();
+      const keysToRemove = [];
+      for (const key in storage) {
+        if (key.startsWith('pdf_export_')) {
+          keysToRemove.push(key);
+        }
+      }
+      
+      if (keysToRemove.length > 0) {
+        await chrome.storage.local.remove(keysToRemove);
+        console.log(`🧹 Removed ${keysToRemove.length} temporary export files`);
+      }
       
       // Force garbage collection by clearing references
       if (window.gc) {
         window.gc();
       }
       
-      // Check storage quota after cleanup
-      const storageInfo = await this.checkStorageQuota();
-      console.log('📊 Storage status after cleanup:', storageInfo);
-      
-      if (storageInfo.quotaExceeded) {
-        console.error('❌ Storage still full after cleanup');
-        this.showStatus('Storage full. Please clear more screenshots manually.', 'error');
-        return;
-      }
-      
-      // Create annotated versions of all screenshots for PDF
+      // Create annotated versions of ALL screenshots for PDF
       const annotatedScreenshots = [];
+      console.log(`🎨 Processing ${this.screenshots.length} screenshots for PDF...`);
+      
       for (let i = 0; i < this.screenshots.length; i++) {
         const screenshot = this.screenshots[i];
-        console.log(`🎨 Processing screenshot ${i + 1}/${this.screenshots.length} for PDF...`);
+        console.log(`🎨 Processing screenshot ${i + 1}/${this.screenshots.length}: ${screenshot.title}`);
         
         try {
+          // Create annotated version without modifying original
           const annotatedImageData = await this.createAnnotatedImageForPDF(screenshot);
           
           annotatedScreenshots.push({
@@ -775,15 +782,22 @@ class ScreenshotAnnotator {
             originalImageData: screenshot.imageData // Keep original as backup
           });
           
+          console.log(`✅ Successfully processed screenshot ${i + 1}: ${screenshot.title}`);
+          
           // Show progress
           this.showStatus(`Processing images for PDF: ${i + 1}/${this.screenshots.length}`, 'info');
           
-          // 🧹 IMMEDIATE MEMORY CLEANUP: Clear processed data immediately
-          screenshot.imageData = null; // Free memory after processing
-          
         } catch (imageError) {
           console.error(`❌ Error processing screenshot ${i + 1}:`, imageError);
-          // Continue with next screenshot
+          
+          // Add screenshot even if annotation processing fails
+          annotatedScreenshots.push({
+            ...screenshot,
+            imageData: screenshot.imageData, // Use original if annotation fails
+            originalImageData: screenshot.imageData
+          });
+          
+          console.log(`⚠️ Added screenshot ${i + 1} without annotations due to error`);
         }
       }
       
