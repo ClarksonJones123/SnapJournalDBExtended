@@ -221,6 +221,41 @@ class ScreenshotAnnotator {
     }
   }
 
+  // 🚨 EXTREME EMERGENCY - Only when storage is completely full
+  async extremeEmergencyCleanup() {
+    try {
+      console.log('🚨 EXTREME EMERGENCY CLEANUP - Clearing everything...');
+      
+      // Keep only the 1 most recent screenshot
+      this.screenshots.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      const removedCount = this.screenshots.length - 1;
+      this.screenshots = this.screenshots.slice(0, 1);
+      
+      console.log(`🚨 Extreme cleanup: Removed ${removedCount} screenshots, kept ${this.screenshots.length}`);
+      
+      // Clear ALL storage except screenshots
+      const storage = await chrome.storage.local.get();
+      const keysToRemove = [];
+      for (const key in storage) {
+        if (key !== 'screenshots') {
+          keysToRemove.push(key);
+        }
+      }
+      
+      if (keysToRemove.length > 0) {
+        await chrome.storage.local.remove(keysToRemove);
+        console.log(`🚨 Extreme: Cleared ${keysToRemove.length} storage items`);
+      }
+      
+      // Update selected screenshot
+      this.selectedScreenshot = this.screenshots[0] || null;
+      this.memoryUsage = 0;
+      
+    } catch (error) {
+      console.error('Error during extreme cleanup:', error);
+    }
+  }
+
   async emergencyStorageCleanup() {
     try {
       console.log('🚨 EMERGENCY STORAGE CLEANUP...');
