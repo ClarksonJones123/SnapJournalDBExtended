@@ -80,7 +80,16 @@ function updateDebugDisplay() {
 
 // AUTO-RUN DIAGNOSTICS
 document.addEventListener('DOMContentLoaded', () => {
-    debugLog('🔍 Starting embedded diagnostics...');
+    // Load previous debug history for continuity
+    const hasHistory = loadDebugHistory();
+    
+    if (!hasHistory) {
+        debugLog('🔍 Starting embedded diagnostics...');
+    }
+    
+    // Log current session info
+    debugLog(`🚀 Popup opened at ${new Date().toLocaleString()}`);
+    debugLog('📊 Previous screenshots and annotations should persist');
     
     // Check environment
     debugLog('Checking Chrome APIs...');
