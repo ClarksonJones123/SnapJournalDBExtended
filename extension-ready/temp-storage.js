@@ -254,10 +254,122 @@ class TempStorageManager {
     }
   }
   
-  async clearAll() {
+  // PDF Export Data Management (for large datasets that exceed Chrome storage)
+  async storePdfExportData(exportId, exportData) {
     if (!this.db) {
-      throw new Error('Database not initialized');
+      throw new Error('Database not initialized for PDF export data storage');
     }
+    
+    try {
+      console.log('💾 Storing PDF export data in IndexedDB:', exportId);
+      console.log('📊 Export data size:', Math.round(JSON.stringify(exportData).length / 1024 / 1024), 'MB');
+      
+      const transaction = this.db.transaction(['pdfExports'], 'readwrite');
+      const store = transaction.objectStore('pdfExports');
+      
+      const exportRecord = {
+        id: exportId,
+        data: exportData,
+        timestamp: Date.now(),
+        created: new Date().toISOString()
+      };
+      
+      await store.put(exportRecord);
+      console.log('✅ PDF export data stored successfully in IndexedDB');
+      
+      return { success: true, exportId };
+      
+    } catch (error) {
+      console.error('❌ Error storing PDF export data:', error);
+      throw new Error(`Failed to store PDF export data: ${error.message}`);
+    }
+  }
+  
+  async getPdfExportData(exportId) {
+    if (!this.db) {
+      throw new Error('Database not initialized for PDF export data retrieval');
+    }
+    
+    try {
+      console.log('📂 Retrieving PDF export data from IndexedDB:', exportId);
+      
+      const transaction = this.db.transaction(['pdfExports'], 'readonly');
+      const store = transaction.objectStore('pdfExports');
+      
+      const result = await store.get(exportId);
+      
+      if (!result) {
+        console.error('❌ PDF export data not found:', exportId);
+        throw new Error(`PDF export data not found for ID: ${exportId}`);
+      }
+      
+      console.log('✅ PDF export data retrieved successfully');
+      console.log('📊 Retrieved data size:', Math.round(JSON.stringify(result.data).length / 1024 / 1024), 'MB');
+      
+      return result.data;
+      
+    } catch (error) {
+      console.error('❌ Error retrieving PDF export data:', error);
+      throw new Error(`Failed to retrieve PDF export data: ${error.message}`);
+    }
+  }
+  
+  async deletePdfExportData(exportId) {
+    if (!this.db) {
+      throw new Error('Database not initialized for PDF export data deletion');
+    }
+    
+    try {
+      console.log('🗑️ Deleting PDF export data from IndexedDB:', exportId);
+      
+      const transaction = this.db.transaction(['pdfExports'], 'readwrite');
+      const store = transaction.objectStore('pdfExports');
+      
+      await store.delete(exportId);
+      console.log('✅ PDF export data deleted successfully');
+      
+      return { success: true };
+      
+    } catch (error) {
+      console.error('❌ Error deleting PDF export data:', error);
+      throw new Error(`Failed to delete PDF export data: ${error.message}`);
+    }
+  }
+  
+  async cleanupOldPdfExports() {
+    if (!this.db) {
+      return;
+    }
+    
+    try {
+      console.log('🧹 Cleaning up old PDF export data...');
+      
+      const transaction = this.db.transaction(['pdfExports'], 'readwrite');
+      const store = transaction.objectStore('pdfExports');
+      
+      // Delete exports older than 1 hour
+      const cutoffTime = Date.now() - (60 * 60 * 1000);
+      const cursor = await store.openCursor();
+      
+      let deletedCount = 0;
+      while (cursor) {
+        const record = cursor.value;
+        if (record.timestamp < cutoffTime) {
+          await cursor.delete();
+          deletedCount++;
+          console.log('🗑️ Deleted old PDF export:', record.id);
+        }
+        cursor.continue();
+      }
+      
+      if (deletedCount > 0) {
+        console.log(`✅ Cleaned up ${deletedCount} old PDF exports`);
+      }
+      
+    } catch (error) {
+      console.error('❌ Error cleaning up old PDF exports:', error);
+    }
+  }
     
     try {
       console.log('🧹 Clearing ALL PRIMARY storage...');
