@@ -202,8 +202,10 @@
       margin: 8px 0;
       font-size: 12px;
       font-weight: 500;
+      text-align: center;
     }
     
+    /* Legacy status classes */
     .status.success {
       background: #e8f5e8;
       color: #2e7d32;
@@ -220,6 +222,65 @@
       background: #e3f2fd;
       color: #1565c0;
       border: 1px solid #bbdefb;
+    }
+
+    /* New status classes for automatic schema repair */
+    .status-success {
+      padding: 8px 12px;
+      border-radius: 4px;
+      margin: 8px 0;
+      font-size: 12px;
+      font-weight: 500;
+      text-align: center;
+      background: #e8f5e8;
+      color: #2e7d32;
+      border: 1px solid #c8e6c9;
+      animation: statusPulse 0.3s ease-in-out;
+    }
+    
+    .status-error {
+      padding: 8px 12px;
+      border-radius: 4px;
+      margin: 8px 0;
+      font-size: 12px;
+      font-weight: 500;
+      text-align: center;
+      background: #ffebee;
+      color: #c62828;
+      border: 1px solid #ffcdd2;
+      animation: statusPulse 0.3s ease-in-out;
+    }
+    
+    .status-info {
+      padding: 8px 12px;
+      border-radius: 4px;
+      margin: 8px 0;
+      font-size: 12px;
+      font-weight: 500;
+      text-align: center;
+      background: #e3f2fd;
+      color: #1565c0;
+      border: 1px solid #bbdefb;
+      animation: statusPulse 0.3s ease-in-out;
+    }
+    
+    .status-warning {
+      padding: 8px 12px;
+      border-radius: 4px;
+      margin: 8px 0;
+      font-size: 12px;
+      font-weight: 500;
+      text-align: center;
+      background: #fff3e0;
+      color: #f57c00;
+      border: 1px solid #ffcc80;
+      animation: statusPulse 0.3s ease-in-out;
+    }
+    
+    @keyframes statusPulse {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.02); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
     }
     
     .hidden {
