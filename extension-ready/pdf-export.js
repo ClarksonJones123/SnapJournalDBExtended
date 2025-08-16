@@ -286,14 +286,28 @@ class PDFJournalExporter {
     }
     
     setupInterface() {
-        // Update export information
-        document.getElementById('totalScreenshots').textContent = this.screenshots.length;
-        document.getElementById('totalAnnotations').textContent = this.exportData.totalAnnotations || 0;
-        document.getElementById('exportDate').textContent = new Date().toLocaleDateString();
+        // Update export information with null checks
+        const totalScreenshotsEl = document.getElementById('totalScreenshots');
+        if (totalScreenshotsEl) {
+            totalScreenshotsEl.textContent = this.screenshots.length;
+        }
+        
+        const totalAnnotationsEl = document.getElementById('totalAnnotations');
+        if (totalAnnotationsEl) {
+            totalAnnotationsEl.textContent = this.exportData.totalAnnotations || 0;
+        }
+        
+        const exportDateEl = document.getElementById('exportDate');
+        if (exportDateEl) {
+            exportDateEl.textContent = new Date().toLocaleDateString();
+        }
         
         // Calculate journal size estimate
         const sizeEstimate = this.screenshots.length * 0.5; // Rough estimate in MB
-        document.getElementById('journalSize').textContent = `~${sizeEstimate.toFixed(1)} MB`;
+        const journalSizeEl = document.getElementById('journalSize');
+        if (journalSizeEl) {
+            journalSizeEl.textContent = `~${sizeEstimate.toFixed(1)} MB`;
+        }
         
         // Update page title
         document.title = `PDF Journal Export - ${this.screenshots.length} Screenshots`;
