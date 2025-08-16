@@ -187,29 +187,34 @@ class UniversalAnnotator {
                 clientWidth: img.clientWidth,
                 clientHeight: img.clientHeight
             });
-            console.log('📊 SCREENSHOT STORED DIMENSIONS:', {
-                displayWidth: this.screenshot.displayWidth,
-                displayHeight: this.screenshot.displayHeight,
-                originalWidth: this.screenshot.originalWidth,
-                originalHeight: this.screenshot.originalHeight
+            console.log('📊 SCREENSHOT COORDINATE REFERENCE SYSTEM:', {
+                originalCaptureWidth: this.screenshot.originalCaptureWidth,
+                originalCaptureHeight: this.screenshot.originalCaptureHeight,
+                storageWidth: this.screenshot.storageWidth,
+                storageHeight: this.screenshot.storageHeight,
+                displayWidth: this.screenshot.displayWidth,     // Should equal originalCapture
+                displayHeight: this.screenshot.displayHeight    // Should equal originalCapture
             });
             console.log('📐 BROWSER RECTS:', {
                 imgRect: rect,
                 containerRect: containerRect
             });
             
-            // Calculate what the coordinates should be relative to the stored image
-            const scaleFactorX = this.screenshot.displayWidth / img.offsetWidth;
-            const scaleFactorY = this.screenshot.displayHeight / img.offsetHeight;
+            // FIXED: Calculate what the coordinates should be relative to ORIGINAL CAPTURE dimensions
+            const scaleFactorX = this.screenshot.originalCaptureWidth / img.offsetWidth;
+            const scaleFactorY = this.screenshot.originalCaptureHeight / img.offsetHeight;
             
             const scaledX = x * scaleFactorX;
             const scaledY = y * scaleFactorY;
             
-            console.log('🔢 SCALE CALCULATIONS:', {
+            console.log('🔢 CORRECTED SCALE CALCULATIONS:', {
+                referenceSystem: 'ORIGINAL_CAPTURE_DIMENSIONS',
+                originalCaptureSize: `${this.screenshot.originalCaptureWidth}x${this.screenshot.originalCaptureHeight}`,
+                currentDisplaySize: `${img.offsetWidth}x${img.offsetHeight}`,
                 scaleFactorX: scaleFactorX.toFixed(3),
                 scaleFactorY: scaleFactorY.toFixed(3),
                 clickedAt: `(${x}, ${y})`,
-                scaledTo: `(${scaledX.toFixed(1)}, ${scaledY.toFixed(1)})`
+                scaledToOriginalCapture: `(${scaledX.toFixed(1)}, ${scaledY.toFixed(1)})`
             });
             
             let annotationText = this.pendingAnnotationText;
