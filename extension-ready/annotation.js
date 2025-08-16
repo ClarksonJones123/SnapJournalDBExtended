@@ -425,12 +425,9 @@ class UniversalAnnotator {
             dragOffset.x = e.clientX - rect.left - elementX;
             dragOffset.y = e.clientY - rect.top - elementY;
             
+            // Add dragging class for enhanced visibility
+            element.classList.add('dragging');
             element.style.cursor = 'grabbing';
-            if (type === 'text') {
-                element.style.transform = 'translate(-50%, -50%) scale(1.05)';
-            } else {
-                element.style.transform = 'translate(-50%, -50%) scale(1.5)';
-            }
         });
         
         const handleMouseMove = (e) => {
@@ -463,8 +460,9 @@ class UniversalAnnotator {
         const handleMouseUp = () => {
             if (isDragging) {
                 isDragging = false;
+                // Remove dragging class
+                element.classList.remove('dragging');
                 element.style.cursor = type === 'text' ? 'move' : 'crosshair';
-                element.style.transform = 'translate(-50%, -50%) scale(1)';
                 
                 console.log(`✅ ${type === 'text' ? 'Text' : 'Red dot'} final position (precise):`, {
                     x: (type === 'text' ? annotation.textX : annotation.x),
