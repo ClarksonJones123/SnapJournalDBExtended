@@ -199,65 +199,150 @@ class TempStorageManager {
     }
   }
 
-  // NEW: Automatic schema repair without user intervention
+  // NEW: Enhanced automatic schema repair without user intervention
   async performAutomaticSchemaRepair() {
     return new Promise((resolve, reject) => {
       try {
-        console.log('🔧 Starting automatic database schema repair...');
+        console.log('🔧 === ENHANCED AUTOMATIC DATABASE SCHEMA REPAIR START ===');
+        console.log('📊 Current database state:', {
+          name: this.dbName,
+          version: this.db?.version,
+          targetVersion: this.dbVersion,
+          existingStores: this.db ? [...this.db.objectStoreNames] : []
+        });
         
-        // Close current database connection
+        // Close current database connection safely
         if (this.db) {
           this.db.close();
+          console.log('🔐 Safely closed existing database connection for repair');
         }
         
         // Delete and recreate database with correct schema
         const deleteRequest = indexedDB.deleteDatabase(this.dbName);
         
         deleteRequest.onsuccess = () => {
-          console.log('✅ Old database deleted for schema repair');
+          console.log('🗑️ Successfully deleted old database for automatic repair');
+          console.log('🏗️ Creating fresh database with complete v2 schema...');
           
           // Recreate with correct schema
           const createRequest = indexedDB.open(this.dbName, this.dbVersion);
           
           createRequest.onsuccess = (event) => {
             this.db = event.target.result;
-            console.log('✅ Database recreated with correct schema automatically');
-            resolve();
+            this.isReady = true;
+            
+            const createdStores = [...this.db.objectStoreNames];
+            console.log('✅ Database successfully recreated with automatic repair');
+            console.log('📊 New database details:', {
+              name: this.dbName,
+              version: this.db.version,
+              stores: createdStores,
+              isReady: this.isReady
+            });
+            
+            // Verify all required stores are present
+            const requiredStores = ['screenshots', 'sessions', 'tempImages', 'pdfExports'];
+            const allPresent = requiredStores.every(store => createdStores.includes(store));
+            
+            if (allPresent) {
+              console.log('🎉 AUTOMATIC REPAIR SUCCESS: All required object stores created');
+              resolve({
+                success: true,
+                version: this.db.version,
+                stores: createdStores,
+                message: 'Database automatically repaired with full functionality'
+              });
+            } else {
+              const missing = requiredStores.filter(store => !createdStores.includes(store));
+              console.error('❌ AUTOMATIC REPAIR INCOMPLETE: Missing stores:', missing);
+              resolve({
+                success: false,
+                missing: missing,
+                stores: createdStores,
+                message: `Repair incomplete - missing: ${missing.join(', ')}`
+              });
+            }
           };
           
           createRequest.onerror = (event) => {
-            console.error('❌ Database recreation failed:', event.target.error);
-            reject(event.target.error);
+            console.error('❌ Database creation failed during automatic repair:', event.target.error);
+            this.isReady = false;
+            reject(new Error(`Database creation failed: ${event.target.error.message}`));
           };
           
           createRequest.onupgradeneeded = (event) => {
             const db = event.target.result;
-            console.log('🔄 Creating complete schema during automatic repair...');
+            const oldVersion = event.oldVersion;
+            const newVersion = event.newVersion;
             
-            // Create all required object stores
-            const screenshotStore = db.createObjectStore('screenshots', { keyPath: 'id' });
-            screenshotStore.createIndex('timestamp', 'timestamp', { unique: false });
+            console.log(`🔄 Creating complete schema during automatic repair (v${oldVersion} → v${newVersion})...`);
             
-            const sessionStore = db.createObjectStore('sessions', { keyPath: 'id' });
-            sessionStore.createIndex('timestamp', 'timestamp', { unique: false });
-            
-            const tempStore = db.createObjectStore('tempImages', { keyPath: 'id' });
-            tempStore.createIndex('timestamp', 'timestamp', { unique: false });
-            
-            const pdfExportStore = db.createObjectStore('pdfExports', { keyPath: 'id' });
-            pdfExportStore.createIndex('timestamp', 'timestamp', { unique: false });
-            
-            console.log('✅ All object stores created during automatic repair');
+            try {
+              // Create all required object stores with proper indexes
+              
+              // Screenshots object store (Primary data)
+              if (!db.objectStoreNames.contains('screenshots')) {
+                const screenshotStore = db.createObjectStore('screenshots', { keyPath: 'id' });
+                screenshotStore.createIndex('timestamp', 'timestamp', { unique: false });
+                screenshotStore.createIndex('sessionId', 'sessionId', { unique: false });
+                console.log('✅ Created screenshots object store with indexes');
+              }
+              
+              // Sessions object store (Multi-tab support)
+              if (!db.objectStoreNames.contains('sessions')) {
+                const sessionStore = db.createObjectStore('sessions', { keyPath: 'id' });
+                sessionStore.createIndex('timestamp', 'timestamp', { unique: false });
+                sessionStore.createIndex('lastActive', 'lastActive', { unique: false });
+                console.log('✅ Created sessions object store with indexes');
+              }
+              
+              // Temp storage (Legacy compatibility)
+              if (!db.objectStoreNames.contains('tempImages')) {
+                const tempStore = db.createObjectStore('tempImages', { keyPath: 'id' });
+                tempStore.createIndex('timestamp', 'timestamp', { unique: false });
+                tempStore.createIndex('screenshotId', 'screenshotId', { unique: false });
+                console.log('✅ Created tempImages object store with indexes');
+              }
+              
+              // PDF Exports object store (CRITICAL FOR PDF EXPORT FUNCTIONALITY)
+              if (!db.objectStoreNames.contains('pdfExports')) {
+                const pdfExportStore = db.createObjectStore('pdfExports', { keyPath: 'id' });
+                pdfExportStore.createIndex('timestamp', 'timestamp', { unique: false });
+                pdfExportStore.createIndex('created', 'created', { unique: false });
+                console.log('✅ CRITICAL: Created pdfExports object store - PDF export functionality restored');
+              }
+              
+              console.log('🏗️ Complete schema created during automatic repair');
+              console.log('📊 All object stores created:', [...db.objectStoreNames]);
+              
+            } catch (schemaError) {
+              console.error('❌ Schema creation failed during automatic repair:', schemaError);
+              throw schemaError;
+            }
           };
         };
         
         deleteRequest.onerror = (event) => {
-          console.error('❌ Database deletion failed during repair:', event.target.error);
-          reject(event.target.error);
+          console.error('❌ Database deletion failed during automatic repair:', event.target.error);
+          this.isReady = false;
+          reject(new Error(`Database deletion failed: ${event.target.error.message}`));
+        };
+        
+        deleteRequest.onblocked = (event) => {
+          console.warn('⚠️ Database deletion blocked during automatic repair - other connections open');
+          console.log('🔄 Attempting to proceed with repair despite blocking...');
+          
+          // Try to proceed anyway after a short delay
+          setTimeout(() => {
+            console.log('🔄 Attempting repair after blocked deletion...');
+            // The repair might still work if the database closes naturally
+            reject(new Error('Database repair blocked by other connections. Please close all browser tabs and try again.'));
+          }, 2000);
         };
         
       } catch (error) {
-        console.error('❌ Automatic schema repair failed:', error);
+        console.error('❌ Automatic schema repair setup failed:', error);
+        this.isReady = false;
         reject(error);
       }
     });
