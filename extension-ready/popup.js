@@ -1125,7 +1125,15 @@ class ScreenshotAnnotator {
 // Initialize when popup loads
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM loaded, initializing app...');
-  window.screenshotAnnotator = new ScreenshotAnnotator();
+  const annotator = new ScreenshotAnnotator();
+  window.screenshotAnnotator = annotator;
+  
+  // 🧹 EXPOSE MANUAL CLEAR METHOD FOR CONSOLE ACCESS
+  window.clearExtensionStorage = () => {
+    annotator.manualStorageClear();
+  };
+  
+  console.log('💡 To clear all storage manually, run: clearExtensionStorage()');
 });
 
 // Also refresh UI when popup becomes visible (handles popup lifecycle)
