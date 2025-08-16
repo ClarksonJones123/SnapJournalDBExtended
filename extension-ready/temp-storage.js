@@ -103,12 +103,13 @@ class TempStorageManager {
       const existingStores = [...this.db.objectStoreNames];
       const missingStores = requiredStores.filter(store => !existingStores.includes(store));
       
-      console.log('📊 Schema validation analysis:', {
+      console.log('📊 Schema validation analysis:');
+      console.log(JSON.stringify({
         required: requiredStores,
         existing: existingStores,
         missing: missingStores,
         dbVersion: this.db.version
-      });
+      }, null, 2));
       
       // Additional check: Test critical PDF export functionality
       let pdfExportWorking = true;
