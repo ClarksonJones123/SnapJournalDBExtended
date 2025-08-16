@@ -436,9 +436,10 @@ class ScreenshotAnnotator {
           
           // Render each annotation with DIRECT coordinates (minimal scaling needed)
           screenshot.annotations.forEach((annotation, index) => {
-            console.log(`🎯 Rendering annotation ${index + 1}:`, {
-              originalCoords: { x: annotation.x, y: annotation.y },
-              text: annotation.text.substring(0, 30) + (annotation.text.length > 30 ? '...' : '')
+            console.log(`🎯 Rendering annotation ${index + 1} (FROM FINAL RED DOT POSITION):`, {
+              storedCoords: { x: annotation.x, y: annotation.y },
+              text: annotation.text.substring(0, 30) + (annotation.text.length > 30 ? '...' : ''),
+              annotationId: annotation.id
             });
             
             // Apply scaling (should be close to 1:1 now)
