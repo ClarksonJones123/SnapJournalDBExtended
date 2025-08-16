@@ -448,12 +448,29 @@ class ScreenshotAnnotator {
           screenshot.annotations.forEach((annotation, index) => {
             console.log(`🎯 Annotation ${index + 1} - Investigating coordinate offset`);
             
-            // COORDINATE OFFSET CORRECTION
+            // COORDINATE OFFSET CORRECTION SYSTEM
             // User reports 0.38 inch offset (lower and right)
-            // At typical screen DPI (~96), 0.38 inch ≈ 36 pixels
-            // Let's apply a correction factor
-            const offsetCorrectionX = -36; // Move left to compensate for rightward shift
-            const offsetCorrectionY = -36; // Move up to compensate for downward shift
+            // This suggests a systematic coordinate transformation issue
+            
+            // Calculate correction based on image dimensions and DPI
+            const imageWidthInches = canvas.width / 96; // Assuming 96 DPI
+            const imageHeightInches = canvas.height / 96;
+            
+            // 0.38 inch offset as percentage of image size
+            const offsetPercentageX = 0.38 / imageWidthInches;
+            const offsetPercentageY = 0.38 / imageHeightInches;
+            
+            // Apply percentage-based correction
+            const offsetCorrectionX = -Math.round(canvas.width * offsetPercentageX);
+            const offsetCorrectionY = -Math.round(canvas.height * offsetPercentageY);
+            
+            console.log(`📍 Dynamic coordinate correction:`, {
+              imageSize: `${canvas.width}x${canvas.height}`,
+              imageSizeInches: `${imageWidthInches.toFixed(2)}"x${imageHeightInches.toFixed(2)}"`,
+              offsetPercentage: `${(offsetPercentageX*100).toFixed(2)}%x${(offsetPercentageY*100).toFixed(2)}%`,
+              offsetPixels: `${offsetCorrectionX}px, ${offsetCorrectionY}px`,
+              targetOffsetInches: "0.38 inch correction"
+            });
             
             // Apply correction to coordinates
             const correctedX = annotation.x + offsetCorrectionX;
