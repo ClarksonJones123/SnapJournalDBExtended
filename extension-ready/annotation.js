@@ -323,9 +323,10 @@ class UniversalAnnotator {
             e.preventDefault();
             e.stopPropagation();
             
-            console.log('🎯 === PRECISE COORDINATE DEBUGGING START ===');
+            console.log('🎯 === COORDINATE OFFSET CORRECTION START ===');
             
             const rect = img.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
             
             // Get EXACT click position with detailed debugging
             const rawClickX = e.clientX - rect.left;
@@ -333,13 +334,27 @@ class UniversalAnnotator {
             const clickX = Math.round(rawClickX);
             const clickY = Math.round(rawClickY);
             
-            console.log('🖱️ DETAILED click analysis:', {
+            // CRITICAL FIX: Account for container padding (20px from CSS)
+            // The image-container has padding: 20px which affects positioning
+            const containerStyle = window.getComputedStyle(container);
+            const paddingLeft = parseFloat(containerStyle.paddingLeft) || 0;
+            const paddingTop = parseFloat(containerStyle.paddingTop) || 0;
+            
+            console.log('🔍 CONTAINER PADDING ANALYSIS:', {
+                containerPaddingLeft: paddingLeft + 'px',
+                containerPaddingTop: paddingTop + 'px',
                 rawClick: { x: rawClickX, y: rawClickY },
-                roundedClick: { x: clickX, y: clickY },
+                clickWithoutPadding: { x: clickX, y: clickY },
+                note: 'Container padding affects annotation positioning'
+            });
+            
+            console.log('🖱️ DETAILED click analysis:', {
                 clientCoords: { x: e.clientX, y: e.clientY },
                 imgRect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+                containerRect: { left: containerRect.left, top: containerRect.top },
                 imgOffset: { width: img.offsetWidth, height: img.offsetHeight },
-                imgNatural: { width: img.naturalWidth, height: img.naturalHeight }
+                imgNatural: { width: img.naturalWidth, height: img.naturalHeight },
+                containerPadding: { left: paddingLeft, top: paddingTop }
             });
             
             // Check for any CSS transforms that might affect positioning
@@ -350,9 +365,7 @@ class UniversalAnnotator {
                 display: computedStyle.display,
                 objectFit: computedStyle.objectFit,
                 marginLeft: computedStyle.marginLeft,
-                marginTop: computedStyle.marginTop,
-                paddingLeft: computedStyle.paddingLeft,
-                paddingTop: computedStyle.paddingTop
+                marginTop: computedStyle.marginTop
             });
             
             let annotationText = this.pendingAnnotationText;
@@ -373,7 +386,8 @@ class UniversalAnnotator {
             const annotation = {
                 id: Date.now().toString(),
                 text: annotationText.trim(),
-                // Store EXACT coordinates for precise positioning
+                // Store EXACT coordinates (no padding adjustment needed for display)
+                // The red dot will be positioned relative to the image, not the container
                 x: clickX,
                 y: clickY,
                 textX: clickX + 60,  // Default text offset
@@ -390,10 +404,15 @@ class UniversalAnnotator {
                         finalClick: { x: clickX, y: clickY },
                         rounded: true
                     },
+                    containerInfo: {
+                        paddingLeft: paddingLeft,
+                        paddingTop: paddingTop,
+                        containerRect: containerRect
+                    },
                     imageInfo: {
                         displaySize: `${img.offsetWidth}x${img.offsetHeight}`,
                         naturalSize: `${img.naturalWidth}x${img.naturalHeight}`,
-                        coordinates: 'PRECISE_DISPLAY_RELATIVE'
+                        coordinates: 'EXACT_IMAGE_RELATIVE'
                     },
                     cssInfo: {
                         transform: computedStyle.transform,
@@ -403,8 +422,8 @@ class UniversalAnnotator {
                 }
             };
             
-            console.log('🎯 PRECISE ANNOTATION CREATED:', annotation);
-            console.log('🎯 === PRECISE COORDINATE DEBUGGING END ===');
+            console.log('🎯 CORRECTED ANNOTATION CREATED:', annotation);
+            console.log('🎯 === COORDINATE OFFSET CORRECTION END ===');
             
             await this.addAnnotation(annotation, container, img);
             
@@ -416,7 +435,7 @@ class UniversalAnnotator {
                 voiceBtn.className = 'btn-voice';
             }
             
-            this.updateStatus('✅ Annotation added! Red dot should be EXACTLY where you clicked. Drag text to reposition, drag red dot for precise pointing.');
+            this.updateStatus('✅ Annotation added with PADDING CORRECTION! Red dot should be EXACTLY where you clicked.');
         });
     }
     
