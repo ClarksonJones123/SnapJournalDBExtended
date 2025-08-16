@@ -68,6 +68,171 @@
         .btn-close:hover {
             background: #777;
         }
+        
+        .btn-settings {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: linear-gradient(145deg, #4a90e2, #357abd);
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .btn-settings:hover {
+            background: linear-gradient(145deg, #357abd, #2968a3);
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+        }
+        
+        /* 🎨 SETTINGS PANEL STYLES */
+        .settings-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.98);
+            border: 2px solid #ddd;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            z-index: 2000;
+            min-width: 320px;
+            max-width: 400px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid #eee;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 10px 10px 0 0;
+        }
+        
+        .settings-header h3 {
+            margin: 0;
+            color: #333;
+            font-size: 16px;
+        }
+        
+        .settings-header button {
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            color: #666;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+        
+        .settings-header button:hover {
+            background: rgba(0,0,0,0.1);
+            color: #333;
+        }
+        
+        .settings-content {
+            padding: 20px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        
+        .setting-group {
+            margin-bottom: 16px;
+            padding: 12px;
+            background: rgba(248, 249, 250, 0.8);
+            border-radius: 8px;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        .setting-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #444;
+            font-size: 13px;
+        }
+        
+        .setting-group input[type="color"] {
+            width: 50px;
+            height: 35px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        
+        .setting-group input[type="text"] {
+            width: 80px;
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .setting-group input[type="range"] {
+            width: 120px;
+            margin-right: 10px;
+        }
+        
+        .setting-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .opacity-label, .size-label {
+            font-size: 12px;
+            color: #666;
+            font-weight: normal;
+        }
+        
+        .settings-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid #eee;
+        }
+        
+        .btn-reset, .btn-apply {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-reset {
+            background: linear-gradient(145deg, #6c757d, #5a6268);
+            color: white;
+        }
+        
+        .btn-reset:hover {
+            background: linear-gradient(145deg, #5a6268, #495057);
+            transform: translateY(-1px);
+        }
+        
+        .btn-apply {
+            background: linear-gradient(145deg, #28a745, #218838);
+            color: white;
+        }
+        
+        .btn-apply:hover {
+            background: linear-gradient(145deg, #218838, #1e7e34);
+            transform: translateY(-1px);
+        }
 
         .status {
             font-size: 14px;
