@@ -370,26 +370,32 @@ class ScreenshotAnnotator {
           console.log('  - Screenshot display dimensions:', `${screenshot.displayWidth}x${screenshot.displayHeight}`);
           console.log('  - Screenshot storage dimensions:', `${screenshot.storageWidth}x${screenshot.storageHeight}`);
           
-          // Check if there's any size mismatch that could cause coordinate issues
+          // FIXED: Use natural image dimensions as the authoritative source
+          // This eliminates coordinate mismatches
+          const naturalWidth = img.naturalWidth;
+          const naturalHeight = img.naturalHeight;
+          
+          console.log('  - Using natural dimensions as coordinate reference:', `${naturalWidth}x${naturalHeight}`);
+          
+          // Check if there's any size mismatch
           const dimensionMismatch = 
-            img.naturalWidth !== screenshot.displayWidth || 
-            img.naturalHeight !== screenshot.displayHeight;
+            naturalWidth !== screenshot.displayWidth || 
+            naturalHeight !== screenshot.displayHeight;
           
           console.log('  - Dimension mismatch detected:', dimensionMismatch);
           
           if (dimensionMismatch) {
-            console.warn('⚠️ COORDINATE ISSUE DETECTED: Image dimensions do not match expected dimensions!');
-            console.warn('  This could cause the coordinate offset issue.');
+            console.warn('⚠️ DIMENSION MISMATCH: Using natural dimensions to fix coordinate offset');
             console.warn('  Expected:', `${screenshot.displayWidth}x${screenshot.displayHeight}`);
-            console.warn('  Actual:', `${img.naturalWidth}x${img.naturalHeight}`);
+            console.warn('  Natural:', `${naturalWidth}x${naturalHeight}`);
           }
           
-          // Use actual image dimensions
-          canvas.width = img.width;
-          canvas.height = img.height;
+          // Use natural image dimensions for canvas
+          canvas.width = naturalWidth;
+          canvas.height = naturalHeight;
           
-          // Draw the original image at full quality
-          ctx.drawImage(img, 0, 0);
+          // Draw the original image at natural size
+          ctx.drawImage(img, 0, 0, naturalWidth, naturalHeight);
           
           // SIMPLIFIED: Use 1:1 scaling (no scaling needed since we're using original dimensions)
           const scaleX = 1.0;
