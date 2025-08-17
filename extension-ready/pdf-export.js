@@ -510,24 +510,102 @@ class PDFJournalExporter {
     }
     
     async addScreenshotPage(pdf, screenshot, pageNumber, pageWidth, pageHeight, margin, contentWidth, contentHeight) {
-        console.log(`📄 Adding screenshot ${pageNumber} - NO BORDERS, FULL PAGE`);
+        console.log(`📄 Adding screenshot ${pageNumber} with timestamp and spacing`);
         
-        // NO HEADERS, NO TEXT - JUST THE IMAGE
         try {
             const imageData = screenshot.imageData;
             if (imageData) {
-                // Fill entire page with image - NO MARGINS
-                console.log(`🖼️ Adding full-page image: ${contentWidth}x${contentHeight}mm`);
+                // Calculate spacing and layout for timestamp
+                const timestampHeight = 15; // Space reserved for timestamp (in mm)
+                const horizontalSpacing = 10; // Horizontal spacing between images (in mm) 
+                const topMargin = 5; // Small top margin for timestamp
                 
-                pdf.addImage(imageData, 'PNG', 0, 0, contentWidth, contentHeight);
+                // Available space for image after reserving space for timestamp
+                const availableImageHeight = contentHeight - timestampHeight - topMargin;
+                const availableImageWidth = contentWidth - (horizontalSpacing * 2);
                 
-                console.log(`📄 Added full-page image for screenshot ${pageNumber}`);
+                // Add timestamp at top of page
+                pdf.setFontSize(10);
+                pdf.setFont('helvetica', 'normal');
+                pdf.setTextColor(100, 100, 100); // Gray color for timestamp
+                
+                // Get screenshot timestamp
+                const timestamp = screenshot.timestamp || screenshot.captureDate || new Date().toISOString();
+                const date = new Date(timestamp);
+                const formattedDate = date.toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    year: 'numeric', 
+                    month: 'short',
+                    day: 'numeric'
+                });
+                const formattedTime = date.toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+                
+                const timestampText = `📸 Captured: ${formattedDate} at ${formattedTime}`;
+                
+                // Center the timestamp
+                const centerX = pageWidth / 2;
+                pdf.text(timestampText, centerX, topMargin + 8, { align: 'center' });
+                
+                // Reset text color to black for any other text
+                pdf.setTextColor(0, 0, 0);
+                
+                // Calculate image dimensions to fit in available space
+                // Get image dimensions to maintain aspect ratio
+                const img = new Image();
+                img.src = imageData;
+                
+                await new Promise((resolve) => {
+                    img.onload = () => {
+                        const imgAspectRatio = img.width / img.height;
+                        
+                        let finalWidth = availableImageWidth;
+                        let finalHeight = availableImageHeight;
+                        
+                        // Maintain aspect ratio
+                        if (finalWidth / finalHeight > imgAspectRatio) {
+                            finalWidth = finalHeight * imgAspectRatio;
+                        } else {
+                            finalHeight = finalWidth / imgAspectRatio;
+                        }
+                        
+                        // Center the image horizontally and position below timestamp
+                        const imageX = (pageWidth - finalWidth) / 2;
+                        const imageY = topMargin + timestampHeight;
+                        
+                        console.log(`🖼️ Adding image with spacing: ${finalWidth.toFixed(1)}x${finalHeight.toFixed(1)}mm at (${imageX.toFixed(1)}, ${imageY.toFixed(1)})`);
+                        
+                        pdf.addImage(imageData, 'PNG', imageX, imageY, finalWidth, finalHeight);
+                        
+                        console.log(`📄 Added screenshot ${pageNumber} with timestamp: ${timestampText}`);
+                        resolve();
+                    };
+                    
+                    img.onerror = () => {
+                        console.warn('⚠️ Image load error, using fallback dimensions');
+                        // Fallback: use available space
+                        const imageX = horizontalSpacing;
+                        const imageY = topMargin + timestampHeight;
+                        
+                        pdf.addImage(imageData, 'PNG', imageX, imageY, availableImageWidth, availableImageHeight);
+                        resolve();
+                    };
+                });
             }
         } catch (error) {
             console.error('Error adding image to PDF:', error);
-            // If image fails, at least add page number in corner
-            pdf.setFontSize(8);
-            pdf.text(`Page ${pageNumber}`, 5, 5);
+            // If image fails, at least add page number and timestamp
+            pdf.setFontSize(10);
+            pdf.text(`Page ${pageNumber} - Error loading image`, 10, 20);
+            
+            // Still add timestamp even if image fails
+            const timestamp = screenshot.timestamp || screenshot.captureDate || new Date().toISOString();
+            const date = new Date(timestamp);
+            const formattedTimestamp = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+            pdf.text(`Timestamp: ${formattedTimestamp}`, 10, 35);
         }
     }
     
