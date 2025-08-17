@@ -57,7 +57,7 @@
 ```
 /app/
 ├── extension-ready/              # 🚀 Production-ready Chrome extension
-│   ├── manifest.json            # Manifest V3 compliant configuration
+│   ├── manifest.json            # Manifest V3 compliant configuration (v2.0.1)
 │   ├── popup.html & popup.js    # Main extension interface
 │   ├── annotation.html & .js    # Screenshot annotation system
 │   ├── pdf-export.html & .js    # Professional PDF generation
@@ -65,9 +65,16 @@
 │   ├── background.js            # Chrome API service worker
 │   ├── content.js               # Universal page interaction
 │   ├── styles.css               # Professional interface styling
-│   └── docs/                    # 📚 Complete user documentation
-│       ├── USER_GUIDE.md        # Installation and usage instructions
-│       ├── TROUBLESHOOTING.md   # Common issues and solutions
+│   ├── USER_MANUAL.md           # 📚 Complete user manual
+│   ├── QUICK_START_GUIDE.md     # ⚡ 2-minute setup guide
+│   ├── INSTALLATION_GUIDE.md    # 🚀 Detailed installation instructions
+│   ├── FEATURE_DOCUMENTATION.md # 🔧 Complete feature reference
+│   ├── TROUBLESHOOTING.md       # 🛠️ Comprehensive troubleshooting
+│   └── docs/                    # 📚 Additional technical documentation
+│       ├── README.md            # Documentation directory overview
+│       ├── USER_GUIDE.md        # Legacy user guide
+│       ├── API_REFERENCE.md     # Technical API documentation
+│       ├── TROUBLESHOOTING.md   # Legacy troubleshooting guide
 │       ├── PRIVACY_POLICY.md    # Privacy and data handling
 │       └── CHANGELOG.md         # Version history and updates
 ├── backend/                     # 🖥️ Supporting FastAPI backend
