@@ -206,9 +206,10 @@
 ## 🤝 **Support & Contributing**
 
 ### **Getting Help**
-- Check the [Troubleshooting Guide](extension-ready/docs/TROUBLESHOOTING.md) for common issues
-- Review the [User Guide](extension-ready/docs/USER_GUIDE.md) for detailed instructions
-- Submit issues via GitHub Issues (development feedback)
+- **Primary**: Check the [TROUBLESHOOTING.md](extension-ready/TROUBLESHOOTING.md) guide for solutions
+- **Installation**: Review the [INSTALLATION_GUIDE.md](extension-ready/INSTALLATION_GUIDE.md) for setup help
+- **Features**: Consult the [USER_MANUAL.md](extension-ready/USER_MANUAL.md) for complete instructions
+- **Technical**: Reference the [docs/API_REFERENCE.md](extension-ready/docs/API_REFERENCE.md) for advanced topics
 
 ### **Contributing**
 - Fork the repository and create feature branches
