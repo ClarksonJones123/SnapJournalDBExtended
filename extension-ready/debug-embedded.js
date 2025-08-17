@@ -1,256 +1,371 @@
-// EMBEDDED DEBUG SYSTEM - PERSISTENT ACROSS ALL OPERATIONS
-let debugOutput = [];
-let debugVisible = true;
-let debugInitialized = false;
-const STORAGE_KEY = 'annotator_debug_history';
-const MAX_HISTORY_ENTRIES = 200; // Increased for better continuity
+/*
+ * ==================================================================================
+ * SNAP JOURNAL - Medical Grade Screenshot Annotation Extension
+ * ==================================================================================
+ * 
+ * debug-embedded.js - Persistent Debug Logging System
+ * 
+ * Copyright (C) 2025 Snap Journal Development Team
+ * All rights reserved.
+ * 
+ * PROPRIETARY AND CONFIDENTIAL
+ * 
+ * NOTICE: This software and its source code are proprietary products of 
+ * Snap Journal Development Team and are protected by copyright law and 
+ * international treaties. Unauthorized reproduction or distribution of this 
+ * program, or any portion of it, may result in severe civil and criminal 
+ * penalties, and will be prosecuted to the maximum extent possible under law.
+ * 
+ * RESTRICTIONS:
+ * - No part of this source code may be reproduced, distributed, or transmitted
+ *   in any form or by any means, including photocopying, recording, or other
+ *   electronic or mechanical methods, without the prior written permission
+ *   of the copyright owner.
+ * - Reverse engineering, decompilation, or disassembly is strictly prohibited.
+ * - This software is licensed, not sold.
+ * 
+ * For licensing inquiries, contact: [your-email@domain.com]
+ * 
+ * Version: 2.0.1
+ * Build Date: January 2025
+ * ==================================================================================
+ */
 
-// Immediately load debug history before any other operations
-function initializeDebugSystem() {
-    if (debugInitialized) return; // Prevent multiple initializations
-    debugInitialized = true;
-    
-    try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-            const history = JSON.parse(stored);
-            const timeSinceLastEntry = Date.now() - history.timestamp;
-            
-            // Keep debug history for 4 hours (much longer)
-            if (timeSinceLastEntry < 14400000) {
-                debugOutput = [...(history.entries || [])];
-                console.log('🔄 Debug history restored:', debugOutput.length, 'entries');
-                return true;
-            }
-        }
-    } catch (error) {
-        console.warn('Debug history load failed:', error);
-    }
-    
-    // Only start fresh if no valid history found
-    debugOutput = [];
-    return false;
-}
+// Enhanced Debug Logging System with Persistent Storage
+// This system maintains debug logs across browser sessions
 
-// Initialize immediately
-initializeDebugSystem();
-
-function debugLog(message, data = null) {
-    if (!debugInitialized) initializeDebugSystem();
+(function() {
+    'use strict';
     
-    const timestamp = new Date().toLocaleTimeString();
-    const logEntry = `[${timestamp}] ${message}`;
-    if (data) {
-        debugOutput.push(`${logEntry}\n  Data: ${JSON.stringify(data, null, 2)}`);
-    } else {
-        debugOutput.push(logEntry);
-    }
-    
-    // Persist immediately on every log
-    saveDebugHistory();
-    updateDebugDisplay();
-}
-
-function debugError(message, error = null) {
-    if (!debugInitialized) initializeDebugSystem();
-    
-    const timestamp = new Date().toLocaleTimeString();
-    const logEntry = `[${timestamp}] ❌ ${message}`;
-    if (error) {
-        debugOutput.push(`${logEntry}\n  Error: ${error.toString()}`);
-    } else {
-        debugOutput.push(logEntry);
-    }
-    
-    // Persist immediately on every log
-    saveDebugHistory();
-    updateDebugDisplay();
-}
-
-function saveDebugHistory() {
-    try {
-        // Keep only the last MAX_HISTORY_ENTRIES to prevent storage bloat
-        const recentHistory = debugOutput.slice(-MAX_HISTORY_ENTRIES);
-        const historyData = {
-            timestamp: Date.now(),
-            entries: recentHistory,
-            sessionStart: new Date().toISOString(),
-            continuityMarker: `Session_${Date.now()}`
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(historyData));
-    } catch (error) {
-        console.warn('Failed to save debug history:', error);
-    }
-}
-
-function loadDebugHistory() {
-    // This is now handled by initializeDebugSystem()
-    return debugOutput.length > 0;
-}
-
-function updateDebugDisplay() {
-    const debugDiv = document.getElementById('debugOutput');
-    if (debugDiv) {
-        debugDiv.innerHTML = debugOutput.slice(-20).join('\n').replace(/\n/g, '<br>');
-        debugDiv.scrollTop = debugDiv.scrollHeight;
-    }
-}
-
-// AUTO-RUN DIAGNOSTICS
-document.addEventListener('DOMContentLoaded', () => {
-    // Always initialize debug system first
-    const hasHistory = initializeDebugSystem();
-    
-    if (hasHistory) {
-        debugLog(`🔄 Debug session resumed - ${debugOutput.length} entries maintained`);
-    } else {
-        debugLog('🔍 Starting new debug session...');
-    }
-    
-    // Log current operation
-    debugLog(`📱 Popup activity at ${new Date().toLocaleString()}`);
-    debugLog('🔄 Debug continuity SHOULD persist across captures and annotations');
-    
-    // Check environment (but don't spam if already logged)
-    const lastEntry = debugOutput[debugOutput.length - 2]; // Check second to last entry
-    if (!lastEntry || !lastEntry.includes('Chrome APIs available')) {
-        debugLog('Checking Chrome APIs...');
-        if (typeof chrome !== 'undefined') {
-            debugLog('✅ Chrome APIs available');
-            if (chrome.storage) debugLog('✅ Chrome storage available');
-            if (chrome.runtime) debugLog('✅ Chrome runtime available');
-            if (chrome.tabs) debugLog('✅ Chrome tabs available');
-        } else {
-            debugError('❌ Chrome APIs not available');
-        }
-    }
-    
-    // Expose global debug functions for manual testing
-    window.debugLog = debugLog;
-    window.debugError = debugError;
-    window.clearDebugHistory = () => {
-        localStorage.removeItem(STORAGE_KEY);
-        debugOutput = [];
-        debugLog('🧹 Debug history manually cleared');
+    // Debug system configuration
+    const DEBUG_CONFIG = {
+        name: 'Snap Journal Debug System',
+        version: '2.0.1',
+        copyright: '© 2025 Snap Journal Development Team',
+        maxLogEntries: 1000,
+        storageKey: 'snapJournalDebugLogs',
+        enabled: true
     };
     
-    debugLog('✅ Persistent debug system loaded - use window.debugLog() or window.debugError() for manual testing');
+    console.log(`[${DEBUG_CONFIG.name}] 🚀 Initializing v${DEBUG_CONFIG.version}`);
+    console.log(`[${DEBUG_CONFIG.name}] ${DEBUG_CONFIG.copyright}`);
     
-    // Check DOM elements
-    debugLog('Checking DOM elements...');
-    const requiredElements = ['captureBtn', 'annotateBtn', 'screenshotsList'];
-    let foundElements = 0;
-    requiredElements.forEach(id => {
-        if (document.getElementById(id)) {
-            foundElements++;
-        } else {
-            debugError(`Missing element: ${id}`);
-        }
-    });
-    debugLog(`✅ Found ${foundElements}/${requiredElements.length} required elements`);
+    let debugLogs = [];
+    let sessionId = 'session_' + Date.now();
     
-    // Test background script
-    if (typeof chrome !== 'undefined' && chrome.runtime) {
-        debugLog('Testing background script communication...');
-        chrome.runtime.sendMessage({action: 'ping'}, (response) => {
-            if (chrome.runtime.lastError) {
-                debugError('Background script error', chrome.runtime.lastError);
-            } else if (response) {
-                debugLog('✅ Background script responding', response);
-            } else {
-                debugError('Background script not responding');
-            }
-        });
-    }
+    // Initialize debug system
+    init();
     
-    // Check storage
-    if (typeof chrome !== 'undefined' && chrome.storage) {
-        debugLog('Checking storage contents...');
-        chrome.storage.local.get('screenshots', (result) => {
-            const screenshots = result.screenshots || [];
-            debugLog(`📊 Found ${screenshots.length} screenshots in storage`);
+    function init() {
+        try {
+            // Load existing logs from localStorage
+            loadPersistedLogs();
             
-            if (screenshots.length > 0) {
-                screenshots.forEach((s, i) => {
-                    debugLog(`Screenshot ${i}: ${s.title || 'No title'}`, {
-                        id: s.id,
-                        hasImageData: !!s.imageData,
-                        imageDataSize: s.imageData ? Math.round(s.imageData.length/1024) + 'KB' : 'N/A',
-                        timestamp: s.timestamp
-                    });
-                });
-            }
-        });
-        
-        // Check storage quota
-        if (chrome.storage.local.getBytesInUse) {
-            chrome.storage.local.getBytesInUse((bytes) => {
-                const quota = chrome.storage.local.QUOTA_BYTES || 10485760;
-                debugLog(`💾 Storage: ${Math.round(bytes/1024)}KB / ${Math.round(quota/1024)}KB (${Math.round(bytes/quota*100)}%)`);
+            // Set up global debug functions
+            setupGlobalFunctions();
+            
+            // Log system initialization
+            debugLog('🚀 Debug system initialized', {
+                sessionId: sessionId,
+                version: DEBUG_CONFIG.version,
+                timestamp: new Date().toISOString()
             });
+            
+            console.log(`[${DEBUG_CONFIG.name}] ✅ Debug system ready`);
+            
+        } catch (error) {
+            console.error(`[${DEBUG_CONFIG.name}] ❌ Initialization failed:`, error);
         }
     }
     
-    // Check ScreenshotAnnotator instance
-    setTimeout(() => {
-        if (window.screenshotAnnotator) {
-            debugLog('✅ ScreenshotAnnotator instance found', {
-                screenshots: window.screenshotAnnotator.screenshots?.length || 0,
-                initialized: window.screenshotAnnotator.isInitialized || false
-            });
+    function loadPersistedLogs() {
+        try {
+            const storedLogs = localStorage.getItem(DEBUG_CONFIG.storageKey);
+            if (storedLogs) {
+                debugLogs = JSON.parse(storedLogs);
+                console.log(`[${DEBUG_CONFIG.name}] 📥 Loaded ${debugLogs.length} persisted log entries`);
+            }
+        } catch (error) {
+            console.warn(`[${DEBUG_CONFIG.name}] ⚠️ Failed to load persisted logs:`, error);
+            debugLogs = [];
+        }
+    }
+    
+    function persistLogs() {
+        try {
+            // Keep only the most recent entries
+            if (debugLogs.length > DEBUG_CONFIG.maxLogEntries) {
+                debugLogs = debugLogs.slice(-DEBUG_CONFIG.maxLogEntries);
+            }
+            
+            localStorage.setItem(DEBUG_CONFIG.storageKey, JSON.stringify(debugLogs));
+            
+        } catch (error) {
+            console.warn(`[${DEBUG_CONFIG.name}] ⚠️ Failed to persist logs:`, error);
+        }
+    }
+    
+    function debugLog(message, data = null) {
+        if (!DEBUG_CONFIG.enabled) return;
+        
+        const timestamp = new Date().toISOString();
+        const logEntry = {
+            id: Date.now() + Math.random(),
+            timestamp: timestamp,
+            sessionId: sessionId,
+            type: 'log',
+            message: message,
+            data: data,
+            url: window.location.href,
+            userAgent: navigator.userAgent.substring(0, 100) // Truncate for storage
+        };
+        
+        // Add to logs array
+        debugLogs.push(logEntry);
+        
+        // Console output
+        const consoleMessage = `[Snap Journal Debug] ${message}`;
+        if (data) {
+            console.log(consoleMessage, data);
         } else {
-            debugError('❌ ScreenshotAnnotator instance not found');
+            console.log(consoleMessage);
         }
         
-        debugLog('🏁 Diagnostics complete - ready for copy/paste');
-    }, 2000);
-    
-    // Setup debug controls
-    const copyBtn = document.getElementById('copyDebugBtn');
-    const toggleBtn = document.getElementById('toggleDebugBtn');
-    
-    if (copyBtn) {
-        copyBtn.addEventListener('click', () => {
-            const debugText = debugOutput.join('\n');
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(debugText).then(() => {
-                    debugLog('📋 Debug info copied to clipboard!');
-                }).catch(() => {
-                    // Fallback
-                    const textarea = document.createElement('textarea');
-                    textarea.value = debugText;
-                    document.body.appendChild(textarea);
-                    textarea.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(textarea);
-                    debugLog('📋 Debug info selected - press Ctrl+C to copy');
-                });
-            }
-        });
+        // Persist to localStorage
+        persistLogs();
     }
     
-    if (toggleBtn) {
-        toggleBtn.addEventListener('click', () => {
-            const debugSection = document.getElementById('debugSection');
-            if (debugSection) {
-                debugVisible = !debugVisible;
-                debugSection.style.display = debugVisible ? 'block' : 'none';
-                toggleBtn.textContent = debugVisible ? '👁️ Hide Debug' : '👁️ Show Debug';
-            }
-        });
+    function debugError(message, error = null) {
+        if (!DEBUG_CONFIG.enabled) return;
+        
+        const timestamp = new Date().toISOString();
+        const logEntry = {
+            id: Date.now() + Math.random(),
+            timestamp: timestamp,
+            sessionId: sessionId,
+            type: 'error',
+            message: message,
+            error: error ? {
+                name: error.name,
+                message: error.message,
+                stack: error.stack
+            } : null,
+            url: window.location.href,
+            userAgent: navigator.userAgent.substring(0, 100)
+        };
+        
+        // Add to logs array
+        debugLogs.push(logEntry);
+        
+        // Console output
+        const consoleMessage = `[Snap Journal Debug] ❌ ${message}`;
+        if (error) {
+            console.error(consoleMessage, error);
+        } else {
+            console.error(consoleMessage);
+        }
+        
+        // Persist to localStorage
+        persistLogs();
     }
-});
-
-// Intercept console.log to capture all output
-const originalLog = console.log;
-const originalError = console.error;
-
-console.log = function(...args) {
-    debugLog(`LOG: ${args.join(' ')}`);
-    originalLog.apply(console, args);
-};
-
-console.error = function(...args) {
-    debugError(`ERROR: ${args.join(' ')}`);
-    originalError.apply(console, args);
-};
+    
+    function debugWarn(message, data = null) {
+        if (!DEBUG_CONFIG.enabled) return;
+        
+        const timestamp = new Date().toISOString();
+        const logEntry = {
+            id: Date.now() + Math.random(),
+            timestamp: timestamp,
+            sessionId: sessionId,
+            type: 'warning',
+            message: message,
+            data: data,
+            url: window.location.href,
+            userAgent: navigator.userAgent.substring(0, 100)
+        };
+        
+        // Add to logs array
+        debugLogs.push(logEntry);
+        
+        // Console output
+        const consoleMessage = `[Snap Journal Debug] ⚠️ ${message}`;
+        if (data) {
+            console.warn(consoleMessage, data);
+        } else {
+            console.warn(consoleMessage);
+        }
+        
+        // Persist to localStorage
+        persistLogs();
+    }
+    
+    function getDebugLogs(filterOptions = {}) {
+        let filteredLogs = [...debugLogs];
+        
+        // Filter by session
+        if (filterOptions.sessionId) {
+            filteredLogs = filteredLogs.filter(log => log.sessionId === filterOptions.sessionId);
+        }
+        
+        // Filter by type
+        if (filterOptions.type) {
+            filteredLogs = filteredLogs.filter(log => log.type === filterOptions.type);
+        }
+        
+        // Filter by time range
+        if (filterOptions.since) {
+            const sinceDate = new Date(filterOptions.since);
+            filteredLogs = filteredLogs.filter(log => new Date(log.timestamp) >= sinceDate);
+        }
+        
+        // Limit results
+        if (filterOptions.limit) {
+            filteredLogs = filteredLogs.slice(-filterOptions.limit);
+        }
+        
+        return filteredLogs;
+    }
+    
+    function clearDebugLogs() {
+        debugLogs = [];
+        localStorage.removeItem(DEBUG_CONFIG.storageKey);
+        console.log(`[${DEBUG_CONFIG.name}] 🧹 Debug logs cleared`);
+    }
+    
+    function exportDebugLogs() {
+        const exportData = {
+            metadata: {
+                exportDate: new Date().toISOString(),
+                version: DEBUG_CONFIG.version,
+                copyright: DEBUG_CONFIG.copyright,
+                totalLogs: debugLogs.length
+            },
+            logs: debugLogs
+        };
+        
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+            type: 'application/json'
+        });
+        
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `snap-journal-debug-logs-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        debugLog('📤 Debug logs exported', { logCount: debugLogs.length });
+    }
+    
+    function getDebugStats() {
+        const now = new Date();
+        const last24Hours = new Date(now - 24 * 60 * 60 * 1000);
+        const lastHour = new Date(now - 60 * 60 * 1000);
+        
+        const stats = {
+            total: debugLogs.length,
+            currentSession: debugLogs.filter(log => log.sessionId === sessionId).length,
+            last24Hours: debugLogs.filter(log => new Date(log.timestamp) >= last24Hours).length,
+            lastHour: debugLogs.filter(log => new Date(log.timestamp) >= lastHour).length,
+            byType: {
+                log: debugLogs.filter(log => log.type === 'log').length,
+                error: debugLogs.filter(log => log.type === 'error').length,
+                warning: debugLogs.filter(log => log.type === 'warning').length
+            },
+            oldestEntry: debugLogs.length > 0 ? debugLogs[0].timestamp : null,
+            newestEntry: debugLogs.length > 0 ? debugLogs[debugLogs.length - 1].timestamp : null,
+            sessionId: sessionId,
+            version: DEBUG_CONFIG.version,
+            copyright: DEBUG_CONFIG.copyright
+        };
+        
+        return stats;
+    }
+    
+    function setupGlobalFunctions() {
+        // Make debug functions available globally
+        window.debugLog = debugLog;
+        window.debugError = debugError;
+        window.debugWarn = debugWarn;
+        window.getDebugLogs = getDebugLogs;
+        window.clearDebugLogs = clearDebugLogs;
+        window.exportDebugLogs = exportDebugLogs;
+        window.getDebugStats = getDebugStats;
+        
+        // Debug system info
+        window.snapJournalDebug = {
+            version: DEBUG_CONFIG.version,
+            copyright: DEBUG_CONFIG.copyright,
+            sessionId: sessionId,
+            enabled: DEBUG_CONFIG.enabled,
+            stats: getDebugStats
+        };
+        
+        console.log(`[${DEBUG_CONFIG.name}] ✅ Global debug functions available:`, [
+            'debugLog(message, data)',
+            'debugError(message, error)',
+            'debugWarn(message, data)',
+            'getDebugLogs(filterOptions)',
+            'clearDebugLogs()',
+            'exportDebugLogs()',
+            'getDebugStats()'
+        ]);
+    }
+    
+    // Monitor for errors and log them automatically
+    window.addEventListener('error', function(event) {
+        debugError('Uncaught error detected', {
+            message: event.message,
+            filename: event.filename,
+            lineno: event.lineno,
+            colno: event.colno,
+            error: event.error
+        });
+    });
+    
+    // Monitor for unhandled promise rejections
+    window.addEventListener('unhandledrejection', function(event) {
+        debugError('Unhandled promise rejection', {
+            reason: event.reason,
+            promise: event.promise
+        });
+    });
+    
+    // Log page lifecycle events
+    document.addEventListener('DOMContentLoaded', function() {
+        debugLog('📄 DOM content loaded');
+    });
+    
+    window.addEventListener('load', function() {
+        debugLog('🚀 Page fully loaded');
+    });
+    
+    window.addEventListener('beforeunload', function() {
+        debugLog('👋 Page unloading');
+    });
+    
+    document.addEventListener('visibilitychange', function() {
+        debugLog(`👁️ Page visibility changed: ${document.visibilityState}`);
+    });
+    
+    // Periodic cleanup of old logs
+    setInterval(() => {
+        if (debugLogs.length > DEBUG_CONFIG.maxLogEntries * 1.2) {
+            debugLogs = debugLogs.slice(-DEBUG_CONFIG.maxLogEntries);
+            persistLogs();
+            debugLog('🧹 Debug logs automatically trimmed', { 
+                newCount: debugLogs.length 
+            });
+        }
+    }, 5 * 60 * 1000); // Every 5 minutes
+    
+    // Initial status log
+    debugLog('✅ Debug system fully operational', {
+        maxLogEntries: DEBUG_CONFIG.maxLogEntries,
+        currentLogCount: debugLogs.length,
+        storageKey: DEBUG_CONFIG.storageKey
+    });
+    
+})();
