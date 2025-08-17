@@ -492,7 +492,7 @@ metadata:
 
 test_plan:
   current_focus:
-    - "PDF export CSP compliance and DOM access protection fixes"
+    - "IndexedDB async handling fixes for PDF export"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
