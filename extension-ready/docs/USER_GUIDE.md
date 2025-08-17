@@ -323,4 +323,4 @@
 - **Feature announcements** - Check extension page for new capabilities
 - **Documentation updates** - Review guides for new features and best practices
 
-**🏆 You're now ready to use Screenshot Annotator like a professional! Enjoy unlimited screenshot annotation with medical-grade precision.** 🎯
+**🏆 You're now ready to use Snap Journal like a professional! Enjoy unlimited screenshot annotation with medical-grade precision.** 🎯
