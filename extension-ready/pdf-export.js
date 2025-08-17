@@ -379,14 +379,19 @@ class PDFJournalExporter {
                 const imageAspectRatio = firstScreenshot.displayWidth / firstScreenshot.displayHeight;
                 
                 // Use A4 width as base, calculate height to match image aspect ratio
+                // Add space for timestamp and horizontal spacing
                 const baseWidth = 210; // A4 width in mm
-                pdfWidth = baseWidth;
-                pdfHeight = baseWidth / imageAspectRatio;
+                const timestampHeight = 20; // Space reserved for timestamp
+                const horizontalSpacing = 20; // Space on sides
+                
+                pdfWidth = baseWidth + horizontalSpacing;
+                pdfHeight = (baseWidth / imageAspectRatio) + timestampHeight;
                 
                 // If height is too large, use A4 height as base instead
-                if (pdfHeight > 297) { // A4 height
-                    pdfHeight = 297;
-                    pdfWidth = pdfHeight * imageAspectRatio;
+                if (pdfHeight > 297 + timestampHeight) { // A4 height + timestamp space
+                    const maxImageHeight = 297;
+                    pdfHeight = maxImageHeight + timestampHeight;
+                    pdfWidth = (maxImageHeight * imageAspectRatio) + horizontalSpacing;
                 }
             } else {
                 // Fallback to A4
