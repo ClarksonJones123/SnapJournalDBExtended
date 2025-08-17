@@ -319,7 +319,15 @@ class AnnotationSystem {
         // Double-click to edit
         textElement.addEventListener('dblclick', () => {
             textElement.focus();
-            document.execCommand('selectAll');
+            
+            // Select all text in contentEditable div
+            if (window.getSelection && document.createRange) {
+                const selection = window.getSelection();
+                const range = document.createRange();
+                range.selectNodeContents(textElement);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
         });
         
         // Make elements draggable
