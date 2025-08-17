@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Screenshot Annotator - Universal",
-  "version": "2.0",
-  "description": "Capture screenshots and add annotations - WORKS ON ANY PAGE!",
+  "name": "Snap Journal",
+  "version": "2.0.1",
+  "description": "Medical-grade screenshot annotation with unlimited storage - WORKS ON ANY PAGE!",
   "permissions": [
     "activeTab",
     "storage",
