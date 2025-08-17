@@ -5,7 +5,7 @@
 ### **Extension Not Working At All**
 1. **Check Extension Status**
    - Go to `chrome://extensions/`
-   - Verify "Screenshot Annotator" is **enabled**
+   - Verify "Snap Journal" is **enabled**
    - If disabled, click toggle to enable
 
 2. **Refresh Extension**
