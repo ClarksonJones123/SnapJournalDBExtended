@@ -218,10 +218,10 @@ class PopupDebugger {
       this.error('❌ ScreenshotAnnotator instance not found on window');
     }
     
-    // Check if screenshotsList element exists and inspect its content
-    const listElement = document.getElementById('screenshotsList');
+    // Check if screenshotGrid element exists and inspect its content
+    const listElement = document.getElementById('screenshotGrid');
     if (listElement) {
-      this.log('✅ screenshotsList element found');
+      this.log('✅ screenshotGrid element found');
       this.log('Current innerHTML length:', listElement.innerHTML.length);
       this.log('Current innerHTML preview:', listElement.innerHTML.substring(0, 300) + '...');
       
@@ -248,7 +248,7 @@ class PopupDebugger {
       }
       
     } else {
-      this.error('❌ screenshotsList element not found');
+      this.error('❌ screenshotGrid element not found');
     }
     
     // Check memory usage display
