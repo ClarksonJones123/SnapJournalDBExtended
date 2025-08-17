@@ -534,7 +534,7 @@ const analytics = {
 ```json
 {
     "manifest_version": 3,
-    "name": "Screenshot Annotator - Universal",
+    "name": "Snap Journal",
     "version": "2.0.0",
     "description": "Medical-grade screenshot annotation with unlimited storage",
     "background": {
