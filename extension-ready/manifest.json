@@ -1,4 +1,9 @@
 {
+  "_copyright": "© 2025 Snap Journal Development Team - All Rights Reserved",
+  "_version_info": "Snap Journal v2.0.1 - Medical Grade Screenshot Annotation",
+  "_license": "Proprietary - Unauthorized copying or distribution is strictly prohibited",
+  "_build_date": "January 2025",
+  
   "manifest_version": 3,
   "name": "Snap Journal",
   "version": "2.0.1",
