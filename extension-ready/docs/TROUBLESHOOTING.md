@@ -1,4 +1,4 @@
-# 🔧 Screenshot Annotator - Troubleshooting Guide
+# 🔧 Snap Journal - Troubleshooting Guide
 
 ## 🚨 **Quick Emergency Fixes**
 
