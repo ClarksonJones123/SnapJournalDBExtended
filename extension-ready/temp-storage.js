@@ -1,904 +1,572 @@
-// Enhanced Temporary Storage Manager - Now PRIMARY storage with unlimited capacity
+/*
+ * ==================================================================================
+ * SNAP JOURNAL - Medical Grade Screenshot Annotation Extension
+ * ==================================================================================
+ * 
+ * temp-storage.js - Unlimited IndexedDB Storage Manager
+ * 
+ * Copyright (C) 2025 Snap Journal Development Team
+ * All rights reserved.
+ * 
+ * PROPRIETARY AND CONFIDENTIAL
+ * 
+ * NOTICE: This software and its source code are proprietary products of 
+ * Snap Journal Development Team and are protected by copyright law and 
+ * international treaties. Unauthorized reproduction or distribution of this 
+ * program, or any portion of it, may result in severe civil and criminal 
+ * penalties, and will be prosecuted to the maximum extent possible under law.
+ * 
+ * RESTRICTIONS:
+ * - No part of this source code may be reproduced, distributed, or transmitted
+ *   in any form or by any means, including photocopying, recording, or other
+ *   electronic or mechanical methods, without the prior written permission
+ *   of the copyright owner.
+ * - Reverse engineering, decompilation, or disassembly is strictly prohibited.
+ * - This software is licensed, not sold.
+ * 
+ * For licensing inquiries, contact: [your-email@domain.com]
+ * 
+ * Version: 2.0.1
+ * Build Date: January 2025
+ * ==================================================================================
+ */
+
 class TempStorageManager {
-  constructor() {
-    this.dbName = 'ScreenshotAnnotatorDB';
-    this.dbVersion = 2; // Increased for schema update
-    this.db = null;
-    this.isReady = false;
-    this.isInitializing = false; // NEW: Prevent race conditions
-  }
-  
-  async init() {
-    try {
-      console.log('🗄️ Initializing PRIMARY storage (IndexedDB) for unlimited capacity...');
-      
-      this.dbName = 'ScreenshotAnnotatorDB';
-      this.dbVersion = 2;
-      this.isInitializing = true; // Set flag to prevent race conditions
-      
-      return new Promise((resolve, reject) => {
-        const request = indexedDB.open(this.dbName, this.dbVersion);
+    constructor() {
+        this.dbName = 'SnapJournalDB';
+        this.dbVersion = 2;
+        this.db = null;
+        this.isReady = false;
+        this.initPromise = null;
         
-        request.onsuccess = async (event) => {
-          this.db = event.target.result;
-          console.log('✅ PRIMARY storage (IndexedDB) initialized successfully');
-          console.log('🚀 UNLIMITED storage capacity available via IndexedDB');
-          
-          // Wait a moment for any pending onupgradeneeded to complete
-          await new Promise(resolve => setTimeout(resolve, 100));
-          
-          // AUTOMATIC SCHEMA VALIDATION: Check if all required object stores exist
-          // Only run after initialization is complete
-          try {
-            const validationResult = await this.validateAndFixSchema();
-            console.log('✅ Schema validation completed:', validationResult.message);
-            resolve();
-          } catch (validationError) {
-            console.error('❌ Schema validation failed:', validationError);
-            this.isInitializing = false; // Clear flag even on error
-            reject(validationError);
-          } finally {
-            this.isInitializing = false; // Always clear flag
-            this.isReady = true; // Set ready state
-          }
+        // Copyright and licensing information
+        this.metadata = {
+            name: 'Snap Journal Storage Manager',
+            version: '2.0.1',
+            copyright: '© 2025 Snap Journal Development Team',
+            license: 'Proprietary - All Rights Reserved'
         };
         
-        request.onerror = (event) => {
-          console.error('❌ PRIMARY storage initialization failed:', event.target.error);
-          this.isInitializing = false; // Clear flag on error
-          reject(event.target.error);
-        };
-        
-        request.onupgradeneeded = (event) => {
-          const db = event.target.result;
-          const oldVersion = event.oldVersion;
-          const newVersion = event.newVersion;
-          
-          console.log(`🔄 Upgrading IndexedDB schema from v${oldVersion} to v${newVersion}...`);
-          
-          // Screenshots object store (v1)
-          if (!db.objectStoreNames.contains('screenshots')) {
-            const screenshotStore = db.createObjectStore('screenshots', { keyPath: 'id' });
-            screenshotStore.createIndex('timestamp', 'timestamp', { unique: false });
-            console.log('✅ Created screenshots object store (v1)');
-          }
-          
-          // Sessions object store (v1)  
-          if (!db.objectStoreNames.contains('sessions')) {
-            const sessionStore = db.createObjectStore('sessions', { keyPath: 'id' });
-            sessionStore.createIndex('timestamp', 'timestamp', { unique: false });
-            console.log('✅ Created sessions object store (v1)');
-          }
-          
-          // Legacy temp storage (v1)
-          if (!db.objectStoreNames.contains('tempImages')) {
-            const tempStore = db.createObjectStore('tempImages', { keyPath: 'id' });
-            tempStore.createIndex('timestamp', 'timestamp', { unique: false });
-            console.log('✅ Created tempImages object store (v1 compatibility)');
-          }
-          
-          // PDF Exports object store (v2 - CRITICAL FOR PDF EXPORT)
-          if (!db.objectStoreNames.contains('pdfExports')) {
-            const pdfExportStore = db.createObjectStore('pdfExports', { keyPath: 'id' });
-            pdfExportStore.createIndex('timestamp', 'timestamp', { unique: false });
-            console.log('✅ Created pdfExports object store (v2 - for large datasets)');
-          }
-          
-          console.log(`✅ IndexedDB schema upgrade complete - v${newVersion} ready`);
-          console.log('🗄️ Available object stores:', [...db.objectStoreNames]);
-        };
-      });
-    } catch (error) {
-      console.error('❌ IndexedDB initialization error:', error);
-      this.isInitializing = false; // Clear flag on error
-      throw error;
+        console.log(`[Snap Journal Storage] 🚀 Initializing ${this.metadata.name} v${this.metadata.version}`);
+        console.log(`[Snap Journal Storage] © ${this.metadata.copyright}`);
     }
-  }
 
-  // NEW: Automatic schema validation and repair on every startup
-  async validateAndFixSchema() {
-    try {
-      console.log('🔍 === COMPREHENSIVE SCHEMA VALIDATION START ===');
-      
-      const requiredStores = ['screenshots', 'sessions', 'tempImages', 'pdfExports'];
-      const existingStores = [...this.db.objectStoreNames];
-      const missingStores = requiredStores.filter(store => !existingStores.includes(store));
-      
-      console.log('📊 Schema validation analysis:');
-      console.log(JSON.stringify({
-        required: requiredStores,
-        existing: existingStores,
-        missing: missingStores,
-        dbVersion: this.db.version
-      }, null, 2));
-      
-      // Additional check: Test critical PDF export functionality
-      let pdfExportWorking = true;
-      try {
-        if (this.db.objectStoreNames.contains('pdfExports')) {
-          // Try to create a test transaction to verify store is accessible
-          const testTransaction = this.db.transaction(['pdfExports'], 'readonly');
-          const testStore = testTransaction.objectStore('pdfExports');
-          console.log('✅ pdfExports object store is accessible');
-        } else {
-          pdfExportWorking = false;
-          console.warn('⚠️ pdfExports object store missing');
+    async init() {
+        if (this.initPromise) {
+            return this.initPromise;
         }
-      } catch (pdfTestError) {
-        pdfExportWorking = false;
-        console.warn('⚠️ pdfExports object store test failed:', pdfTestError.message);
-      }
-      
-      // Decide if repair is needed
-      const repairNeeded = missingStores.length > 0 || !pdfExportWorking || this.db.version < 2;
-      
-      if (repairNeeded) {
-        console.warn('🔧 SCHEMA REPAIR REQUIRED:');
-        console.warn(JSON.stringify({
-          missingStores: missingStores.length,
-          pdfExportWorking,
-          currentVersion: this.db.version,
-          targetVersion: this.dbVersion
-        }, null, 2));
-        
-        console.log('🔧 Initiating automatic schema repair...');
-        
-        // Perform automatic schema repair
-        await this.performAutomaticSchemaRepair();
-        
-        // Verify repair success
-        const newExistingStores = [...this.db.objectStoreNames];
-        const newMissingStores = requiredStores.filter(store => !newExistingStores.includes(store));
-        const repairSuccessful = newMissingStores.length === 0 && this.db.version === this.dbVersion;
-        
-        if (repairSuccessful) {
-          console.log('✅ AUTOMATIC SCHEMA REPAIR COMPLETED SUCCESSFULLY');
-          console.log('📊 Repair results:');
-          console.log(JSON.stringify({
-            allStoresPresent: newMissingStores.length === 0,
-            correctVersion: this.db.version === this.dbVersion,
-            availableStores: newExistingStores
-          }, null, 2));
-          
-          return { 
-            repaired: true, 
-            success: true,
-            missingStores: missingStores,
-            fixedStores: newExistingStores,
-            message: 'Schema automatically repaired - PDF export ready!'
-          };
-        } else {
-          console.error('❌ AUTOMATIC SCHEMA REPAIR INCOMPLETE');
-          console.error('📊 Repair failure details:');
-          console.error(JSON.stringify({
-            stillMissing: newMissingStores,
-            versionCorrect: this.db.version === this.dbVersion
-          }, null, 2));
-          
-          return { 
-            repaired: true, 
-            success: false,
-            missingStores: newMissingStores,
-            error: 'Automatic repair incomplete - manual intervention may be required'
-          };
-        }
-      } else {
-        console.log('✅ SCHEMA VALIDATION PASSED - All required object stores present and functional');
-        console.log('📊 Database health check:');
-        console.log(JSON.stringify({
-          allStoresPresent: true,
-          pdfExportReady: pdfExportWorking,
-          version: this.db.version,
-          stores: existingStores
-        }, null, 2));
-        
-        return { 
-          repaired: false, 
-          success: true,
-          missingStores: [],
-          message: 'Database schema is healthy and ready'
-        };
-      }
-      
-    } catch (error) {
-      console.error('❌ Schema validation failed with error:', error);
-      console.error('📊 Error details:');
-      console.error(JSON.stringify({
-        errorName: error.name,
-        errorMessage: error.message,
-        dbAvailable: !!this.db,
-        dbVersion: this.db?.version
-      }, null, 2));
-      
-      // Don't throw - allow extension to continue working
-      return { 
-        repaired: false, 
-        success: false,
-        error: error.message,
-        message: 'Schema validation failed - extension may have limited functionality'
-      };
-    } finally {
-      console.log('🔍 === COMPREHENSIVE SCHEMA VALIDATION END ===');
+
+        this.initPromise = this._initDatabase();
+        return this.initPromise;
     }
-  }
 
-  // NEW: Enhanced automatic schema repair without user intervention
-  async performAutomaticSchemaRepair() {
-    return new Promise((resolve, reject) => {
-      try {
-        console.log('🔧 === ENHANCED AUTOMATIC DATABASE SCHEMA REPAIR START ===');
-        console.log('📊 Current database state:');
-        console.log(JSON.stringify({
-          name: this.dbName,
-          version: this.db?.version,
-          targetVersion: this.dbVersion,
-          existingStores: this.db ? [...this.db.objectStoreNames] : []
-        }, null, 2));
-        
-        // Close current database connection safely
-        if (this.db) {
-          this.db.close();
-          console.log('🔐 Safely closed existing database connection for repair');
-        }
-        
-        // Delete and recreate database with correct schema
-        const deleteRequest = indexedDB.deleteDatabase(this.dbName);
-        
-        deleteRequest.onsuccess = () => {
-          console.log('🗑️ Successfully deleted old database for automatic repair');
-          console.log('🏗️ Creating fresh database with complete v2 schema...');
-          
-          // Recreate with correct schema
-          const createRequest = indexedDB.open(this.dbName, this.dbVersion);
-          
-          createRequest.onsuccess = (event) => {
-            this.db = event.target.result;
+    async _initDatabase() {
+        try {
+            console.log('[Snap Journal Storage] 🔧 Opening IndexedDB...');
+            
+            // First, validate and fix schema if needed
+            await this.validateAndFixSchema();
+            
+            this.db = await new Promise((resolve, reject) => {
+                const request = indexedDB.open(this.dbName, this.dbVersion);
+                
+                request.onerror = () => {
+                    console.error('[Snap Journal Storage] ❌ Failed to open database:', request.error);
+                    reject(request.error);
+                };
+                
+                request.onsuccess = () => {
+                    console.log('[Snap Journal Storage] ✅ Database opened successfully');
+                    resolve(request.result);
+                };
+                
+                request.onupgradeneeded = (event) => {
+                    console.log('[Snap Journal Storage] 🔄 Upgrading database schema...');
+                    const db = event.target.result;
+                    this._createObjectStores(db);
+                };
+            });
+            
             this.isReady = true;
+            console.log('[Snap Journal Storage] ✅ Storage manager initialized');
             
-            const createdStores = [...this.db.objectStoreNames];
-            console.log('✅ Database successfully recreated with automatic repair');
-            console.log('📊 New database details:');
-            console.log(JSON.stringify({
-              name: this.dbName,
-              version: this.db.version,
-              stores: createdStores,
-              isReady: this.isReady
-            }, null, 2));
+        } catch (error) {
+            console.error('[Snap Journal Storage] ❌ Database initialization failed:', error);
             
-            // Verify all required stores are present
-            const requiredStores = ['screenshots', 'sessions', 'tempImages', 'pdfExports'];
-            const allPresent = requiredStores.every(store => createdStores.includes(store));
+            // Attempt automatic repair
+            console.log('[Snap Journal Storage] 🔧 Attempting automatic schema repair...');
+            const repairResult = await this.performAutomaticSchemaRepair();
             
-            if (allPresent) {
-              console.log('🎉 AUTOMATIC REPAIR SUCCESS: All required object stores created');
-              resolve({
-                success: true,
-                version: this.db.version,
-                stores: createdStores,
-                message: 'Database automatically repaired with full functionality'
-              });
+            if (repairResult.success) {
+                console.log('[Snap Journal Storage] ✅ Database automatically repaired - retrying initialization...');
+                return this._initDatabase();
             } else {
-              const missing = requiredStores.filter(store => !createdStores.includes(store));
-              console.error('❌ AUTOMATIC REPAIR INCOMPLETE: Missing stores:', missing);
-              resolve({
-                success: false,
-                missing: missing,
-                stores: createdStores,
-                message: `Repair incomplete - missing: ${missing.join(', ')}`
-              });
+                throw new Error('Database initialization failed and repair unsuccessful');
             }
-          };
-          
-          createRequest.onerror = (event) => {
-            console.error('❌ Database creation failed during automatic repair:', event.target.error);
-            this.isReady = false;
-            reject(new Error(`Database creation failed: ${event.target.error.message}`));
-          };
-          
-          createRequest.onupgradeneeded = (event) => {
-            const db = event.target.result;
-            const oldVersion = event.oldVersion;
-            const newVersion = event.newVersion;
+        }
+    }
+
+    _createObjectStores(db) {
+        try {
+            // Screenshots object store
+            if (!db.objectStoreNames.contains('screenshots')) {
+                const screenshotsStore = db.createObjectStore('screenshots', { keyPath: 'id' });
+                screenshotsStore.createIndex('timestamp', 'timestamp', { unique: false });
+                screenshotsStore.createIndex('url', 'url', { unique: false });
+                console.log('[Snap Journal Storage] ✅ Created screenshots object store');
+            }
             
-            console.log(`🔄 Creating complete schema during automatic repair (v${oldVersion} → v${newVersion})...`);
+            // Sessions object store
+            if (!db.objectStoreNames.contains('sessions')) {
+                const sessionsStore = db.createObjectStore('sessions', { keyPath: 'id' });
+                sessionsStore.createIndex('date', 'date', { unique: false });
+                console.log('[Snap Journal Storage] ✅ Created sessions object store');
+            }
             
-            try {
-              // Create all required object stores with proper indexes
-              
-              // Screenshots object store (Primary data)
-              if (!db.objectStoreNames.contains('screenshots')) {
-                const screenshotStore = db.createObjectStore('screenshots', { keyPath: 'id' });
-                screenshotStore.createIndex('timestamp', 'timestamp', { unique: false });
-                screenshotStore.createIndex('sessionId', 'sessionId', { unique: false });
-                console.log('✅ Created screenshots object store with indexes');
-              }
-              
-              // Sessions object store (Multi-tab support)
-              if (!db.objectStoreNames.contains('sessions')) {
-                const sessionStore = db.createObjectStore('sessions', { keyPath: 'id' });
-                sessionStore.createIndex('timestamp', 'timestamp', { unique: false });
-                sessionStore.createIndex('lastActive', 'lastActive', { unique: false });
-                console.log('✅ Created sessions object store with indexes');
-              }
-              
-              // Temp storage (Legacy compatibility)
-              if (!db.objectStoreNames.contains('tempImages')) {
+            // Temporary images object store
+            if (!db.objectStoreNames.contains('tempImages')) {
                 const tempStore = db.createObjectStore('tempImages', { keyPath: 'id' });
                 tempStore.createIndex('timestamp', 'timestamp', { unique: false });
-                tempStore.createIndex('screenshotId', 'screenshotId', { unique: false });
-                console.log('✅ Created tempImages object store with indexes');
-              }
-              
-              // PDF Exports object store (CRITICAL FOR PDF EXPORT FUNCTIONALITY)
-              if (!db.objectStoreNames.contains('pdfExports')) {
-                const pdfExportStore = db.createObjectStore('pdfExports', { keyPath: 'id' });
-                pdfExportStore.createIndex('timestamp', 'timestamp', { unique: false });
-                pdfExportStore.createIndex('created', 'created', { unique: false });
-                console.log('✅ CRITICAL: Created pdfExports object store - PDF export functionality restored');
-              }
-              
-              console.log('🏗️ Complete schema created during automatic repair');
-              console.log('📊 All object stores created:', [...db.objectStoreNames]);
-              
-            } catch (schemaError) {
-              console.error('❌ Schema creation failed during automatic repair:', schemaError);
-              throw schemaError;
+                console.log('[Snap Journal Storage] ✅ Created tempImages object store');
             }
-          };
-        };
-        
-        deleteRequest.onerror = (event) => {
-          console.error('❌ Database deletion failed during automatic repair:', event.target.error);
-          this.isReady = false;
-          reject(new Error(`Database deletion failed: ${event.target.error.message}`));
-        };
-        
-        deleteRequest.onblocked = (event) => {
-          console.warn('⚠️ Database deletion blocked during automatic repair - other connections open');
-          console.log('🔄 Attempting to proceed with repair despite blocking...');
-          
-          // Try to proceed anyway after a short delay
-          setTimeout(() => {
-            console.log('🔄 Attempting repair after blocked deletion...');
-            // The repair might still work if the database closes naturally
-            reject(new Error('Database repair blocked by other connections. Please close all browser tabs and try again.'));
-          }, 2000);
-        };
-        
-      } catch (error) {
-        console.error('❌ Automatic schema repair setup failed:', error);
-        this.isReady = false;
-        reject(error);
-      }
-    });
-  }
-  
-  // PRIMARY STORAGE METHODS - Unlimited Capacity
-  
-  async saveScreenshot(screenshot) {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    
-    try {
-      console.log('💾 Saving screenshot to PRIMARY storage (unlimited):', screenshot.id);
-      
-      const transaction = this.db.transaction(['screenshots'], 'readwrite');
-      const store = transaction.objectStore('screenshots');
-      
-      // Add session info if not present
-      if (!screenshot.sessionId) {
-        screenshot.sessionId = await this.getCurrentSessionId();
-      }
-      
-      // CRITICAL FIX: Properly handle IndexedDB async request
-      await new Promise((resolve, reject) => {
-        const request = store.put(screenshot);
-        
-        request.onsuccess = () => {
-          resolve(request.result);
-        };
-        
-        request.onerror = () => {
-          reject(request.error);
-        };
-      });
-      
-      console.log('✅ Screenshot saved to PRIMARY storage');
-      
-      return { success: true };
-    } catch (error) {
-      console.error('❌ Error saving screenshot:', error);
-      throw error;
-    }
-  }
-  
-  async getAllScreenshots(sessionId = null) {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db.transaction(['screenshots'], 'readonly');
-      const store = transaction.objectStore('screenshots');
-      
-      let request;
-      if (sessionId) {
-        const index = store.index('sessionId');
-        request = index.getAll(sessionId);
-      } else {
-        request = store.getAll();
-      }
-      
-      request.onsuccess = () => {
-        const screenshots = request.result.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        console.log(`📊 Retrieved ${screenshots.length} screenshots from PRIMARY storage${sessionId ? ` for session ${sessionId}` : ''}`);
-        resolve(screenshots);
-      };
-      
-      request.onerror = () => {
-        console.error('❌ Error retrieving screenshots:', request.error);
-        reject(request.error);
-      };
-    });
-  }
-  
-  async deleteScreenshot(id) {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    
-    try {
-      const transaction = this.db.transaction(['screenshots'], 'readwrite');
-      const store = transaction.objectStore('screenshots');
-      await store.delete(id);
-      console.log('✅ Screenshot deleted from PRIMARY storage:', id);
-      return true;
-    } catch (error) {
-      console.error('❌ Error deleting screenshot:', error);
-      return false;
-    }
-  }
-  
-  // MULTI-TAB SESSION MANAGEMENT
-  
-  async getCurrentSessionId() {
-    // Get or create current session
-    let sessionId = localStorage.getItem('currentSessionId');
-    
-    if (!sessionId) {
-      sessionId = 'session_' + Date.now();
-      localStorage.setItem('currentSessionId', sessionId);
-      
-      // Create session record
-      await this.createSession(sessionId, 'Multi-Tab Journal Session');
-    }
-    
-    return sessionId;
-  }
-  
-  async createSession(id = null, name = null) {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    
-    const sessionId = id || 'session_' + Date.now();
-    const session = {
-      id: sessionId,
-      name: name || `Journal Session - ${new Date().toLocaleDateString()}`,
-      created: new Date().toISOString(),
-      screenshotCount: 0,
-      lastActive: new Date().toISOString()
-    };
-    
-    try {
-      const transaction = this.db.transaction(['sessions'], 'readwrite');
-      const store = transaction.objectStore('sessions');
-      await store.put(session);
-      
-      console.log('✅ Created new session:', sessionId);
-      return sessionId;
-    } catch (error) {
-      console.error('❌ Error creating session:', error);
-      throw error;
-    }
-  }
-  
-  async getAllSessions() {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db.transaction(['sessions'], 'readonly');
-      const store = transaction.objectStore('sessions');
-      const request = store.getAll();
-      
-      request.onsuccess = () => {
-        const sessions = request.result.sort((a, b) => new Date(b.lastActive) - new Date(a.lastActive));
-        resolve(sessions);
-      };
-      
-      request.onerror = () => {
-        console.error('❌ Error retrieving sessions:', request.error);
-        reject(request.error);
-      };
-    });
-  }
-  
-  async updateSessionStats(sessionId) {
-    try {
-      const screenshots = await this.getAllScreenshots(sessionId);
-      const transaction = this.db.transaction(['sessions'], 'readwrite');
-      const store = transaction.objectStore('sessions');
-      
-      const sessionRequest = store.get(sessionId);
-      sessionRequest.onsuccess = () => {
-        const session = sessionRequest.result;
-        if (session) {
-          session.screenshotCount = screenshots.length;
-          session.lastActive = new Date().toISOString();
-          store.put(session);
-          console.log('✅ Updated session stats:', sessionId);
+            
+            // PDF exports object store for large datasets
+            if (!db.objectStoreNames.contains('pdfExports')) {
+                const pdfStore = db.createObjectStore('pdfExports', { keyPath: 'exportId' });
+                pdfStore.createIndex('timestamp', 'timestamp', { unique: false });
+                console.log('[Snap Journal Storage] ✅ Created pdfExports object store');
+            }
+            
+        } catch (error) {
+            console.error('[Snap Journal Storage] ❌ Failed to create object stores:', error);
+            throw error;
         }
-      };
-    } catch (error) {
-      console.error('❌ Error updating session stats:', error);
     }
-  }
-  
-  // STORAGE ANALYTICS - Unlimited Capacity
-  
-  async getStorageStats() {
-    if (!this.db) {
-      return { totalScreenshots: 0, totalSessions: 0, totalSize: 0, unlimited: true };
-    }
-    
-    try {
-      const screenshots = await this.getAllScreenshots();
-      const sessions = await this.getAllSessions();
-      
-      let totalSize = 0;
-      screenshots.forEach(screenshot => {
-        if (screenshot.imageData) {
-          totalSize += screenshot.imageData.length;
+
+    async validateAndFixSchema() {
+        try {
+            console.log('[Snap Journal Storage] 🔍 Validating database schema...');
+            
+            // Open database to check current schema
+            const db = await new Promise((resolve, reject) => {
+                const request = indexedDB.open(this.dbName);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+            
+            const requiredStores = ['screenshots', 'sessions', 'tempImages', 'pdfExports'];
+            const existingStores = Array.from(db.objectStoreNames);
+            const missingStores = requiredStores.filter(store => !existingStores.includes(store));
+            
+            db.close();
+            
+            if (missingStores.length > 0) {
+                console.log('[Snap Journal Storage] 🔧 Missing object stores detected:', missingStores);
+                return await this.performAutomaticSchemaRepair();
+            } else {
+                console.log('[Snap Journal Storage] ✅ Database schema is valid');
+                return { success: true, repaired: false, message: 'Schema is valid' };
+            }
+            
+        } catch (error) {
+            console.error('[Snap Journal Storage] ❌ Schema validation failed:', error);
+            return await this.performAutomaticSchemaRepair();
         }
-      });
-      
-      const stats = {
-        totalScreenshots: screenshots.length,
-        totalSessions: sessions.length,
-        totalSize: totalSize,
-        totalSizeMB: Math.round(totalSize / (1024 * 1024)),
-        unlimited: true,
-        capacity: 'UNLIMITED (IndexedDB)',
-        oldChromeLimit: '10MB',
-        currentUsage: totalSize > 10485760 ? `${Math.round(totalSize / 1024 / 1024)}MB (Would exceed Chrome storage!)` : `${Math.round(totalSize / 1024)}KB`
-      };
-      
-      console.log('📊 UNLIMITED storage stats:', stats);
-      return stats;
-    } catch (error) {
-      console.error('❌ Error getting storage stats:', error);
-      return { totalScreenshots: 0, totalSessions: 0, totalSize: 0, unlimited: true };
     }
-  }
-  
-  // PDF Export Data Management (for large datasets that exceed Chrome storage)
-  async storePdfExportData(exportId, exportData) {
-    if (!this.db) {
-      throw new Error('Database not initialized for PDF export data storage');
-    }
-    
-    try {
-      console.log('💾 Storing PDF export data in IndexedDB:', exportId);
-      console.log('📊 Export data size:', Math.round(JSON.stringify(exportData).length / 1024 / 1024), 'MB');
-      
-      // CRITICAL FIX: Check if pdfExports object store exists
-      if (!this.db.objectStoreNames.contains('pdfExports')) {
-        console.error('❌ pdfExports object store not found in database');
-        console.log('🗄️ Available object stores:', [...this.db.objectStoreNames]);
-        
-        // Try to reinitialize database with correct schema
-        console.log('🔄 Attempting to reinitialize database...');
-        await this.init();
-        
-        if (!this.db.objectStoreNames.contains('pdfExports')) {
-          throw new Error('pdfExports object store not available. Database schema may need manual reset.');
+
+    async performAutomaticSchemaRepair() {
+        try {
+            console.log('[Snap Journal Storage] 🛠️ Performing automatic schema repair...');
+            
+            // Delete existing database to force recreation
+            await new Promise((resolve, reject) => {
+                const deleteRequest = indexedDB.deleteDatabase(this.dbName);
+                deleteRequest.onsuccess = () => {
+                    console.log('[Snap Journal Storage] 🗑️ Old database deleted');
+                    resolve();
+                };
+                deleteRequest.onerror = () => reject(deleteRequest.error);
+            });
+            
+            // Create new database with correct schema
+            const db = await new Promise((resolve, reject) => {
+                const request = indexedDB.open(this.dbName, this.dbVersion);
+                
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    this._createObjectStores(db);
+                };
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+            
+            db.close();
+            
+            console.log('[Snap Journal Storage] ✅ Database schema repaired successfully');
+            
+            return {
+                success: true,
+                repaired: true,
+                missingStores: ['screenshots', 'sessions', 'tempImages', 'pdfExports'],
+                fixedStores: ['screenshots', 'sessions', 'tempImages', 'pdfExports'],
+                message: 'Schema automatically repaired - PDF export ready!'
+            };
+            
+        } catch (error) {
+            console.error('[Snap Journal Storage] ❌ Automatic schema repair failed:', error);
+            return {
+                success: false,
+                repaired: false,
+                error: error.message,
+                message: 'Automatic repair failed'
+            };
         }
-      }
-      
-      const transaction = this.db.transaction(['pdfExports'], 'readwrite');
-      const store = transaction.objectStore('pdfExports');
-      
-      const exportRecord = {
-        id: exportId,
-        data: exportData,
-        timestamp: Date.now(),
-        created: new Date().toISOString()
-      };
-      
-      // CRITICAL FIX: Properly handle IndexedDB async request
-      await new Promise((resolve, reject) => {
-        const request = store.put(exportRecord);
-        
-        request.onsuccess = () => {
-          resolve(request.result);
-        };
-        
-        request.onerror = () => {
-          reject(request.error);
-        };
-      });
-      
-      console.log('✅ PDF export data stored successfully in IndexedDB');
-      
-      return { success: true, exportId };
-      
-    } catch (error) {
-      console.error('❌ Error storing PDF export data:', error);
-      
-      // Enhanced error handling with fallback suggestion
-      if (error.message.includes('object stores was not found')) {
-        console.error('💡 SOLUTION: IndexedDB schema needs update. Try:');
-        console.error('  1. Close all browser tabs');
-        console.error('  2. Reload extension');
-        console.error('  3. Or use clearExtensionStorage() to reset database');
-        
-        throw new Error(`PDF export storage failed: Database schema outdated. Please reload the extension or clear storage.`);
-      }
-      
-      throw new Error(`Failed to store PDF export data: ${error.message}`);
     }
-  }
-  
-  async getPdfExportData(exportId) {
-    if (!this.db) {
-      throw new Error('Database not initialized for PDF export data retrieval');
-    }
-    
-    try {
-      console.log('📂 Retrieving PDF export data from IndexedDB:', exportId);
-      
-      // Check if object store exists
-      if (!this.db.objectStoreNames.contains('pdfExports')) {
-        console.error('❌ pdfExports object store not found for retrieval');
-        throw new Error('PDF export data store not available. Please try exporting again.');
-      }
-      
-      const transaction = this.db.transaction(['pdfExports'], 'readonly');
-      const store = transaction.objectStore('pdfExports');
-      
-      // CRITICAL FIX: Properly handle IndexedDB async request
-      const result = await new Promise((resolve, reject) => {
-        const request = store.get(exportId);
-        
-        request.onsuccess = () => {
-          resolve(request.result);
-        };
-        
-        request.onerror = () => {
-          reject(request.error);
-        };
-      });
-      
-      if (!result) {
-        console.error('❌ PDF export data not found:', exportId);
-        throw new Error(`PDF export data not found for ID: ${exportId}`);
-      }
-      
-      // Validate the data structure before returning
-      if (!result.data || typeof result.data !== 'object') {
-        console.error('❌ PDF export data has invalid structure:', result);
-        throw new Error(`PDF export data structure is invalid for ID: ${exportId}`);
-      }
-      
-      // Ensure screenshots array exists and is valid
-      if (!result.data.screenshots || !Array.isArray(result.data.screenshots)) {
-        console.error('❌ PDF export data missing screenshots array:', result.data);
-        throw new Error(`PDF export data missing valid screenshots array for ID: ${exportId}`);
-      }
-      
-      console.log('✅ PDF export data retrieved successfully');
-      console.log('📊 Retrieved data size:', Math.round(JSON.stringify(result.data).length / 1024 / 1024), 'MB');
-      console.log('📊 Data structure validation:', {
-        hasScreenshots: Array.isArray(result.data.screenshots),
-        screenshotCount: result.data.screenshots.length,
-        hasAnnotations: typeof result.data.totalAnnotations === 'number',
-        hasExportDate: !!result.data.exportDate
-      });
-      
-      return result.data;
-      
-    } catch (error) {
-      console.error('❌ Error retrieving PDF export data:', error);
-      throw new Error(`Failed to retrieve PDF export data: ${error.message}`);
-    }
-  }
-  
-  async deletePdfExportData(exportId) {
-    if (!this.db) {
-      throw new Error('Database not initialized for PDF export data deletion');
-    }
-    
-    try {
-      console.log('🗑️ Deleting PDF export data from IndexedDB:', exportId);
-      
-      // Check if object store exists
-      if (!this.db.objectStoreNames.contains('pdfExports')) {
-        console.warn('⚠️ pdfExports object store not found for deletion - data may already be cleared');
-        return { success: true }; // Consider deletion successful if store doesn't exist
-      }
-      
-      const transaction = this.db.transaction(['pdfExports'], 'readwrite');
-      const store = transaction.objectStore('pdfExports');
-      
-      // CRITICAL FIX: Properly handle IndexedDB async request
-      await new Promise((resolve, reject) => {
-        const request = store.delete(exportId);
-        
-        request.onsuccess = () => {
-          resolve(request.result);
-        };
-        
-        request.onerror = () => {
-          reject(request.error);
-        };
-      });
-      
-      console.log('✅ PDF export data deleted successfully');
-      
-      return { success: true };
-      
-    } catch (error) {
-      console.error('❌ Error deleting PDF export data:', error);
-      throw new Error(`Failed to delete PDF export data: ${error.message}`);
-    }
-  }
-  
-  async cleanupOldPdfExports() {
-    if (!this.db) {
-      return;
-    }
-    
-    try {
-      console.log('🧹 Cleaning up old PDF export data...');
-      
-      // Check if object store exists before cleanup
-      if (!this.db.objectStoreNames.contains('pdfExports')) {
-        console.log('ℹ️ pdfExports object store not found - no cleanup needed');
-        return;
-      }
-      
-      const transaction = this.db.transaction(['pdfExports'], 'readwrite');
-      const store = transaction.objectStore('pdfExports');
-      
-      // Delete exports older than 1 hour
-      const cutoffTime = Date.now() - (60 * 60 * 1000);
-      const cursor = await store.openCursor();
-      
-      let deletedCount = 0;
-      while (cursor) {
-        const record = cursor.value;
-        if (record.timestamp < cutoffTime) {
-          await cursor.delete();
-          deletedCount++;
-          console.log('🗑️ Deleted old PDF export:', record.id);
+
+    async saveScreenshot(screenshot) {
+        if (!this.isReady) {
+            await this.init();
         }
-        cursor.continue();
-      }
-      
-      if (deletedCount > 0) {
-        console.log(`✅ Cleaned up ${deletedCount} old PDF exports`);
-      }
-      
-    } catch (error) {
-      console.error('❌ Error cleaning up old PDF exports:', error);
-    }
-  }
-  
-  async clearAllStorage() {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    
-    try {
-      console.log('🧹 Clearing ALL PRIMARY storage...');
-      
-      const transaction = this.db.transaction(['screenshots', 'sessions', 'tempImages'], 'readwrite');
-      
-      await transaction.objectStore('screenshots').clear();
-      await transaction.objectStore('sessions').clear();
-      await transaction.objectStore('tempImages').clear();
-      
-      // Clear current session
-      localStorage.removeItem('currentSessionId');
-      
-      console.log('✅ ALL PRIMARY storage cleared');
-      return true;
-    } catch (error) {
-      console.error('❌ Error clearing storage:', error);
-      return false;
-    }
-  }
-  
-  // LEGACY METHODS (kept for compatibility)
-  
-  async storeImage(id, imageDataUrl, metadata = {}) {
-    // Legacy method - now just saves as screenshot
-    const screenshot = {
-      id: id,
-      imageData: imageDataUrl,
-      metadata: metadata,
-      timestamp: new Date().toISOString(),
-      sessionId: await this.getCurrentSessionId()
-    };
-    
-    const result = await this.saveScreenshot(screenshot);
-    return { stored: result.success, size: imageDataUrl.length };
-  }
-  
-  async retrieveImage(id) {
-    try {
-      const transaction = this.db.transaction(['screenshots'], 'readonly');
-      const store = transaction.objectStore('screenshots');
-      
-      return new Promise((resolve, reject) => {
-        const request = store.get(id);
         
-        request.onsuccess = () => {
-          const screenshot = request.result;
-          if (screenshot) {
-            resolve({ imageData: screenshot.imageData, metadata: screenshot.metadata });
-          } else {
-            resolve(null);
-          }
-        };
+        try {
+            return await new Promise((resolve, reject) => {
+                const transaction = this.db.transaction(['screenshots'], 'readwrite');
+                const store = transaction.objectStore('screenshots');
+                
+                const request = store.put(screenshot);
+                
+                request.onsuccess = () => {
+                    console.log('[Snap Journal Storage] ✅ Screenshot saved:', screenshot.id);
+                    resolve({ success: true });
+                };
+                
+                request.onerror = () => {
+                    console.error('[Snap Journal Storage] ❌ Failed to save screenshot:', request.error);
+                    reject(request.error);
+                };
+            });
+            
+        } catch (error) {
+            console.error('[Snap Journal Storage] ❌ Save screenshot error:', error);
+            throw error;
+        }
+    }
+
+    async getAllScreenshots(sessionId = null) {
+        if (!this.isReady) {
+            await this.init();
+        }
         
-        request.onerror = () => {
-          console.error('❌ Error retrieving image:', request.error);
-          reject(request.error);
-        };
-      });
-    } catch (error) {
-      console.error('❌ Error in retrieveImage:', error);
-      return null;
+        try {
+            return await new Promise((resolve, reject) => {
+                const transaction = this.db.transaction(['screenshots'], 'readonly');
+                const store = transaction.objectStore('screenshots');
+                
+                const request = store.getAll();
+                
+                request.onsuccess = () => {
+                    let screenshots = request.result;
+                    
+                    // Filter by session if specified
+                    if (sessionId) {
+                        screenshots = screenshots.filter(s => s.sessionId === sessionId);
+                    }
+                    
+                    // Sort by timestamp (newest first)
+                    screenshots.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    
+                    console.log('[Snap Journal Storage] ✅ Retrieved screenshots:', screenshots.length);
+                    resolve(screenshots);
+                };
+                
+                request.onerror = () => {
+                    console.error('[Snap Journal Storage] ❌ Failed to get screenshots:', request.error);
+                    reject(request.error);
+                };
+            });
+            
+        } catch (error) {
+            console.error('[Snap Journal Storage] ❌ Get screenshots error:', error);
+            throw error;
+        }
     }
-  }
-  
-  async deleteImage(id) {
-    return await this.deleteScreenshot(id);
-  }
-  
-  async cleanOldTempFiles() {
-    // Legacy cleanup - now managed differently
-    console.log('ℹ️ Legacy temp file cleanup - using new session management');
-    return true;
-  }
-  
-  async restoreFullScreenshot(screenshotStub) {
-    // For compatibility with existing code
-    if (screenshotStub.isInTempStorage && screenshotStub.tempImageId) {
-      const result = await this.retrieveImage(screenshotStub.tempImageId);
-      if (result) {
-        return {
-          ...screenshotStub,
-          imageData: result.imageData,
-          isInTempStorage: false
-        };
-      }
+
+    async deleteScreenshot(screenshotId) {
+        if (!this.isReady) {
+            await this.init();
+        }
+        
+        try {
+            return await new Promise((resolve, reject) => {
+                const transaction = this.db.transaction(['screenshots'], 'readwrite');
+                const store = transaction.objectStore('screenshots');
+                
+                const request = store.delete(screenshotId);
+                
+                request.onsuccess = () => {
+                    console.log('[Snap Journal Storage] ✅ Screenshot deleted:', screenshotId);
+                    resolve({ success: true });
+                };
+                
+                request.onerror = () => {
+                    console.error('[Snap Journal Storage] ❌ Failed to delete screenshot:', request.error);
+                    reject(request.error);
+                };
+            });
+            
+        } catch (error) {
+            console.error('[Snap Journal Storage] ❌ Delete screenshot error:', error);
+            throw error;
+        }
     }
-    return screenshotStub;
-  }
+
+    async clearAllScreenshots() {
+        if (!this.isReady) {
+            await this.init();
+        }
+        
+        try {
+            return await new Promise((resolve, reject) => {
+                const transaction = this.db.transaction(['screenshots'], 'readwrite');
+                const store = transaction.objectStore('screenshots');
+                
+                const request = store.clear();
+                
+                request.onsuccess = () => {
+                    console.log('[Snap Journal Storage] ✅ All screenshots cleared');
+                    resolve({ success: true });
+                };
+                
+                request.onerror = () => {
+                    console.error('[Snap Journal Storage] ❌ Failed to clear screenshots:', request.error);
+                    reject(request.error);
+                };
+            });
+            
+        } catch (error) {
+            console.error('[Snap Journal Storage] ❌ Clear screenshots error:', error);
+            throw error;
+        }
+    }
+
+    async storePdfExportData(exportId, exportData) {
+        if (!this.isReady) {
+            await this.init();
+        }
+        
+        try {
+            const data = {
+                exportId: exportId,
+                ...exportData,
+                timestamp: new Date().toISOString()
+            };
+            
+            return await new Promise((resolve, reject) => {
+                const transaction = this.db.transaction(['pdfExports'], 'readwrite');
+                const store = transaction.objectStore('pdfExports');
+                
+                const request = store.put(data);
+                
+                request.onsuccess = () => {
+                    console.log('[Snap Journal Storage] ✅ PDF export data stored:', exportId);
+                    resolve({ success: true, exportId: exportId });
+                };
+                
+                request.onerror = () => {
+                    console.error('[Snap Journal Storage] ❌ Failed to store PDF export data:', request.error);
+                    reject(request.error);
+                };
+            });
+            
+        } catch (error) {
+            console.error('[Snap Journal Storage] ❌ Store PDF export data error:', error);
+            throw error;
+        }
+    }
+
+    async getPdfExportData(exportId) {
+        if (!this.isReady) {
+            await this.init();
+        }
+        
+        try {
+            return await new Promise((resolve, reject) => {
+                const transaction = this.db.transaction(['pdfExports'], 'readonly');
+                const store = transaction.objectStore('pdfExports');
+                
+                const request = store.get(exportId);
+                
+                request.onsuccess = () => {
+                    const data = request.result;
+                    
+                    if (!data) {
+                        reject(new Error(`PDF export data not found: ${exportId}`));
+                        return;
+                    }
+                    
+                    // Validate data structure
+                    if (!data.screenshots || !Array.isArray(data.screenshots)) {
+                        console.error('[Snap Journal Storage] ❌ Invalid PDF export data structure:', data);
+                        reject(new Error('Invalid PDF export data structure'));
+                        return;
+                    }
+                    
+                    console.log('[Snap Journal Storage] ✅ PDF export data retrieved:', exportId, data.screenshots.length, 'screenshots');
+                    resolve(data);
+                };
+                
+                request.onerror = () => {
+                    console.error('[Snap Journal Storage] ❌ Failed to get PDF export data:', request.error);
+                    reject(request.error);
+                };
+            });
+            
+        } catch (error) {
+            console.error('[Snap Journal Storage] ❌ Get PDF export data error:', error);
+            throw error;
+        }
+    }
+
+    async deletePdfExportData(exportId) {
+        if (!this.isReady) {
+            await this.init();
+        }
+        
+        try {
+            return await new Promise((resolve, reject) => {
+                const transaction = this.db.transaction(['pdfExports'], 'readwrite');
+                const store = transaction.objectStore('pdfExports');
+                
+                const request = store.delete(exportId);
+                
+                request.onsuccess = () => {
+                    console.log('[Snap Journal Storage] ✅ PDF export data deleted:', exportId);
+                    resolve({ success: true });
+                };
+                
+                request.onerror = () => {
+                    console.error('[Snap Journal Storage] ❌ Failed to delete PDF export data:', request.error);
+                    reject(request.error);
+                };
+            });
+            
+        } catch (error) {
+            console.error('[Snap Journal Storage] ❌ Delete PDF export data error:', error);
+            throw error;
+        }
+    }
+
+    async getStorageStats() {
+        if (!this.isReady) {
+            await this.init();
+        }
+        
+        try {
+            const screenshots = await this.getAllScreenshots();
+            const totalSize = screenshots.reduce((size, screenshot) => {
+                return size + (screenshot.imageData ? screenshot.imageData.length : 0);
+            }, 0);
+            
+            const totalSizeMB = Math.round(totalSize / 1024 / 1024);
+            
+            const stats = {
+                totalScreenshots: screenshots.length,
+                totalSessions: 0, // Could be implemented later
+                totalSize: totalSize,
+                totalSizeMB: totalSizeMB,
+                unlimited: true,
+                capacity: 'UNLIMITED (IndexedDB)',
+                currentUsage: totalSizeMB > 10 ? 
+                    `${totalSizeMB}MB (Would exceed Chrome storage!)` : 
+                    `${totalSizeMB}MB`,
+                storageMethod: 'IndexedDB',
+                copyright: this.metadata.copyright
+            };
+            
+            console.log('[Snap Journal Storage] 📊 Storage stats:', stats);
+            return stats;
+            
+        } catch (error) {
+            console.error('[Snap Journal Storage] ❌ Get storage stats error:', error);
+            throw error;
+        }
+    }
+
+    async cleanupOldPdfExports() {
+        if (!this.isReady) {
+            await this.init();
+        }
+        
+        try {
+            const cutoffTime = Date.now() - (24 * 60 * 60 * 1000); // 24 hours ago
+            
+            return await new Promise((resolve, reject) => {
+                const transaction = this.db.transaction(['pdfExports'], 'readwrite');
+                const store = transaction.objectStore('pdfExports');
+                const index = store.index('timestamp');
+                
+                const range = IDBKeyRange.upperBound(new Date(cutoffTime).toISOString());
+                const request = index.openCursor(range);
+                
+                let deletedCount = 0;
+                
+                request.onsuccess = (event) => {
+                    const cursor = event.target.result;
+                    if (cursor) {
+                        cursor.delete();
+                        deletedCount++;
+                        cursor.continue();
+                    } else {
+                        console.log('[Snap Journal Storage] 🧹 Cleaned up old PDF exports:', deletedCount);
+                        resolve({ success: true, deletedCount });
+                    }
+                };
+                
+                request.onerror = () => {
+                    console.error('[Snap Journal Storage] ❌ Failed to cleanup old PDF exports:', request.error);
+                    reject(request.error);
+                };
+            });
+            
+        } catch (error) {
+            console.error('[Snap Journal Storage] ❌ Cleanup error:', error);
+            throw error;
+        }
+    }
+
+    // Utility method for debugging
+    async getAllData() {
+        if (!this.isReady) {
+            await this.init();
+        }
+        
+        try {
+            const screenshots = await this.getAllScreenshots();
+            const stats = await this.getStorageStats();
+            
+            return {
+                metadata: this.metadata,
+                screenshots: screenshots,
+                stats: stats,
+                dbInfo: {
+                    name: this.dbName,
+                    version: this.dbVersion,
+                    ready: this.isReady
+                }
+            };
+            
+        } catch (error) {
+            console.error('[Snap Journal Storage] ❌ Get all data error:', error);
+            throw error;
+        }
+    }
 }
 
-// Initialize and make available globally
-window.tempStorage = new TempStorageManager();
-window.tempStorage.init().then(() => {
-  console.log('🚀 PRIMARY STORAGE READY - UNLIMITED CAPACITY!');
-  console.log('📊 Old Chrome limit: 10MB | New capacity: UNLIMITED');
-}).catch((error) => {
-  console.error('❌ PRIMARY storage initialization failed:', error);
-});
+// Make available globally
+window.TempStorageManager = TempStorageManager;
 
-console.log('📁 PRIMARY storage manager loaded with UNLIMITED capacity');
+// Export for module systems
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = TempStorageManager;
+}

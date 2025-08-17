@@ -1,840 +1,551 @@
-// Universal Annotation Interface - Works on ANY page!
-console.log('🌐 Universal annotation interface loaded');
+/*
+ * ==================================================================================
+ * SNAP JOURNAL - Medical Grade Screenshot Annotation Extension
+ * ==================================================================================
+ * 
+ * annotation.js - Screenshot Annotation Interface Controller
+ * 
+ * Copyright (C) 2025 Snap Journal Development Team
+ * All rights reserved.
+ * 
+ * PROPRIETARY AND CONFIDENTIAL
+ * 
+ * NOTICE: This software and its source code are proprietary products of 
+ * Snap Journal Development Team and are protected by copyright law and 
+ * international treaties. Unauthorized reproduction or distribution of this 
+ * program, or any portion of it, may result in severe civil and criminal 
+ * penalties, and will be prosecuted to the maximum extent possible under law.
+ * 
+ * RESTRICTIONS:
+ * - No part of this source code may be reproduced, distributed, or transmitted
+ *   in any form or by any means, including photocopying, recording, or other
+ *   electronic or mechanical methods, without the prior written permission
+ *   of the copyright owner.
+ * - Reverse engineering, decompilation, or disassembly is strictly prohibited.
+ * - This software is licensed, not sold.
+ * 
+ * For licensing inquiries, contact: [your-email@domain.com]
+ * 
+ * Version: 2.0.1
+ * Build Date: January 2025
+ * ==================================================================================
+ */
 
-class UniversalAnnotator {
+class AnnotationSystem {
     constructor() {
         this.screenshot = null;
         this.annotations = [];
-        this.pendingAnnotationText = null;
-        this.recognition = null;
-        this.isListening = false;
+        this.annotationCounter = 0;
+        this.isLoading = true;
+        this.tempStorage = null;
         
-        // 🎨 CUSTOMIZATION SETTINGS
-        this.settings = {
-            annotationColor: '#ff4444',
-            textColor: '#333333',
-            textBgColor: '#ffffff',
-            textBgOpacity: 95,
-            fontSize: 14,
-            fontWeight: 'bold',
-            fontFamily: 'Arial, sans-serif'
-        };
-        
-        this.init();
-    }
-    
-    async init() {
-        console.log('🚀 Initializing universal annotator...');
-        
-        // Get screenshot data from URL parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        const screenshotData = urlParams.get('screenshot');
-        
-        if (!screenshotData) {
-            this.showError('No screenshot data provided');
-            return;
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.init());
+        } else {
+            this.init();
         }
-        
-        try {
-            this.screenshot = JSON.parse(decodeURIComponent(screenshotData));
-            this.annotations = this.screenshot.annotations || [];
-            console.log('✅ Screenshot data loaded:', this.screenshot.id);
-            
-            await this.setupInterface();
-            this.setupEventListeners();
-            
-        } catch (error) {
-            console.error('❌ Error initializing annotator:', error);
-            this.showError('Failed to load screenshot data');
-        }
-    }
-    
-    async setupInterface() {
-        const imageContainer = document.getElementById('imageContainer');
-        const loading = document.getElementById('loading');
-        
-        // Create image element
-        const img = document.createElement('img');
-        img.className = 'screenshot-image';
-        img.src = this.screenshot.imageData;
-        img.alt = 'Screenshot for annotation';
-        
-        // Add annotation count badge
-        const countBadge = document.createElement('div');
-        countBadge.className = 'annotation-count';
-        countBadge.textContent = this.annotations.length;
-        imageContainer.appendChild(countBadge);
-        
-        img.onload = () => {
-            loading.remove();
-            imageContainer.appendChild(img);
-            
-            // Render existing annotations
-            this.renderExistingAnnotations(imageContainer, img);
-            
-            // Setup click handler for new annotations
-            this.setupImageClickHandler(img, imageContainer);
-            
-            console.log('✅ Image loaded and annotation interface ready');
-        };
-        
-        img.onerror = () => {
-            this.showError('Failed to load screenshot image');
-        };
-        
-        // Update window title
-        document.title = `Annotating: ${this.screenshot.title}`;
-    }
-    
-    setupEventListeners() {
-        const voiceBtn = document.getElementById('voiceBtn');
-        const settingsBtn = document.getElementById('settingsBtn');
-        const closeBtn = document.getElementById('closeBtn');
-        
-        // Voice recognition setup
-        this.setupSpeechRecognition(voiceBtn);
-        
-        // Settings panel setup
-        this.setupSettingsPanel(settingsBtn);
-        
-        // Close button - Send message to popup instead of closing everything
-        closeBtn.addEventListener('click', () => {
-            console.log('🔄 Annotation window closing - maintaining popup continuity');
-            
-            try {
-                // Try to notify the popup that annotation is done
-                if (typeof chrome !== 'undefined' && chrome.runtime) {
-                    chrome.runtime.sendMessage({
-                        action: 'annotationWindowClosed',
-                        timestamp: new Date().toISOString()
-                    }, (response) => {
-                        console.log('✅ Notified popup of annotation window closure');
-                    });
-                }
-            } catch (error) {
-                console.log('ℹ️ Could not notify popup (expected if popup closed):', error.message);
-            }
-            
-            // Close only the annotation window, not the popup
-            window.close();
-        });
-        
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                const settingsPanel = document.getElementById('settingsPanel');
-                if (settingsPanel.style.display !== 'none') {
-                    settingsPanel.style.display = 'none';
-                    console.log('⚙️ Settings panel closed');
-                } else {
-                    console.log('🔄 Annotation complete - maintaining popup continuity');
-                    
-                    try {
-                        // Try to notify the popup that annotation is done
-                        if (typeof chrome !== 'undefined' && chrome.runtime) {
-                            chrome.runtime.sendMessage({
-                                action: 'annotationComplete',
-                                timestamp: new Date().toISOString()
-                            }, (response) => {
-                                console.log('✅ Notified popup of annotation completion');
-                            });
-                        }
-                    } catch (error) {
-                        console.log('ℹ️ Could not notify popup (expected if popup closed):', error.message);
-                    }
-                    
-                    // Close only the annotation window, not the popup
-                    window.close();
-                }
-            }
-        });
-    }
-    
-    // 🎨 SETTINGS PANEL FUNCTIONALITY
-    setupSettingsPanel(settingsBtn) {
-        const settingsPanel = document.getElementById('settingsPanel');
-        const closeSettingsBtn = document.getElementById('closeSettingsBtn');
-        const resetBtn = document.getElementById('resetSettings');
-        const applyBtn = document.getElementById('applySettings');
-        
-        // Open settings panel
-        settingsBtn.addEventListener('click', () => {
-            settingsPanel.style.display = 'block';
-            this.loadSettingsUI();
-        });
-        
-        // Close settings panel
-        closeSettingsBtn.addEventListener('click', () => {
-            settingsPanel.style.display = 'none';
-        });
-        
-        // Reset to defaults
-        resetBtn.addEventListener('click', () => {
-            this.resetSettings();
-            this.loadSettingsUI();
-        });
-        
-        // Apply settings
-        applyBtn.addEventListener('click', () => {
-            this.saveSettingsFromUI();
-            this.applySettings();
-            settingsPanel.style.display = 'none';
-            this.updateStatus('✅ Settings applied to all annotations!');
-        });
-        
-        // Real-time color updates
-        document.getElementById('annotationColor').addEventListener('input', (e) => {
-            document.getElementById('annotationColorText').value = e.target.value;
-        });
-        
-        document.getElementById('annotationColorText').addEventListener('input', (e) => {
-            const color = e.target.value;
-            if (color.match(/^#[0-9A-F]{6}$/i)) {
-                document.getElementById('annotationColor').value = color;
-            }
-        });
-        
-        document.getElementById('textColor').addEventListener('input', (e) => {
-            document.getElementById('textColorText').value = e.target.value;
-        });
-        
-        document.getElementById('textColorText').addEventListener('input', (e) => {
-            const color = e.target.value;
-            if (color.match(/^#[0-9A-F]{6}$/i)) {
-                document.getElementById('textColor').value = color;
-            }
-        });
-        
-        // Real-time slider updates
-        document.getElementById('textBgOpacity').addEventListener('input', (e) => {
-            document.getElementById('opacityValue').textContent = e.target.value;
-        });
-        
-        document.getElementById('fontSize').addEventListener('input', (e) => {
-            document.getElementById('fontSizeValue').textContent = e.target.value;
-        });
-    }
-    
-    loadSettingsUI() {
-        document.getElementById('annotationColor').value = this.settings.annotationColor;
-        document.getElementById('annotationColorText').value = this.settings.annotationColor;
-        document.getElementById('textColor').value = this.settings.textColor;
-        document.getElementById('textColorText').value = this.settings.textColor;
-        document.getElementById('textBgColor').value = this.settings.textBgColor;
-        document.getElementById('textBgOpacity').value = this.settings.textBgOpacity;
-        document.getElementById('opacityValue').textContent = this.settings.textBgOpacity;
-        document.getElementById('fontSize').value = this.settings.fontSize;
-        document.getElementById('fontSizeValue').textContent = this.settings.fontSize;
-        document.getElementById('fontWeight').value = this.settings.fontWeight;
-        document.getElementById('fontFamily').value = this.settings.fontFamily;
-    }
-    
-    saveSettingsFromUI() {
-        this.settings.annotationColor = document.getElementById('annotationColor').value;
-        this.settings.textColor = document.getElementById('textColor').value;
-        this.settings.textBgColor = document.getElementById('textBgColor').value;
-        this.settings.textBgOpacity = parseInt(document.getElementById('textBgOpacity').value);
-        this.settings.fontSize = parseInt(document.getElementById('fontSize').value);
-        this.settings.fontWeight = document.getElementById('fontWeight').value;
-        this.settings.fontFamily = document.getElementById('fontFamily').value;
-    }
-    
-    resetSettings() {
-        this.settings = {
-            annotationColor: '#ff4444',
-            textColor: '#333333',
-            textBgColor: '#ffffff',
-            textBgOpacity: 95,
-            fontSize: 14,
-            fontWeight: 'bold',
-            fontFamily: 'Arial, sans-serif'
-        };
-    }
-    
-    applySettings() {
-        // Apply CSS custom properties
-        const root = document.documentElement;
-        root.style.setProperty('--annotation-color', this.settings.annotationColor);
-        root.style.setProperty('--text-color', this.settings.textColor);
-        
-        // Convert hex to rgba for background
-        const bgColor = this.hexToRgba(this.settings.textBgColor, this.settings.textBgOpacity / 100);
-        root.style.setProperty('--text-bg-color', bgColor);
-        root.style.setProperty('--text-size', this.settings.fontSize + 'px');
-        root.style.setProperty('--text-weight', this.settings.fontWeight);
-        root.style.setProperty('--text-font', this.settings.fontFamily);
-        
-        console.log('🎨 Settings applied:', this.settings);
-    }
-    
-    hexToRgba(hex, alpha) {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        if (result) {
-            const r = parseInt(result[1], 16);
-            const g = parseInt(result[2], 16);
-            const b = parseInt(result[3], 16);
-            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-        }
-        return hex;
     }
 
-    setupSpeechRecognition(voiceBtn) {
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            this.recognition = new SpeechRecognition();
-            this.recognition.continuous = false;
-            this.recognition.interimResults = false;
-            this.recognition.lang = 'en-US';
+    async init() {
+        try {
+            console.log('[Snap Journal] 🚀 Initializing annotation system...');
             
-            this.recognition.onstart = () => {
-                this.isListening = true;
-                voiceBtn.textContent = '🔴 Listening...';
-                voiceBtn.className = 'btn-voice listening';
-                this.updateStatus('🎤 Listening... Speak your annotation, then click on the image');
-            };
+            // Initialize storage
+            this.tempStorage = new TempStorageManager();
+            await this.tempStorage.init();
             
-            this.recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                this.pendingAnnotationText = transcript;
-                voiceBtn.textContent = '✅ Voice Captured';
-                voiceBtn.className = 'btn-voice captured';
-                this.updateStatus(`💬 "${transcript}" - Now click on the image to place it`);
-            };
+            // Load screenshot data
+            await this.loadScreenshotData();
             
-            this.recognition.onerror = (event) => {
-                console.error('Speech recognition error:', event.error);
-                this.isListening = false;
-                voiceBtn.textContent = '🎤 Voice';
-                voiceBtn.className = 'btn-voice';
-                
-                switch(event.error) {
-                    case 'audio-capture':
-                        this.updateStatus('❌ Microphone access denied. Click to try again or just click on image to type.');
-                        break;
-                    case 'not-allowed':
-                        this.updateStatus('❌ Microphone permission denied. Just click on image to type annotation.');
-                        break;
-                    case 'no-speech':
-                        this.updateStatus('❌ No speech detected. Click voice button to try again or click image to type.');
-                        break;
-                    default:
-                        this.updateStatus(`❌ Speech error. Click voice button to try again or click image to type.`);
-                }
-            };
+            // Initialize UI
+            this.initializeUI();
             
-            this.recognition.onend = () => {
-                this.isListening = false;
-                if (!this.pendingAnnotationText) {
-                    voiceBtn.textContent = '🎤 Voice';
-                    voiceBtn.className = 'btn-voice';
-                    this.updateStatus('🎯 Click on image for precise pinpoint annotation (text will be repositionable)');
-                }
-            };
+            // Set up event listeners
+            this.setupEventListeners();
             
-            voiceBtn.addEventListener('click', () => {
-                if (this.isListening) {
-                    this.recognition.stop();
-                } else {
-                    this.pendingAnnotationText = null;
-                    try {
-                        this.recognition.start();
-                    } catch (error) {
-                        console.error('Error starting speech recognition:', error);
-                        this.updateStatus('❌ Could not start speech recognition. Please check microphone permissions.');
-                    }
-                }
-            });
+            this.isLoading = false;
+            console.log('[Snap Journal] ✅ Annotation system initialized');
             
-        } else {
-            voiceBtn.disabled = true;
-            voiceBtn.style.opacity = '0.5';
-            voiceBtn.title = 'Speech recognition not supported in this browser';
+        } catch (error) {
+            console.error('[Snap Journal] ❌ Failed to initialize annotation system:', error);
+            this.showError('Failed to initialize annotation system');
         }
     }
-    
-    setupImageClickHandler(img, container) {
-        img.addEventListener('click', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
+
+    async loadScreenshotData() {
+        try {
+            // Try to get from Chrome storage first
+            const result = await chrome.storage.local.get(['currentScreenshot']);
             
-            console.log('🎯 === PRECISION COORDINATE CALCULATION START ===');
-            
-            const imgRect = img.getBoundingClientRect();
-            
-            // PRECISION FIX: Account for the red dot's transform: translate(-50%, -50%)
-            // The red dot's center should align with the click point
-            const clickX = Math.round(e.clientX - imgRect.left);
-            const clickY = Math.round(e.clientY - imgRect.top);
-            
-            console.log('🎯 PRECISION ANALYSIS:', {
-                mousePosition: { x: e.clientX, y: e.clientY },
-                imageRect: { left: imgRect.left, top: imgRect.top, width: imgRect.width, height: imgRect.height },
-                clickRelativeToImage: { x: clickX, y: clickY },
-                method: 'PRECISION_WITH_TRANSFORM_COMPENSATION'
-            });
-            
-            let annotationText = this.pendingAnnotationText;
-            
-            if (!annotationText) {
-                annotationText = prompt('Enter annotation text:');
-                if (!annotationText || !annotationText.trim()) {
-                    console.log('❌ User cancelled or entered empty text');
-                    return;
-                }
+            if (result.currentScreenshot) {
+                this.screenshot = result.currentScreenshot;
+                this.annotations = this.screenshot.annotations || [];
+                this.annotationCounter = this.annotations.length;
+            } else {
+                throw new Error('No screenshot data found');
             }
             
-            const annotation = {
-                id: Date.now().toString(),
-                text: annotationText.trim(),
-                // Store the exact click coordinates
-                x: clickX,
-                y: clickY,
-                textX: clickX + 60,
-                textY: clickY - 30,
-                timestamp: new Date().toISOString(),
-                debug: {
-                    method: 'PRECISION_COORDINATE_CALCULATION',
-                    mouseEvent: { clientX: e.clientX, clientY: e.clientY },
-                    imageRect: imgRect,
-                    calculatedCoordinates: { x: clickX, y: clickY }
-                }
-            };
-            
-            console.log('🎯 PRECISION ANNOTATION CREATED:', annotation);
-            console.log('🎯 === PRECISION COORDINATE CALCULATION END ===');
-            
-            await this.addAnnotation(annotation, container, img);
-            
-            this.pendingAnnotationText = null;
-            const voiceBtn = document.getElementById('voiceBtn');
-            if (voiceBtn) {
-                voiceBtn.textContent = '🎤 Voice';
-                voiceBtn.className = 'btn-voice';
-            }
-            
-            this.updateStatus('✅ Precision coordinates applied! Red dot should align perfectly.');
-        });
-    }
-    
-    async addAnnotation(annotation, container, img) {
-        this.annotations.push(annotation);
-        this.createAnnotationMarker(container, img, annotation, this.annotations.length - 1);
-        
-        // Update annotation count
-        const countBadge = container.querySelector('.annotation-count');
-        if (countBadge) {
-            countBadge.textContent = this.annotations.length;
+        } catch (error) {
+            console.error('[Snap Journal] ❌ Failed to load screenshot data:', error);
+            throw error;
         }
-        
-        // Save to storage
-        await this.saveAnnotationsToStorage();
     }
-    
-    createAnnotationMarker(container, img, annotation, index) {
-        console.log(`🔧 Creating annotation ${index + 1} with PRECISION positioning and VISIBLE dashed arrows`);
+
+    initializeUI() {
+        // Display the screenshot
+        this.displayScreenshot();
         
-        // Use coordinates exactly as calculated 
-        const exactX = annotation.x;
-        const exactY = annotation.y;
-        const exactTextX = annotation.textX || (annotation.x + 60);
-        const exactTextY = annotation.textY || (annotation.y - 30);
+        // Initialize annotation controls  
+        this.initializeControls();
         
-        console.log('🎯 PRECISION COORDINATES:', {
-            annotationId: annotation.id,
-            redDotPosition: `(${exactX}, ${exactY})`,
-            textPosition: `(${exactTextX}, ${exactTextY})`
-        });
+        // Display existing annotations
+        this.displayExistingAnnotations();
         
-        // Create annotation system container positioned exactly over the image
-        const annotationSystem = document.createElement('div');
-        annotationSystem.className = 'annotation-system';
-        annotationSystem.style.cssText = `
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1000;
-        `;
+        console.log('[Snap Journal] ✅ UI initialized');
+    }
+
+    displayScreenshot() {
+        const imageContainer = document.getElementById('imageContainer');
+        const img = document.getElementById('screenshotImage');
         
-        // PRECISION FIX: Create red dot with exact positioning
-        const pinpoint = document.createElement('div');
-        pinpoint.className = 'annotation-pinpoint';
-        pinpoint.style.cssText = `
-            position: absolute;
-            left: ${exactX}px;
-            top: ${exactY}px;
-            width: 16px;
-            height: 16px;
-            background-color: #ff0000;
-            border: 3px solid #ffffff;
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            cursor: move;
-            pointer-events: auto;
-            z-index: 1002;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.5);
-        `;
+        if (!img || !this.screenshot) return;
         
-        // Create text label with exact positioning
-        const textLabel = document.createElement('div');
-        textLabel.className = 'annotation-text-label';
-        textLabel.style.cssText = `
-            position: absolute;
-            left: ${exactTextX}px;
-            top: ${exactTextY}px;
-            transform: translate(-50%, -50%);
-            cursor: move;
-            pointer-events: auto;
-            z-index: 1003;
-            background-color: rgba(255, 255, 255, 0.98);
-            color: #000000;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 600;
-            font-family: Arial, sans-serif;
-            border: 2px solid #ff0000;
-            box-shadow: 0 3px 8px rgba(0,0,0,0.4);
-            max-width: 220px;
-            word-wrap: break-word;
-        `;
-        textLabel.textContent = annotation.text;
-        
-        // DASHED ARROW FIX: Create properly sized and visible SVG arrow
-        const arrow = this.createDashedArrow();
-        
-        // Arrow update function with enhanced debugging
-        const updateArrow = () => {
-            const pinX = parseFloat(pinpoint.style.left);
-            const pinY = parseFloat(pinpoint.style.top);
-            const labelX = parseFloat(textLabel.style.left);
-            const labelY = parseFloat(textLabel.style.top);
+        img.src = this.screenshot.imageData;
+        img.onload = () => {
+            // Update screenshot dimensions
+            this.screenshot.displayWidth = img.naturalWidth;
+            this.screenshot.displayHeight = img.naturalHeight;
             
-            console.log(`🔗 Updating arrow for annotation ${annotation.id}:`, {
-                pinPosition: `(${pinX}, ${pinY})`,
-                labelPosition: `(${labelX}, ${labelY})`
+            // Update container size
+            imageContainer.style.width = img.offsetWidth + 'px';
+            imageContainer.style.height = img.offsetHeight + 'px';
+            
+            console.log('[Snap Journal] 📏 Image loaded:', {
+                width: img.offsetWidth,
+                height: img.offsetHeight,
+                naturalWidth: img.naturalWidth,
+                naturalHeight: img.naturalHeight
             });
-            
-            this.updateDashedArrowPosition(arrow, pinX, pinY, labelX, labelY);
+        };
+    }
+
+    initializeControls() {
+        // Save button
+        const saveBtn = document.getElementById('saveBtn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => this.saveAnnotations());
+        }
+
+        // Clear all button
+        const clearBtn = document.getElementById('clearAllBtn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => this.clearAllAnnotations());
+        }
+
+        // Close button
+        const closeBtn = document.getElementById('closeBtn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => window.close());
+        }
+    }
+
+    setupEventListeners() {
+        const imageContainer = document.getElementById('imageContainer');
+        const img = document.getElementById('screenshotImage');
+        
+        if (!img || !imageContainer) return;
+        
+        // Click to add annotation
+        img.addEventListener('click', (e) => this.handleImageClick(e));
+        
+        // Prevent context menu
+        img.addEventListener('contextmenu', (e) => e.preventDefault());
+        
+        // Handle drag events for annotations
+        imageContainer.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+        imageContainer.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+        imageContainer.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+        
+        console.log('[Snap Journal] ✅ Event listeners set up');
+    }
+
+    handleImageClick(e) {
+        if (this.isLoading) return;
+        
+        // Get click coordinates relative to image
+        const rect = e.target.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        // Calculate relative coordinates (0-1)
+        const relativeX = x / e.target.offsetWidth;
+        const relativeY = y / e.target.offsetHeight;
+        
+        console.log('[Snap Journal] 📍 Image clicked at:', { x, y, relativeX, relativeY });
+        
+        // Add annotation
+        this.addAnnotation(x, y, relativeX, relativeY);
+    }
+
+    addAnnotation(x, y, relativeX, relativeY) {
+        this.annotationCounter++;
+        
+        const annotation = {
+            id: `annotation_${Date.now()}_${this.annotationCounter}`,
+            x: x,
+            y: y,
+            relativeX: relativeX,
+            relativeY: relativeY,
+            text: `Annotation ${this.annotationCounter}`,
+            timestamp: new Date().toISOString(),
+            markerVisible: true,
+            textVisible: true
         };
         
-        // Make elements draggable
-        this.makeDraggable(textLabel, annotation, updateArrow, 'text');
-        this.makeDraggable(pinpoint, annotation, updateArrow, 'pin');
+        this.annotations.push(annotation);
+        this.renderAnnotation(annotation);
         
-        // DEBUG: Add verification crosshair (temporary)
-        const debugCrosshair = document.createElement('div');
-        debugCrosshair.style.cssText = `
-            position: absolute;
-            left: ${exactX}px;
-            top: ${exactY}px;
-            width: 30px;
-            height: 30px;
-            pointer-events: none;
-            z-index: 9999;
-        `;
-        debugCrosshair.innerHTML = `
-            <div style="position: absolute; left: 50%; top: 0; width: 2px; height: 30px; background: lime; transform: translateX(-50%);"></div>
-            <div style="position: absolute; left: 0; top: 50%; width: 30px; height: 2px; background: lime; transform: translateY(-50%);"></div>
-        `;
-        
-        // Remove crosshair after verification period
+        // Focus on text input for immediate editing
         setTimeout(() => {
-            if (debugCrosshair.parentNode) {
-                debugCrosshair.parentNode.removeChild(debugCrosshair);
+            const textElement = document.getElementById(`text_${annotation.id}`);
+            if (textElement) {
+                textElement.focus();
+                textElement.select();
             }
-        }, 8000);
+        }, 100);
         
-        // Double-click to edit text
-        textLabel.addEventListener('dblclick', (e) => {
-            e.stopPropagation();
-            const newText = prompt('Edit annotation:', annotation.text);
-            if (newText !== null && newText.trim() !== annotation.text) {
-                annotation.text = newText.trim() || 'No text';
-                textLabel.textContent = annotation.text;
-                this.saveAnnotationsToStorage();
-            }
-        });
+        console.log('[Snap Journal] ✅ Added annotation:', annotation);
+    }
+
+    renderAnnotation(annotation) {
+        const imageContainer = document.getElementById('imageContainer');
+        if (!imageContainer) return;
         
-        // Assemble annotation system (order is important for layering)
-        annotationSystem.appendChild(arrow);          // Bottom layer
-        annotationSystem.appendChild(debugCrosshair); // Verification layer  
-        annotationSystem.appendChild(pinpoint);       // Red dot
-        annotationSystem.appendChild(textLabel);      // Top layer
+        // Create marker element
+        const marker = document.createElement('div');
+        marker.id = `marker_${annotation.id}`;
+        marker.className = 'annotation-marker';
+        marker.style.left = (annotation.x - 8) + 'px';
+        marker.style.top = (annotation.y - 8) + 'px';
+        marker.setAttribute('data-annotation-id', annotation.id);
+        
+        // Create text element
+        const textElement = document.createElement('div');
+        textElement.id = `text_${annotation.id}`;
+        textElement.className = 'annotation-text';
+        textElement.contentEditable = true;
+        textElement.textContent = annotation.text;
+        textElement.setAttribute('data-annotation-id', annotation.id);
+        
+        // Position text element
+        const textX = Math.max(0, Math.min(annotation.x + 20, imageContainer.offsetWidth - 200));
+        const textY = Math.max(0, annotation.y - 10);
+        textElement.style.left = textX + 'px';
+        textElement.style.top = textY + 'px';
+        
+        // Create arrow SVG
+        const arrow = this.createArrow(annotation.id, annotation.x, annotation.y, textX + 10, textY + 10);
+        
+        // Add event listeners
+        this.addAnnotationEventListeners(marker, textElement, annotation);
         
         // Add to container
-        container.appendChild(annotationSystem);
+        imageContainer.appendChild(marker);
+        imageContainer.appendChild(textElement);
+        imageContainer.appendChild(arrow);
         
-        // Initialize arrow positioning
-        updateArrow();
-        
-        console.log('✅ PRECISION annotation system created with VISIBLE dashed arrow');
-        console.log('🎯 Lime crosshair shows exact click point - compare with red dot for 8 seconds');
+        // Update arrow position
+        this.updateArrow(annotation.id);
     }
-    
-    createDashedArrow() {
-        console.log('🔗 Creating ENHANCED dashed arrow with better visibility');
+
+    createArrow(annotationId, startX, startY, endX, endY) {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.id = `arrow_${annotationId}`;
+        svg.className = 'annotation-arrow';
+        svg.style.position = 'absolute';
+        svg.style.top = '0';
+        svg.style.left = '0';
+        svg.style.pointerEvents = 'none';
+        svg.style.zIndex = '9';
         
-        const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        arrow.setAttribute('class', 'annotation-arrow-enhanced');
-        arrow.style.cssText = `
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1001;
-            overflow: visible;
-        `;
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('stroke', '#ff0000');
+        line.setAttribute('stroke-width', '3');
+        line.setAttribute('stroke-dasharray', '5,5');
+        line.setAttribute('opacity', '0.9');
         
-        // Enhanced dashed line with better visibility
-        const arrowLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        arrowLine.setAttribute('stroke', '#ff4444');
-        arrowLine.setAttribute('stroke-width', '3');
-        arrowLine.setAttribute('stroke-dasharray', '8,6');
-        arrowLine.setAttribute('stroke-linecap', 'round');
-        arrowLine.setAttribute('opacity', '0.9');
-        
-        // Enhanced arrowhead with better visibility
-        const arrowHead = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-        arrowHead.setAttribute('fill', '#ff4444');
-        arrowHead.setAttribute('stroke', '#ffffff');
-        arrowHead.setAttribute('stroke-width', '2');
-        arrowHead.setAttribute('opacity', '0.9');
-        
-        arrow.appendChild(arrowLine);
-        arrow.appendChild(arrowHead);
-        
-        console.log('✅ Enhanced dashed arrow created with improved visibility');
-        return arrow;
+        svg.appendChild(line);
+        return svg;
     }
-    
-    updateDashedArrowPosition(arrow, pinX, pinY, labelX, labelY) {
-        const dx = labelX - pinX;
-        const dy = labelY - pinY;
-        const length = Math.sqrt(dx * dx + dy * dy);
+
+    updateArrow(annotationId) {
+        const marker = document.getElementById(`marker_${annotationId}`);
+        const textElement = document.getElementById(`text_${annotationId}`);
+        const arrow = document.getElementById(`arrow_${annotationId}`);
         
-        const arrowLine = arrow.querySelector('line');
-        const arrowHead = arrow.querySelector('polygon');
+        if (!marker || !textElement || !arrow) return;
         
-        console.log(`🔗 Updating dashed arrow position: distance=${length.toFixed(1)}px`);
+        const markerRect = marker.getBoundingClientRect();
+        const textRect = textElement.getBoundingClientRect();
+        const containerRect = document.getElementById('imageContainer').getBoundingClientRect();
         
-        if (length > 25) { // Show arrow if distance is reasonable
-            const angle = Math.atan2(dy, dx);
-            const labelRadius = 30; // Distance from label center to arrow end
-            const endX = labelX - Math.cos(angle) * labelRadius;
-            const endY = labelY - Math.sin(angle) * labelRadius;
-            
-            // Set line coordinates
-            arrowLine.setAttribute('x1', pinX);
-            arrowLine.setAttribute('y1', pinY);
-            arrowLine.setAttribute('x2', endX);
-            arrowLine.setAttribute('y2', endY);
-            
-            // Create arrowhead
-            const headSize = 10;
-            const headAngle = angle + Math.PI; // Point towards the line direction
-            const head1X = endX + Math.cos(headAngle + 0.4) * headSize;
-            const head1Y = endY + Math.sin(headAngle + 0.4) * headSize;
-            const head2X = endX + Math.cos(headAngle - 0.4) * headSize;
-            const head2Y = endY + Math.sin(headAngle - 0.4) * headSize;
-            
-            arrowHead.setAttribute('points', `${endX},${endY} ${head1X},${head1Y} ${head2X},${head2Y}`);
-            
-            // Make arrow visible
-            arrow.style.display = 'block';
-            arrowLine.style.display = 'block';
-            arrowHead.style.display = 'block';
-            
-            console.log('✅ Dashed arrow positioned and made VISIBLE');
-        } else {
-            // Hide arrow when elements are too close
+        // Calculate positions relative to container
+        const startX = markerRect.left - containerRect.left + 8;
+        const startY = markerRect.top - containerRect.top + 8;
+        const endX = textRect.left - containerRect.left + 10;
+        const endY = textRect.top - containerRect.top + 10;
+        
+        // Calculate distance
+        const distance = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+        
+        // Hide arrow if text is too close to marker
+        if (distance < 30) {
             arrow.style.display = 'none';
-            console.log('🔗 Arrow hidden (elements too close)');
+            return;
+        } else {
+            arrow.style.display = 'block';
         }
+        
+        // Update SVG size and position
+        const minX = Math.min(startX, endX);
+        const minY = Math.min(startY, endY);
+        const maxX = Math.max(startX, endX);
+        const maxY = Math.max(startY, endY);
+        
+        arrow.style.left = minX + 'px';
+        arrow.style.top = minY + 'px';
+        arrow.setAttribute('width', (maxX - minX + 10));
+        arrow.setAttribute('height', (maxY - minY + 10));
+        
+        // Update line coordinates
+        const line = arrow.querySelector('line');
+        line.setAttribute('x1', startX - minX);
+        line.setAttribute('y1', startY - minY);
+        line.setAttribute('x2', endX - minX);
+        line.setAttribute('y2', endY - minY);
     }
-    
-    makeDraggable(element, annotation, updateCallback, type) {
+
+    addAnnotationEventListeners(marker, textElement, annotation) {
+        // Text editing
+        textElement.addEventListener('input', () => {
+            annotation.text = textElement.textContent;
+        });
+        
+        textElement.addEventListener('blur', () => {
+            this.saveAnnotations();
+        });
+        
+        // Double-click to edit
+        textElement.addEventListener('dblclick', () => {
+            textElement.focus();
+            document.execCommand('selectAll');
+        });
+        
+        // Make elements draggable
+        this.makeDraggable(marker, annotation, 'marker');
+        this.makeDraggable(textElement, annotation, 'text');
+        
+        // Delete on right-click
+        marker.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            this.deleteAnnotation(annotation.id);
+        });
+        
+        textElement.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            this.deleteAnnotation(annotation.id);
+        });
+    }
+
+    makeDraggable(element, annotation, type) {
         let isDragging = false;
-        let dragOffset = { x: 0, y: 0 };
+        let startX, startY, startElementX, startElementY;
         
         element.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
+            if (e.button !== 0) return; // Only left click
+            
             isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            startElementX = parseInt(element.style.left);
+            startElementY = parseInt(element.style.top);
             
-            const rect = element.parentElement.getBoundingClientRect();
-            const elementX = parseFloat(element.style.left);
-            const elementY = parseFloat(element.style.top);
-            
-            dragOffset.x = e.clientX - rect.left - elementX;
-            dragOffset.y = e.clientY - rect.top - elementY;
-            
-            // Add dragging class for enhanced visibility
-            element.classList.add('dragging');
             element.style.cursor = 'grabbing';
+            e.preventDefault();
         });
         
-        const handleMouseMove = (e) => {
-            if (isDragging) {
-                const rect = element.parentElement.getBoundingClientRect();
-                // Use Math.round for precise positioning
-                const newX = Math.round(e.clientX - rect.left - dragOffset.x);
-                const newY = Math.round(e.clientY - rect.top - dragOffset.y);
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+            
+            const newX = startElementX + deltaX;
+            const newY = startElementY + deltaY;
+            
+            element.style.left = newX + 'px';
+            element.style.top = newY + 'px';
+            
+            // Update annotation coordinates
+            if (type === 'marker') {
+                annotation.x = newX + 8;
+                annotation.y = newY + 8;
                 
-                element.style.left = newX + 'px';
-                element.style.top = newY + 'px';
-                
-                // SIMPLIFIED: Update coordinates directly (display coordinates, rounded)
-                if (type === 'text') {
-                    annotation.textX = newX;
-                    annotation.textY = newY;
-                    
-                    console.log('📝 Text dragged to (precise):', { x: newX, y: newY });
-                } else {
-                    annotation.x = newX;
-                    annotation.y = newY;
-                    
-                    console.log('🔴 Red dot dragged to (precise):', { x: newX, y: newY });
+                // Update relative coordinates
+                const img = document.getElementById('screenshotImage');
+                if (img) {
+                    annotation.relativeX = annotation.x / img.offsetWidth;
+                    annotation.relativeY = annotation.y / img.offsetHeight;
                 }
-                
-                updateCallback();
             }
-        };
+            
+            // Update arrow
+            this.updateArrow(annotation.id);
+        });
         
-        const handleMouseUp = () => {
+        document.addEventListener('mouseup', () => {
             if (isDragging) {
                 isDragging = false;
-                // Remove dragging class
-                element.classList.remove('dragging');
-                element.style.cursor = type === 'text' ? 'move' : 'grab';
-                
-                console.log(`✅ ${type === 'text' ? 'Text' : 'Red dot'} final position (precise):`, {
-                    x: (type === 'text' ? annotation.textX : annotation.x),
-                    y: (type === 'text' ? annotation.textY : annotation.y)
-                });
-                
-                this.saveAnnotationsToStorage();
+                element.style.cursor = 'grab';
+                this.saveAnnotations();
             }
-        };
-        
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-    }
-    
-    renderExistingAnnotations(container, img) {
-        console.log('Rendering existing annotations:', this.annotations.length);
-        
-        this.annotations.forEach((annotation, index) => {
-            this.createAnnotationMarker(container, img, annotation, index);
         });
+        
+        element.style.cursor = 'grab';
     }
-    
-    async saveAnnotationsToStorage() {
-        try {
-            console.log('💾 === SAVING ANNOTATIONS TO PRIMARY STORAGE (IndexedDB) ===');
-            
-            // Get current image for analysis
-            const img = document.querySelector('.screenshot-image');
-            
-            console.log('📐 IMAGE DIMENSION ANALYSIS:', {
-                imgDisplaySize: `${img.offsetWidth}x${img.offsetHeight}`,
-                imgNaturalSize: `${img.naturalWidth}x${img.naturalHeight}`,
-                originalCaptureSize: `${this.screenshot.originalCaptureWidth}x${this.screenshot.originalCaptureHeight}`,
-                storageSize: `${this.screenshot.storageWidth}x${this.screenshot.storageHeight}`
-            });
-            
-            // FIXED: Use natural dimensions (actual image pixels) as reference instead of original capture
-            // This eliminates the scaling mismatch
-            const displayToStorageScaleX = img.naturalWidth / img.offsetWidth;
-            const displayToStorageScaleY = img.naturalHeight / img.offsetHeight;
-            
-            console.log('📐 CORRECTED COORDINATE CONVERSION (using natural dimensions):', {
-                displayToNaturalScale: `${displayToStorageScaleX.toFixed(6)}x, ${displayToStorageScaleY.toFixed(6)}`,
-                isExactMatch: Math.abs(displayToStorageScaleX - 1.0) < 0.001 && Math.abs(displayToStorageScaleY - 1.0) < 0.001,
-                coordinateSystem: 'NATURAL_IMAGE_DIMENSIONS'
-            });
-            
-            // Convert all annotation coordinates using natural image dimensions
-            const annotationsForStorage = this.annotations.map((annotation, index) => {
-                const storageX = annotation.x * displayToStorageScaleX;
-                const storageY = annotation.y * displayToStorageScaleY;
-                const storageTextX = annotation.textX * displayToStorageScaleX;
-                const storageTextY = annotation.textY * displayToStorageScaleY;
-                
-                console.log(`📍 Annotation ${index + 1} corrected conversion:`, {
-                    displayCoords: `(${annotation.x.toFixed(1)}, ${annotation.y.toFixed(1)})`,
-                    naturalCoords: `(${storageX.toFixed(1)}, ${storageY.toFixed(1)})`,
-                    scale: `${displayToStorageScaleX.toFixed(3)}x`
-                });
-                
-                return {
-                    ...annotation,
-                    x: storageX,
-                    y: storageY,
-                    textX: storageTextX,
-                    textY: storageTextY
-                };
-            });
-            
-            // Update the screenshot object with converted coordinates
-            this.screenshot.annotations = annotationsForStorage;
-            
-            console.log('💾 ANNOTATIONS CONVERTED USING NATURAL DIMENSIONS:', annotationsForStorage);
-            
-            // Save to PRIMARY STORAGE (IndexedDB) with proper error handling
-            try {
-                // Check if we're in a Chrome extension context
-                if (typeof chrome !== 'undefined' && chrome.runtime) {
-                    console.log('💾 Saving to PRIMARY IndexedDB storage...');
-                    
-                    // Send message to background/popup to save via TempStorageManager
-                    chrome.runtime.sendMessage({
-                        action: 'saveAnnotatedScreenshot',
-                        screenshot: this.screenshot
-                    }, (response) => {
-                        if (response && response.success) {
-                            console.log('✅ Annotations saved to PRIMARY storage (IndexedDB)');
-                            console.log('💾 === SAVE COMPLETE ===');
-                            this.updateStatus('✅ Annotations saved successfully to unlimited storage!');
-                        } else {
-                            console.warn('⚠️ Failed to save to PRIMARY storage:', response?.error);
-                            this.updateStatus('⚠️ Failed to save annotations - please try again');
-                        }
-                    });
-                } else {
-                    // Not in Chrome extension context - annotations are saved in memory only
-                    console.log('ℹ️ Running outside Chrome extension - annotations saved locally');
-                    this.updateStatus('✅ Annotations saved locally (extension mode required for persistence)');
-                }
-            } catch (storageError) {
-                // Silently handle storage errors - don't spam console
-                console.log('ℹ️ Primary storage save not available:', storageError.message);
-                this.updateStatus('✅ Annotations saved locally');
+
+    deleteAnnotation(annotationId) {
+        const confirmed = confirm('Delete this annotation?');
+        if (!confirmed) return;
+        
+        // Remove from annotations array
+        this.annotations = this.annotations.filter(a => a.id !== annotationId);
+        
+        // Remove elements from DOM
+        const marker = document.getElementById(`marker_${annotationId}`);
+        const textElement = document.getElementById(`text_${annotationId}`);
+        const arrow = document.getElementById(`arrow_${annotationId}`);
+        
+        if (marker) marker.remove();
+        if (textElement) textElement.remove();
+        if (arrow) arrow.remove();
+        
+        this.saveAnnotations();
+        console.log('[Snap Journal] 🗑️ Deleted annotation:', annotationId);
+    }
+
+    displayExistingAnnotations() {
+        if (!this.annotations || this.annotations.length === 0) return;
+        
+        this.annotations.forEach(annotation => {
+            // Recalculate absolute positions from relative coordinates
+            const img = document.getElementById('screenshotImage');
+            if (img && annotation.relativeX !== undefined && annotation.relativeY !== undefined) {
+                annotation.x = annotation.relativeX * img.offsetWidth;
+                annotation.y = annotation.relativeY * img.offsetHeight;
             }
-        } catch (error) {
-            console.error('❌ Error saving annotations:', error);
-            this.updateStatus('❌ Failed to save annotations');
-        }
+            
+            this.renderAnnotation(annotation);
+        });
+        
+        console.log('[Snap Journal] ✅ Displayed existing annotations:', this.annotations.length);
     }
-    
-    updateStatus(message) {
-        const status = document.getElementById('status');
-        if (status) {
-            status.textContent = message;
-        }
-    }
-    
-    showError(message) {
+
+    clearAllAnnotations() {
+        const confirmed = confirm('Clear all annotations? This cannot be undone.');
+        if (!confirmed) return;
+        
+        // Remove all annotation elements
         const imageContainer = document.getElementById('imageContainer');
-        imageContainer.innerHTML = `<div class="error">❌ ${message}</div>`;
+        const markers = imageContainer.querySelectorAll('.annotation-marker');
+        const texts = imageContainer.querySelectorAll('.annotation-text');
+        const arrows = imageContainer.querySelectorAll('.annotation-arrow');
+        
+        markers.forEach(m => m.remove());
+        texts.forEach(t => t.remove());
+        arrows.forEach(a => a.remove());
+        
+        // Clear annotations array
+        this.annotations = [];
+        this.annotationCounter = 0;
+        
+        this.saveAnnotations();
+        console.log('[Snap Journal] 🧹 Cleared all annotations');
+    }
+
+    async saveAnnotations() {
+        try {
+            if (!this.screenshot) return;
+            
+            // Update screenshot with current annotations
+            this.screenshot.annotations = this.annotations;
+            this.screenshot.lastModified = new Date().toISOString();
+            
+            // Save to storage
+            await this.tempStorage.saveScreenshot(this.screenshot);
+            
+            // Update status
+            this.showStatus('Annotations saved', 'success');
+            
+            console.log('[Snap Journal] 💾 Annotations saved:', this.annotations.length);
+            
+        } catch (error) {
+            console.error('[Snap Journal] ❌ Failed to save annotations:', error);
+            this.showStatus('Failed to save annotations', 'error');
+        }
+    }
+
+    // Drag and drop handlers
+    handleMouseDown(e) {
+        // Handled by individual element event listeners
+    }
+
+    handleMouseMove(e) {
+        // Handled by document-level mousemove listener
+    }
+
+    handleMouseUp(e) {
+        // Handled by document-level mouseup listener
+    }
+
+    showStatus(message, type = 'info') {
+        const statusElement = document.getElementById('statusMessage');
+        if (!statusElement) return;
+        
+        statusElement.textContent = message;
+        statusElement.className = `status-message ${type}`;
+        statusElement.style.display = 'block';
+        
+        setTimeout(() => {
+            statusElement.style.display = 'none';
+        }, 3000);
+    }
+
+    showError(message) {
+        this.showStatus(message, 'error');
+        console.error('[Snap Journal] ❌', message);
     }
 }
 
-// Initialize when page loads
+// Initialize annotation system
+let annotationSystem;
+
 document.addEventListener('DOMContentLoaded', () => {
-    new UniversalAnnotator();
+    annotationSystem = new AnnotationSystem();
 });
+
+// Make available globally for debugging
+window.annotationSystem = annotationSystem;
+
+// Handle page unload
+window.addEventListener('beforeunload', () => {
+    if (annotationSystem && annotationSystem.annotations.length > 0) {
+        annotationSystem.saveAnnotations();
+    }
+});
+
+// Export for testing
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = AnnotationSystem;
+}

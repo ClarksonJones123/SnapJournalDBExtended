@@ -1,163 +1,273 @@
-// Background script for Screenshot Annotator
-console.log('🚀 Screenshot Annotator background script loaded');
+/*
+ * ==================================================================================
+ * SNAP JOURNAL - Medical Grade Screenshot Annotation Extension
+ * ==================================================================================
+ * 
+ * background.js - Service Worker for Chrome Extension APIs
+ * 
+ * Copyright (C) 2025 Snap Journal Development Team
+ * All rights reserved.
+ * 
+ * PROPRIETARY AND CONFIDENTIAL
+ * 
+ * NOTICE: This software and its source code are proprietary products of 
+ * Snap Journal Development Team and are protected by copyright law and 
+ * international treaties. Unauthorized reproduction or distribution of this 
+ * program, or any portion of it, may result in severe civil and criminal 
+ * penalties, and will be prosecuted to the maximum extent possible under law.
+ * 
+ * RESTRICTIONS:
+ * - No part of this source code may be reproduced, distributed, or transmitted
+ *   in any form or by any means, including photocopying, recording, or other
+ *   electronic or mechanical methods, without the prior written permission
+ *   of the copyright owner.
+ * - Reverse engineering, decompilation, or disassembly is strictly prohibited.
+ * - This software is licensed, not sold.
+ * 
+ * For licensing inquiries, contact: [your-email@domain.com]
+ * 
+ * Version: 2.0.1
+ * Build Date: January 2025
+ * ==================================================================================
+ */
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('📨 Background received message:', {
-    action: message.action,
-    sender: sender.tab ? `Tab ${sender.tab.id}: ${sender.tab.url}` : 'Extension popup',
-    timestamp: new Date().toISOString()
-  });
-  
-  if (message.action === 'ping') {
-    console.log('🏓 Ping received');
-    sendResponse({ success: true, message: 'Extension background is working!' });
-    return true;
-  }
-  
-  if (message.action === 'captureVisibleTab') {
-    console.log('📸 Starting visible tab capture...');
-    
-    try {
-      chrome.tabs.captureVisibleTab(
-        null,
-        { format: 'png', quality: 100 },
-        (dataUrl) => {
-          if (chrome.runtime.lastError) {
-            console.error('❌ Capture error:', chrome.runtime.lastError);
-            console.error('❌ Error message:', chrome.runtime.lastError.message);
-            sendResponse({ 
-              success: false, 
-              error: chrome.runtime.lastError.message 
-            });
-          } else if (!dataUrl) {
-            console.error('❌ No data URL returned from capture');
-            sendResponse({ 
-              success: false, 
-              error: 'No screenshot data returned' 
-            });
-          } else {
-            console.log('✅ Screenshot captured successfully');
-            console.log('📏 Data URL length:', dataUrl.length, 'characters');
-            console.log('📏 Data URL prefix:', dataUrl.substring(0, 50) + '...');
-            
-            sendResponse({ 
-              success: true, 
-              imageData: dataUrl 
-            });
-          }
-        }
-      );
-    } catch (captureError) {
-      console.error('❌ Exception during capture:', captureError);
-      sendResponse({ 
-        success: false, 
-        error: `Capture exception: ${captureError.message}` 
-      });
-    }
-    
-    return true; // Keep message channel open for async response
-  }
-  
-  if (message.action === 'saveAnnotatedScreenshot') {
-    console.log('📝 Annotation save request received for screenshot:', message.screenshot?.id);
-    
-    // Forward to popup if it's open, otherwise handle in background
-    chrome.runtime.sendMessage(message, (response) => {
-      if (chrome.runtime.lastError) {
-        // Popup might be closed, save to Chrome storage as fallback
-        console.log('💾 Popup not responding, saving to Chrome storage as fallback');
-        
-        chrome.storage.local.get('screenshots').then((result) => {
-          const screenshots = result.screenshots || [];
-          const index = screenshots.findIndex(s => s.id === message.screenshot.id);
-          
-          if (index !== -1) {
-            screenshots[index] = message.screenshot;
-            return chrome.storage.local.set({ screenshots: screenshots });
-          } else {
-            throw new Error('Screenshot not found for annotation save');
-          }
-        }).then(() => {
-          console.log('✅ Annotations saved via background script');
-          sendResponse({ success: true });
-        }).catch((error) => {
-          console.error('❌ Background annotation save failed:', error);
-          sendResponse({ success: false, error: error.message });
-        });
-      } else {
-        sendResponse(response);
-      }
-    });
-    
-    return true; // Keep message channel open
-  }
-  
-  console.log('❓ Unknown action received:', message.action);
-  sendResponse({ success: false, error: `Unknown action: ${message.action}` });
-});
+console.log('[Snap Journal] 🚀 Service Worker initializing...');
 
-// Monitor storage changes
-chrome.storage.onChanged.addListener((changes, areaName) => {
-  console.log('💾 Storage change detected:', {
-    area: areaName,
-    keys: Object.keys(changes),
-    timestamp: new Date().toISOString()
-  });
-  
-  if (areaName === 'local' && changes.screenshots) {
-    const oldValue = changes.screenshots.oldValue || [];
-    const newValue = changes.screenshots.newValue || [];
-    
-    console.log('📸 Screenshots storage updated:', {
-      oldCount: oldValue.length,
-      newCount: newValue.length,
-      change: newValue.length - oldValue.length
-    });
-    
-    // Calculate memory usage
-    let totalSize = 0;
-    newValue.forEach(screenshot => {
-      if (screenshot.imageData) {
-        totalSize += screenshot.imageData.length;
-      }
-    });
-    
-    const totalSizeKB = Math.round(totalSize / 1024);
-    const totalSizeMB = Math.round(totalSize / (1024 * 1024));
-    
-    console.log('📊 Memory usage calculation:', {
-      totalSize: totalSize,
-      sizeKB: totalSizeKB,
-      sizeMB: totalSizeMB
-    });
-    
-    // Warn if memory usage is high
-    if (totalSize > 50 * 1024 * 1024) { // 50MB
-      console.warn('⚠️ High memory usage detected:', totalSizeMB, 'MB');
-    }
-  }
-});
-
-// Installation handler
+// Handle extension installation
 chrome.runtime.onInstalled.addListener((details) => {
-  console.log('🎉 Screenshot Annotator installed/updated:', {
-    reason: details.reason,
-    version: chrome.runtime.getManifest().version,
-    timestamp: new Date().toISOString()
-  });
-  
-  // Clear any existing data on fresh install
-  if (details.reason === 'install') {
-    console.log('🧹 Clearing storage on fresh install...');
-    chrome.storage.local.clear().then(() => {
-      console.log('✅ Storage cleared for fresh install');
-    }).catch((error) => {
-      console.error('❌ Failed to clear storage on install:', error);
-    });
-  }
+    console.log('[Snap Journal] ✅ Extension installed:', details.reason);
+    
+    if (details.reason === 'install') {
+        // First-time installation
+        console.log('[Snap Journal] 🎉 Welcome to Snap Journal!');
+        
+        // Set up default settings
+        chrome.storage.local.set({
+            'snapJournalSettings': {
+                version: '2.0.1',
+                installDate: new Date().toISOString(),
+                debugMode: false,
+                autoSave: true
+            }
+        });
+    } else if (details.reason === 'update') {
+        // Extension update
+        console.log('[Snap Journal] 🔄 Extension updated to version 2.0.1');
+    }
 });
 
-// Startup handler
+// Handle extension startup
 chrome.runtime.onStartup.addListener(() => {
-  console.log('🚀 Extension starting up at:', new Date().toISOString());
+    console.log('[Snap Journal] 🌅 Extension startup');
 });
+
+// Handle messages from popup and content scripts
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    console.log('[Snap Journal] 📨 Message received:', request);
+    
+    switch (request.action) {
+        case 'captureScreenshot':
+            handleCaptureScreenshot(request, sender, sendResponse);
+            return true; // Keep channel open for async response
+            
+        case 'openAnnotationWindow':
+            handleOpenAnnotationWindow(request, sender, sendResponse);
+            return true;
+            
+        case 'pdfExportCompleted':
+            handlePdfExportCompleted(request, sender, sendResponse);
+            break;
+            
+        case 'getExtensionInfo':
+            sendResponse({
+                version: '2.0.1',
+                name: 'Snap Journal',
+                copyright: '© 2025 Snap Journal Development Team'
+            });
+            break;
+            
+        default:
+            console.log('[Snap Journal] ⚠️ Unknown message action:', request.action);
+            sendResponse({ error: 'Unknown action' });
+    }
+});
+
+// Handle screenshot capture requests
+async function handleCaptureScreenshot(request, sender, sendResponse) {
+    try {
+        console.log('[Snap Journal] 📸 Handling screenshot capture request');
+        
+        // Get the active tab
+        const [activeTab] = await chrome.tabs.query({ 
+            active: true, 
+            currentWindow: true 
+        });
+        
+        if (!activeTab) {
+            throw new Error('No active tab found');
+        }
+        
+        console.log('[Snap Journal] 📍 Capturing tab:', {
+            title: activeTab.title,
+            url: activeTab.url,
+            id: activeTab.id
+        });
+        
+        // Capture the visible tab
+        const dataUrl = await chrome.tabs.captureVisibleTab(activeTab.windowId, {
+            format: 'png',
+            quality: 100
+        });
+        
+        console.log('[Snap Journal] ✅ Screenshot captured successfully');
+        
+        // Send response with screenshot data
+        sendResponse({
+            success: true,
+            dataUrl: dataUrl,
+            tabInfo: {
+                title: activeTab.title,
+                url: activeTab.url,
+                id: activeTab.id,
+                timestamp: new Date().toISOString()
+            }
+        });
+        
+    } catch (error) {
+        console.error('[Snap Journal] ❌ Screenshot capture failed:', error);
+        
+        sendResponse({
+            success: false,
+            error: error.message
+        });
+    }
+}
+
+// Handle annotation window opening
+async function handleOpenAnnotationWindow(request, sender, sendResponse) {
+    try {
+        console.log('[Snap Journal] 🪟 Opening annotation window');
+        
+        const annotationUrl = chrome.runtime.getURL('annotation.html');
+        
+        // Create new window for annotation
+        const window = await chrome.windows.create({
+            url: annotationUrl,
+            type: 'popup',
+            width: 1200,
+            height: 800,
+            focused: true
+        });
+        
+        console.log('[Snap Journal] ✅ Annotation window opened:', window.id);
+        
+        sendResponse({
+            success: true,
+            windowId: window.id
+        });
+        
+    } catch (error) {
+        console.error('[Snap Journal] ❌ Failed to open annotation window:', error);
+        
+        sendResponse({
+            success: false,
+            error: error.message
+        });
+    }
+}
+
+// Handle PDF export completion notifications
+function handlePdfExportCompleted(request, sender, sendResponse) {
+    console.log('[Snap Journal] 📄 PDF export completed:', request);
+    
+    // Could trigger notifications or cleanup here
+    if (request.success) {
+        console.log('[Snap Journal] ✅ PDF export successful');
+    } else {
+        console.error('[Snap Journal] ❌ PDF export failed:', request.error);
+    }
+    
+    sendResponse({ acknowledged: true });
+}
+
+// Handle tab updates for potential screenshot capture
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    // Only log significant changes to avoid spam
+    if (changeInfo.status === 'complete') {
+        console.log('[Snap Journal] 📄 Tab loaded:', {
+            id: tabId,
+            title: tab.title,
+            url: tab.url
+        });
+    }
+});
+
+// Handle window focus changes
+chrome.windows.onFocusChanged.addListener((windowId) => {
+    if (windowId !== chrome.windows.WINDOW_ID_NONE) {
+        console.log('[Snap Journal] 🔍 Window focused:', windowId);
+    }
+});
+
+// Cleanup on extension suspension
+chrome.runtime.onSuspend.addListener(() => {
+    console.log('[Snap Journal] 😴 Extension suspending...');
+});
+
+// Handle extension uninstall
+chrome.runtime.setUninstallURL('https://forms.gle/feedback');
+
+// Periodic cleanup and maintenance
+chrome.alarms.create('maintenance', {
+    delayInMinutes: 60, // Run every hour
+    periodInMinutes: 60
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === 'maintenance') {
+        console.log('[Snap Journal] 🔧 Running periodic maintenance');
+        performMaintenance();
+    }
+});
+
+async function performMaintenance() {
+    try {
+        // Clean up old temporary data
+        const result = await chrome.storage.local.get(null);
+        const keys = Object.keys(result);
+        
+        // Remove temporary keys older than 24 hours
+        const cutoffTime = Date.now() - (24 * 60 * 60 * 1000);
+        const keysToRemove = [];
+        
+        keys.forEach(key => {
+            if (key.startsWith('temp_') || key.startsWith('cache_')) {
+                const data = result[key];
+                if (data && data.timestamp && data.timestamp < cutoffTime) {
+                    keysToRemove.push(key);
+                }
+            }
+        });
+        
+        if (keysToRemove.length > 0) {
+            await chrome.storage.local.remove(keysToRemove);
+            console.log('[Snap Journal] 🧹 Cleaned up temporary data:', keysToRemove.length);
+        }
+        
+        console.log('[Snap Journal] ✅ Maintenance completed');
+        
+    } catch (error) {
+        console.error('[Snap Journal] ❌ Maintenance failed:', error);
+    }
+}
+
+// Error handling for unhandled errors
+self.addEventListener('error', (event) => {
+    console.error('[Snap Journal] ❌ Unhandled error in service worker:', event.error);
+});
+
+self.addEventListener('unhandledrejection', (event) => {
+    console.error('[Snap Journal] ❌ Unhandled promise rejection in service worker:', event.reason);
+});
+
+console.log('[Snap Journal] ✅ Service Worker initialized successfully');
