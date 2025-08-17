@@ -1,8 +1,15 @@
-# 🌐 Universal Screenshot Annotator - Medical Grade
+# 📸 Snap Journal - Medical Grade Screenshot Annotation
 
 > **BREAKTHROUGH: Works on ANY page with ZERO limitations!**
 
-A professional-grade browser extension for precise screenshot annotation with medical-imaging quality. Features draggable text labels, 360° rotatable arrows, and pinpoint precision - **now works universally on any webpage including restricted pages!**
+A professional-grade Chrome extension for precise screenshot annotation with medical-imaging quality. Features draggable text labels, 360° rotatable arrows, and pinpoint precision - **now works universally on any webpage including restricted pages!**
+
+**🚀 Complete Documentation Available:**
+- 📚 **[USER_MANUAL.md](USER_MANUAL.md)** - Complete user guide
+- ⚡ **[QUICK_START_GUIDE.md](QUICK_START_GUIDE.md)** - Get started in 2 minutes
+- 🚀 **[INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md)** - Detailed setup instructions
+- 🔧 **[FEATURE_DOCUMENTATION.md](FEATURE_DOCUMENTATION.md)** - Complete feature reference
+- 🛠️ **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Solutions for common issues
 
 ## ✨ **Key Features**
 
