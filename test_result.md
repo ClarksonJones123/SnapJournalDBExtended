@@ -492,10 +492,15 @@ metadata:
 
 test_plan:
   current_focus:
-    - "IndexedDB async handling fixes for PDF export"
+    - "Chrome Web Store compliance audit"
+    - "Security and CSP validation"
+    - "End-to-end functionality testing"
+    - "IndexedDB operations and schema repair"
+    - "PDF export with timestamps and spacing"
+    - "Performance and scalability analysis"
   stuck_tasks: []
-  test_all: false
-  test_priority: "high_first"
+  test_all: true
+  test_priority: "production_readiness"
 
 agent_communication:
     - agent: "testing"
