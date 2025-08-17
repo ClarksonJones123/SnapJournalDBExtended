@@ -1,36 +1,3 @@
-/*
- * ==================================================================================
- * SNAP JOURNAL - Medical Grade Screenshot Annotation Extension
- * ==================================================================================
- * 
- * pdf-export-init.js - PDF Export Window Initialization Script
- * 
- * Copyright (C) 2025 Snap Journal Development Team
- * All rights reserved.
- * 
- * PROPRIETARY AND CONFIDENTIAL
- * 
- * NOTICE: This software and its source code are proprietary products of 
- * Snap Journal Development Team and are protected by copyright law and 
- * international treaties. Unauthorized reproduction or distribution of this 
- * program, or any portion of it, may result in severe civil and criminal 
- * penalties, and will be prosecuted to the maximum extent possible under law.
- * 
- * RESTRICTIONS:
- * - No part of this source code may be reproduced, distributed, or transmitted
- *   in any form or by any means, including photocopying, recording, or other
- *   electronic or mechanical methods, without the prior written permission
- *   of the copyright owner.
- * - Reverse engineering, decompilation, or disassembly is strictly prohibited.
- * - This software is licensed, not sold.
- * 
- * For licensing inquiries, contact: [your-email@domain.com]
- * 
- * Version: 2.0.1
- * Build Date: January 2025
- * ==================================================================================
- */
-
 // PDF Export Initialization Script
 // This script handles the initialization of the PDF export window
 // It's loaded separately to comply with Content Security Policy requirements
@@ -39,7 +6,6 @@
     'use strict';
     
     console.log('[Snap Journal PDF Init] 🚀 PDF export initialization script loading...');
-    console.log('[Snap Journal PDF Init] © 2025 Snap Journal Development Team - All Rights Reserved');
     
     // Wait for DOM to be ready
     if (document.readyState === 'loading') {
