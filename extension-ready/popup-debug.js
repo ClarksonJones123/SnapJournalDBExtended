@@ -52,12 +52,12 @@ class PopupDebugger {
     const requiredElements = [
       'captureBtn',
       'annotateBtn', 
-      'clearBtn',
+      'clearAllBtn',
       'exportPdfBtn',
-      'screenshotsList',
+      'screenshotGrid',
       'memoryUsage',
       'screenshotCount',
-      'status'
+      'statusMessage'
     ];
     
     let missingElements = [];
