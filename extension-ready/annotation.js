@@ -178,7 +178,20 @@ class AnnotationSystem {
             const textElement = document.getElementById(`text_${annotation.id}`);
             if (textElement) {
                 textElement.focus();
-                textElement.select();
+                
+                // Select all text in contentEditable div
+                if (window.getSelection && document.createRange) {
+                    const selection = window.getSelection();
+                    const range = document.createRange();
+                    range.selectNodeContents(textElement);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                } else if (document.selection && document.body.createTextRange) {
+                    // Fallback for older browsers
+                    const range = document.body.createTextRange();
+                    range.moveToElementText(textElement);
+                    range.select();
+                }
             }
         }, 100);
         
