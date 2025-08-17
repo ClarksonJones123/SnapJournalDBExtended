@@ -84,9 +84,9 @@
 ## 🔧 **Quick Installation**
 
 ### **For End Users:**
-1. Download from [Chrome Web Store](https://chrome.google.com/webstore) (coming soon)
-2. Click "Add to Chrome" and confirm permissions
-3. Pin extension to toolbar for easy access
+1. **Read the documentation**: Start with [QUICK_START_GUIDE.md](extension-ready/QUICK_START_GUIDE.md)
+2. **Installation**: Follow [INSTALLATION_GUIDE.md](extension-ready/INSTALLATION_GUIDE.md)
+3. **Chrome Web Store**: Coming soon - automatic installation and updates
 
 ### **For Developers (Manual Installation):**
 1. Download or clone this repository
