@@ -168,17 +168,24 @@
 - **Content Security Policy** - Strict CSP preventing XSS attacks
 - **Regular Security Audits** - Comprehensive vulnerability testing
 
-## 📚 **Documentation**
+## 📚 **Documentation Resources**
 
-### **User Documentation**
-- **[User Guide](extension-ready/docs/USER_GUIDE.md)** - Complete installation and usage instructions
-- **[Troubleshooting](extension-ready/docs/TROUBLESHOOTING.md)** - Common issues and solutions
-- **[Privacy Policy](extension-ready/docs/PRIVACY_POLICY.md)** - Data handling and privacy practices
+### **📖 Primary User Documentation**
+**Start here for complete information:**
+- **[USER_MANUAL.md](extension-ready/USER_MANUAL.md)** - Complete user guide with all features
+- **[QUICK_START_GUIDE.md](extension-ready/QUICK_START_GUIDE.md)** - Get started in 2 minutes
+- **[INSTALLATION_GUIDE.md](extension-ready/INSTALLATION_GUIDE.md)** - Step-by-step setup
+- **[FEATURE_DOCUMENTATION.md](extension-ready/FEATURE_DOCUMENTATION.md)** - Complete feature reference
+- **[TROUBLESHOOTING.md](extension-ready/TROUBLESHOOTING.md)** - Solutions for all issues
 
-### **Developer Documentation**
-- **[API Reference](extension-ready/docs/API_REFERENCE.md)** - Technical implementation details
-- **[Development Guide](extension-ready/docs/DEVELOPMENT.md)** - Setup and contribution instructions
-- **[Changelog](extension-ready/docs/CHANGELOG.md)** - Version history and updates
+### **🔧 Technical Documentation**
+**For developers and advanced users:**
+- **[docs/API_REFERENCE.md](extension-ready/docs/API_REFERENCE.md)** - Technical implementation details
+- **[docs/README.md](extension-ready/docs/README.md)** - Documentation directory overview
+- **[docs/PRIVACY_POLICY.md](extension-ready/docs/PRIVACY_POLICY.md)** - Privacy practices
+- **[docs/CHANGELOG.md](extension-ready/docs/CHANGELOG.md)** - Version history
+
+**🎯 For most users, start with the [QUICK_START_GUIDE.md](extension-ready/QUICK_START_GUIDE.md) and then reference the [USER_MANUAL.md](extension-ready/USER_MANUAL.md) as needed.**
 
 ## 🚀 **Production Status**
 
