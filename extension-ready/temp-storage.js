@@ -1,36 +1,3 @@
-/*
- * ==================================================================================
- * SNAP JOURNAL - Medical Grade Screenshot Annotation Extension
- * ==================================================================================
- * 
- * temp-storage.js - Unlimited IndexedDB Storage Manager
- * 
- * Copyright (C) 2025 Snap Journal Development Team
- * All rights reserved.
- * 
- * PROPRIETARY AND CONFIDENTIAL
- * 
- * NOTICE: This software and its source code are proprietary products of 
- * Snap Journal Development Team and are protected by copyright law and 
- * international treaties. Unauthorized reproduction or distribution of this 
- * program, or any portion of it, may result in severe civil and criminal 
- * penalties, and will be prosecuted to the maximum extent possible under law.
- * 
- * RESTRICTIONS:
- * - No part of this source code may be reproduced, distributed, or transmitted
- *   in any form or by any means, including photocopying, recording, or other
- *   electronic or mechanical methods, without the prior written permission
- *   of the copyright owner.
- * - Reverse engineering, decompilation, or disassembly is strictly prohibited.
- * - This software is licensed, not sold.
- * 
- * For licensing inquiries, contact: [your-email@domain.com]
- * 
- * Version: 2.0.1
- * Build Date: January 2025
- * ==================================================================================
- */
-
 class TempStorageManager {
     constructor() {
         this.dbName = 'SnapJournalDB';
@@ -39,16 +6,7 @@ class TempStorageManager {
         this.isReady = false;
         this.initPromise = null;
         
-        // Copyright and licensing information
-        this.metadata = {
-            name: 'Snap Journal Storage Manager',
-            version: '2.0.1',
-            copyright: '© 2025 Snap Journal Development Team',
-            license: 'Proprietary - All Rights Reserved'
-        };
-        
-        console.log(`[Snap Journal Storage] 🚀 Initializing ${this.metadata.name} v${this.metadata.version}`);
-        console.log(`[Snap Journal Storage] © ${this.metadata.copyright}`);
+        console.log('[Snap Journal Storage] 🚀 Initializing Storage Manager v2.0.1');
     }
 
     async init() {
@@ -480,8 +438,7 @@ class TempStorageManager {
                 currentUsage: totalSizeMB > 10 ? 
                     `${totalSizeMB}MB (Would exceed Chrome storage!)` : 
                     `${totalSizeMB}MB`,
-                storageMethod: 'IndexedDB',
-                copyright: this.metadata.copyright
+                storageMethod: 'IndexedDB'
             };
             
             console.log('[Snap Journal Storage] 📊 Storage stats:', stats);
@@ -546,7 +503,6 @@ class TempStorageManager {
             const stats = await this.getStorageStats();
             
             return {
-                metadata: this.metadata,
                 screenshots: screenshots,
                 stats: stats,
                 dbInfo: {
