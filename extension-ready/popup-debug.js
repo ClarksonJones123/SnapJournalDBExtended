@@ -83,11 +83,18 @@ class PopupDebugger {
     this.log('Checking storage...');
     
     try {
-      if (typeof chrome !== 'undefined' && chrome.storage) {
-        const result = await chrome.storage.local.get('screenshots');
-        const screenshots = result.screenshots || [];
+      // Check IndexedDB first (primary storage)
+      if (typeof TempStorageManager !== 'undefined') {
+        this.log('✅ TempStorageManager available, checking IndexedDB...');
         
-        this.log(`📊 Found ${screenshots.length} screenshots in storage`);
+        const tempStorage = new TempStorageManager();
+        await tempStorage.init();
+        
+        const screenshots = await tempStorage.getAllScreenshots();
+        const stats = await tempStorage.getStorageStats();
+        
+        this.log(`📊 IndexedDB: Found ${screenshots.length} screenshots`);
+        this.log(`📊 Storage stats:`, stats);
         
         if (screenshots.length > 0) {
           this.log('Screenshots data:', screenshots.map(s => ({
@@ -96,33 +103,19 @@ class PopupDebugger {
             timestamp: s.timestamp,
             hasImageData: !!s.imageData,
             imageDataSize: s.imageData ? Math.round(s.imageData.length / 1024) + ' KB' : 'N/A',
-            annotations: s.annotations ? s.annotations.length : 0,
-            hasOriginalCapture: !!(s.originalCaptureWidth && s.originalCaptureHeight),
-            coordinateSystem: s.originalCaptureWidth ? 'NEW_SYSTEM' : 'OLD_SYSTEM'
+            annotations: s.annotations ? s.annotations.length : 0
           })));
-          
-          // Check if screenshots have required properties
-          screenshots.forEach((screenshot, index) => {
-            const required = ['id', 'imageData', 'title', 'timestamp'];
-            const missing = required.filter(prop => !screenshot[prop]);
-            
-            if (missing.length > 0) {
-              this.error(`Screenshot ${index} missing properties:`, missing);
-            } else {
-              this.log(`✅ Screenshot ${index} has all required properties`);
-            }
-            
-            // Check coordinate system
-            if (screenshot.originalCaptureWidth && screenshot.originalCaptureHeight) {
-              this.log(`✅ Screenshot ${index} uses NEW coordinate system (${screenshot.originalCaptureWidth}x${screenshot.originalCaptureHeight})`);
-            } else {
-              this.error(`⚠️ Screenshot ${index} uses OLD coordinate system - may have coordinate issues`);
-            }
-          });
-          
-        } else {
-          this.log('ℹ️ No screenshots found in storage');
         }
+        
+      } else {
+        this.error('❌ TempStorageManager not available');
+      }
+      
+      // Also check Chrome storage as fallback
+      if (typeof chrome !== 'undefined' && chrome.storage) {
+        const result = await chrome.storage.local.get('screenshots');
+        const chromeScreenshots = result.screenshots || [];
+        this.log(`📊 Chrome Storage: Found ${chromeScreenshots.length} screenshots`);
         
         // Check storage quota
         if (chrome.storage.local.getBytesInUse) {
@@ -130,10 +123,10 @@ class PopupDebugger {
           const quota = chrome.storage.local.QUOTA_BYTES || 10485760;
           const usagePercent = Math.round((bytesInUse / quota) * 100);
           
-          this.log(`💾 Storage usage: ${Math.round(bytesInUse/1024)} KB / ${Math.round(quota/1024)} KB (${usagePercent}%)`);
+          this.log(`💾 Chrome Storage usage: ${Math.round(bytesInUse/1024)} KB / ${Math.round(quota/1024)} KB (${usagePercent}%)`);
           
           if (usagePercent > 90) {
-            this.error('⚠️ Storage quota nearly full - may cause save issues');
+            this.error('⚠️ Chrome storage quota nearly full - may cause save issues');
           }
         }
         
