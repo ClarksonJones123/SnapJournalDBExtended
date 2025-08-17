@@ -1,4 +1,4 @@
-# 🔧 Screenshot Annotator - API Reference
+# 🔧 Snap Journal - API Reference
 
 ## 📋 **Technical Documentation for Developers**
 
