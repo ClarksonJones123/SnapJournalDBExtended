@@ -229,7 +229,7 @@ class AnnotationSystem {
     createArrow(annotationId, startX, startY, endX, endY) {
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.id = `arrow_${annotationId}`;
-        svg.className = 'annotation-arrow';
+        svg.setAttribute('class', 'annotation-arrow');
         svg.style.position = 'absolute';
         svg.style.top = '0';
         svg.style.left = '0';
