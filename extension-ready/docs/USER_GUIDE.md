@@ -1,4 +1,4 @@
-# 📚 Screenshot Annotator - Complete User Guide
+# 📚 Snap Journal - Complete User Guide
 
 ## 🚀 **Getting Started**
 
