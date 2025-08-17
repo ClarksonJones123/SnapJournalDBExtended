@@ -472,8 +472,18 @@ Version: 2.0.1 - Build Date: January 2025
 
     <div class="annotation-area">
         <div class="image-container" id="imageContainer">
+            <img id="screenshotImage" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
             <div class="loading" id="loading">Loading screenshot...</div>
         </div>
+    </div>
+
+    <!-- Status Message -->
+    <div id="statusMessage" style="padding: 8px; margin: 10px; border-radius: 4px; text-align: center; display: none;"></div>
+
+    <!-- Action Buttons -->
+    <div style="padding: 10px; text-align: center; border-top: 1px solid #eee;">
+        <button id="saveBtn" style="padding: 8px 16px; margin: 0 5px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">💾 Save</button>
+        <button id="clearAllBtn" style="padding: 8px 16px; margin: 0 5px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">🗑️ Clear All</button>
     </div>
 
     <script src="debug-embedded.js"></script>
