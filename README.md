@@ -1,11 +1,29 @@
-# 🏥 Screenshot Annotator - Universal Medical Grade Extension
+# 📸 Snap Journal - Medical Grade Screenshot Annotation Extension
 
 > **Production-ready Chrome extension for medical-grade screenshot annotation with unlimited storage and professional PDF export capabilities.**
 
 [![Chrome Web Store Ready](https://img.shields.io/badge/Chrome%20Web%20Store-Ready-green.svg)](https://chrome.google.com/webstore)
-[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)]()
+[![Version](https://img.shields.io/badge/version-2.0.1-blue.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-yellow.svg)]()
 [![Production Ready](https://img.shields.io/badge/status-Production%20Ready-brightgreen.svg)]()
+[![Documentation Complete](https://img.shields.io/badge/docs-Complete-brightgreen.svg)]()
+
+## 📚 **Complete Documentation Suite**
+
+**🎯 NEW: Comprehensive user documentation now available!**
+
+### **📖 User Documentation (Primary)**
+- **[USER_MANUAL.md](extension-ready/USER_MANUAL.md)** - Complete user manual with all features
+- **[QUICK_START_GUIDE.md](extension-ready/QUICK_START_GUIDE.md)** - Get started in under 2 minutes
+- **[INSTALLATION_GUIDE.md](extension-ready/INSTALLATION_GUIDE.md)** - Detailed setup instructions
+- **[FEATURE_DOCUMENTATION.md](extension-ready/FEATURE_DOCUMENTATION.md)** - Complete feature reference
+- **[TROUBLESHOOTING.md](extension-ready/TROUBLESHOOTING.md)** - Solutions for all common issues
+
+### **🔧 Technical Documentation (Supplementary)**
+- **[docs/API_REFERENCE.md](extension-ready/docs/API_REFERENCE.md)** - Technical API documentation
+- **[docs/USER_GUIDE.md](extension-ready/docs/USER_GUIDE.md)** - Legacy user guide
+- **[docs/TROUBLESHOOTING.md](extension-ready/docs/TROUBLESHOOTING.md)** - Legacy troubleshooting
+- **[docs/README.md](extension-ready/docs/README.md)** - Documentation directory overview
 
 ## 🚀 **Production Features**
 
