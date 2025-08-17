@@ -6,7 +6,7 @@
 
 #### **From Chrome Web Store (Recommended)**
 1. Visit the [Chrome Web Store](https://chrome.google.com/webstore)
-2. Search for "Screenshot Annotator - Universal"
+2. Search for "Snap Journal"
 3. Click **"Add to Chrome"**
 4. Confirm permissions when prompted
 5. Pin the extension to your toolbar for easy access
