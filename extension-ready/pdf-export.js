@@ -1,52 +1,10 @@
-/*
- * ==================================================================================
- * SNAP JOURNAL - Medical Grade Screenshot Annotation Extension
- * ==================================================================================
- * 
- * pdf-export.js - Professional PDF Generation System
- * 
- * Copyright (C) 2025 Snap Journal Development Team
- * All rights reserved.
- * 
- * PROPRIETARY AND CONFIDENTIAL
- * 
- * NOTICE: This software and its source code are proprietary products of 
- * Snap Journal Development Team and are protected by copyright law and 
- * international treaties. Unauthorized reproduction or distribution of this 
- * program, or any portion of it, may result in severe civil and criminal 
- * penalties, and will be prosecuted to the maximum extent possible under law.
- * 
- * RESTRICTIONS:
- * - No part of this source code may be reproduced, distributed, or transmitted
- *   in any form or by any means, including photocopying, recording, or other
- *   electronic or mechanical methods, without the prior written permission
- *   of the copyright owner.
- * - Reverse engineering, decompilation, or disassembly is strictly prohibited.
- * - This software is licensed, not sold.
- * 
- * For licensing inquiries, contact: [your-email@domain.com]
- * 
- * Version: 2.0.1
- * Build Date: January 2025
- * ==================================================================================
- */
-
 class PDFJournalExporter {
     constructor() {
         this.tempStorage = null;
         this.isInitialized = false;
         this.exportData = null;
         
-        // Copyright and version information
-        this.metadata = {
-            name: 'Snap Journal PDF Exporter',
-            version: '2.0.1',
-            copyright: '© 2025 Snap Journal Development Team',
-            license: 'Proprietary - All Rights Reserved'
-        };
-        
-        console.log(`[Snap Journal PDF] 🚀 Initializing ${this.metadata.name} v${this.metadata.version}`);
-        console.log(`[Snap Journal PDF] © ${this.metadata.copyright}`);
+        console.log('[Snap Journal PDF] 🚀 Initializing PDF Exporter v2.0.1');
     }
 
     async init() {
