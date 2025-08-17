@@ -394,9 +394,11 @@ class PDFJournalExporter {
                     pdfWidth = (maxImageHeight * imageAspectRatio) + horizontalSpacing;
                 }
             } else {
-                // Fallback to A4
-                pdfWidth = 210;
-                pdfHeight = 297;
+                // Fallback to A4 with space for timestamp and spacing
+                const timestampHeight = 20;
+                const horizontalSpacing = 20;
+                pdfWidth = 210 + horizontalSpacing;
+                pdfHeight = 297 + timestampHeight;
             }
             
             console.log('📄 PDF dimensions calculated:', { width: pdfWidth, height: pdfHeight });
