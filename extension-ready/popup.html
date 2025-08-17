@@ -338,6 +338,23 @@ Build Date: January 2025
 
   <div id="statusMessage" class="status hidden"></div>
 
+  <!-- Storage Statistics Section -->
+  <div id="storageStats" class="storage-stats" style="margin: 10px 0; padding: 8px; background: #f8f9fa; border-radius: 4px; font-size: 12px;">
+    <div class="storage-info">Loading storage information...</div>
+  </div>
+
+  <!-- Debug Panel Section -->
+  <div id="debugPanel" class="debug-panel" style="display: none; margin: 10px 0; padding: 8px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px;">
+    <div style="display: flex; align-items: center; margin-bottom: 8px;">
+      <label style="font-size: 12px; font-weight: bold; margin-right: 8px;">Debug Mode:</label>
+      <input type="checkbox" id="debugToggle" style="margin-right: 4px;">
+      <span style="font-size: 11px; color: #666;">Enable debug logging</span>
+    </div>
+    <div id="debugInfo" style="font-family: monospace; font-size: 10px; max-height: 150px; overflow-y: auto; background: white; padding: 4px; border-radius: 2px;">
+      Debug information will appear here...
+    </div>
+  </div>
+
   <div class="controls">
     <button id="captureBtn" class="btn-primary">
       📷 Capture & Annotate (ANY PAGE!)
