@@ -591,4 +591,4 @@ const analytics = {
 
 ---
 
-*This API reference covers the complete technical implementation of Screenshot Annotator v2.0.0. For usage examples and workflows, see the [User Guide](USER_GUIDE.md). For troubleshooting, see the [Troubleshooting Guide](TROUBLESHOOTING.md).*
+*This API reference covers the complete technical implementation of Snap Journal v2.0.1. For usage examples and workflows, see the [User Guide](USER_GUIDE.md). For troubleshooting, see the [Troubleshooting Guide](TROUBLESHOOTING.md).*
