@@ -180,8 +180,8 @@ chrome.runtime.onSuspend.addListener(() => {
     console.log('[Snap Journal] 😴 Extension suspending...');
 });
 
-// Handle extension uninstall
-chrome.runtime.setUninstallURL('https://forms.gle/feedback');
+// Note: Uninstall URL can be set here if you have a feedback form
+// chrome.runtime.setUninstallURL('https://your-actual-feedback-url.com');
 
 // Periodic cleanup and maintenance
 chrome.alarms.create('maintenance', {
