@@ -213,7 +213,7 @@
 
 ### **Contributing**
 - Fork the repository and create feature branches
-- Follow the [Development Guide](extension-ready/docs/DEVELOPMENT.md) for setup
+- Follow the [docs/API_REFERENCE.md](extension-ready/docs/API_REFERENCE.md) for technical guidelines
 - Submit pull requests with comprehensive testing
 - Maintain Chrome Web Store compliance standards
 
