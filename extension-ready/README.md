@@ -156,3 +156,55 @@ From the most restricted Chrome internal pages to secure healthcare portals - me
 ---
 
 **Perfect for radiologists, medical professionals, technical writers, QA engineers, educators, and anyone requiring precise visual documentation across all digital environments.**
+
+---
+
+## 📚 **Complete Documentation Suite**
+
+### **📖 User Documentation**
+- **[USER_MANUAL.md](USER_MANUAL.md)** - Comprehensive user guide with all features
+- **[QUICK_START_GUIDE.md](QUICK_START_GUIDE.md)** - Get started in under 2 minutes
+- **[INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md)** - Step-by-step setup instructions
+
+### **🔧 Technical Documentation**
+- **[FEATURE_DOCUMENTATION.md](FEATURE_DOCUMENTATION.md)** - Complete feature reference
+- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Solutions for common issues
+- **[docs/API_REFERENCE.md](docs/API_REFERENCE.md)** - Technical API documentation
+
+### **🎯 Professional Use Cases**
+Snap Journal is designed for professionals who need precise, reliable screenshot annotation:
+
+**🏥 Healthcare & Medical**
+- Radiology documentation (X-rays, MRIs, CT scans)
+- Medical education and training materials
+- Patient documentation and clinical notes
+- HIPAA-compliant local storage
+
+**💼 Corporate & Legal**
+- Quality assurance and bug reporting
+- Compliance documentation with timestamps
+- Technical documentation and user guides
+- Legal evidence collection
+
+**🎓 Academic & Research**
+- Research documentation and analysis
+- Educational content creation
+- Scientific publication materials
+- Course materials and assessments
+
+---
+
+## 🚀 **Quick Installation**
+
+1. **Manual Installation (Recommended)**
+   - Download `/extension-ready/` folder
+   - Open `chrome://extensions/` and enable Developer mode
+   - Click "Load unpacked" and select the folder
+   - Pin extension to toolbar for easy access
+
+2. **First Test**
+   - Go to `chrome://settings/` (restricted page)
+   - Click Snap Journal icon → "📷 Capture Screenshot"
+   - ✅ Works perfectly even on restricted pages!
+
+**📖 For detailed setup instructions, see [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md)**
