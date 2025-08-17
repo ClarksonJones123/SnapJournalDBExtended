@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<!--
+================================================================================
+SNAP JOURNAL - Extension Test Page
+================================================================================
+-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snap Journal - Extension Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { background: #d4edda; border-color: #c3e6cb; }
+        .error { background: #f8d7da; border-color: #f5c6cb; }
+        .info { background: #d1ecf1; border-color: #bee5eb; }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+        }
+        button:hover { background: #0056b3; }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Snap Journal Extension Test</h1>
+    <p>This page tests the core functionality of the Snap Journal extension.</p>
+
+    <div class="test-section info">
+        <h3>🔧 System Information</h3>
+        <div id="systemInfo">Loading...</div>
+    </div>
+
+    <div class="test-section info">
+        <h3>📚 Script Loading Test</h3>
+        <div id="scriptTest">Testing...</div>
+    </div>
+
+    <div class="test-section info">
+        <h3>💾 Storage System Test</h3>
+        <button onclick="testStorage()">Test Storage</button>
+        <div id="storageTest">Click button to test</div>
+    </div>
+
+    <div class="test-section info">
+        <h3>🎯 Chrome API Test</h3>
+        <button onclick="testChromeAPI()">Test Chrome APIs</button>
+        <div id="chromeApiTest">Click button to test</div>
+    </div>
+
+    <div class="test-section info">
+        <h3>📸 Screenshot Test</h3>
+        <button onclick="testScreenshot()">Test Screenshot</button>
+        <div id="screenshotTest">Click button to test</div>
+    </div>
+
+    <div class="test-section info">
+        <h3>📊 Debug Information</h3>
+        <button onclick="showDebugInfo()">Show Debug Info</button>
+        <div id="debugInfo">Click button to show debug info</div>
+    </div>
+
+    <script src="debug-embedded.js"></script>
+    <script src="temp-storage.js"></script>
+    <script>
+        // System Information
+        document.getElementById('systemInfo').innerHTML = `
+            <strong>Browser:</strong> ${navigator.userAgent}<br>
+            <strong>URL:</strong> ${window.location.href}<br>
+            <strong>Timestamp:</strong> ${new Date().toISOString()}
+        `;
+
+        // Test script loading
+        function testScriptLoading() {
+            const results = [];
+            
+            // Test TempStorageManager
+            if (typeof TempStorageManager !== 'undefined') {
+                results.push('✅ TempStorageManager loaded');
+            } else {
+                results.push('❌ TempStorageManager NOT loaded');
+            }
+            
+            // Test debug functions
+            if (typeof debugLog !== 'undefined') {
+                results.push('✅ Debug system loaded');
+            } else {
+                results.push('❌ Debug system NOT loaded');
+            }
+            
+            // Test Chrome APIs
+            if (typeof chrome !== 'undefined') {
+                results.push('✅ Chrome APIs available');
+            } else {
+                results.push('❌ Chrome APIs NOT available');
+            }
+            
+            document.getElementById('scriptTest').innerHTML = results.join('<br>');
+        }
+
+        // Test storage system
+        async function testStorage() {
+            const testDiv = document.getElementById('storageTest');
+            testDiv.innerHTML = 'Testing storage...';
+            
+            try {
+                if (typeof TempStorageManager === 'undefined') {
+                    throw new Error('TempStorageManager not available');
+                }
+                
+                const storage = new TempStorageManager();
+                await storage.init();
+                
+                const stats = await storage.getStorageStats();
+                
+                testDiv.innerHTML = `
+                    <div class="success">
+                        ✅ Storage system working!<br>
+                        <strong>Screenshots:</strong> ${stats.totalScreenshots}<br>
+                        <strong>Storage:</strong> ${stats.currentUsage}<br>
+                        <strong>Capacity:</strong> ${stats.capacity}
+                    </div>
+                `;
+                
+            } catch (error) {
+                testDiv.innerHTML = `
+                    <div class="error">
+                        ❌ Storage test failed:<br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Test Chrome APIs
+        function testChromeAPI() {
+            const testDiv = document.getElementById('chromeApiTest');
+            const results = [];
+            
+            if (typeof chrome === 'undefined') {
+                testDiv.innerHTML = '<div class="error">❌ Chrome APIs not available</div>';
+                return;
+            }
+            
+            // Check various Chrome APIs
+            const apis = [
+                'chrome.runtime',
+                'chrome.storage',
+                'chrome.tabs',
+                'chrome.windows'
+            ];
+            
+            apis.forEach(api => {
+                const parts = api.split('.');
+                let obj = window;
+                let available = true;
+                
+                for (const part of parts) {
+                    if (obj && obj[part]) {
+                        obj = obj[part];
+                    } else {
+                        available = false;
+                        break;
+                    }
+                }
+                
+                if (available) {
+                    results.push(`✅ ${api} available`);
+                } else {
+                    results.push(`❌ ${api} NOT available`);
+                }
+            });
+            
+            testDiv.innerHTML = results.join('<br>');
+        }
+
+        // Test screenshot capability
+        function testScreenshot() {
+            const testDiv = document.getElementById('screenshotTest');
+            testDiv.innerHTML = 'Testing screenshot capability...';
+            
+            if (typeof chrome === 'undefined' || !chrome.tabs) {
+                testDiv.innerHTML = '<div class="error">❌ Chrome tabs API not available</div>';
+                return;
+            }
+            
+            chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+                if (chrome.runtime.lastError) {
+                    testDiv.innerHTML = `<div class="error">❌ ${chrome.runtime.lastError.message}</div>`;
+                    return;
+                }
+                
+                if (tabs && tabs.length > 0) {
+                    testDiv.innerHTML = `
+                        <div class="success">
+                            ✅ Screenshot capability available<br>
+                            <strong>Current tab:</strong> ${tabs[0].title}
+                        </div>
+                    `;
+                } else {
+                    testDiv.innerHTML = '<div class="error">❌ No active tab found</div>';
+                }
+            });
+        }
+
+        // Show debug information
+        function showDebugInfo() {
+            const testDiv = document.getElementById('debugInfo');
+            
+            let debugInfo = 'Debug information:\n';
+            
+            if (typeof getDebugStats !== 'undefined') {
+                try {
+                    const stats = getDebugStats();
+                    debugInfo += JSON.stringify(stats, null, 2);
+                } catch (error) {
+                    debugInfo += 'Error getting debug stats: ' + error.message;
+                }
+            } else {
+                debugInfo += 'Debug system not available';
+            }
+            
+            testDiv.innerHTML = `<pre>${debugInfo}</pre>`;
+        }
+
+        // Run tests on load
+        window.addEventListener('load', () => {
+            testScriptLoading();
+            
+            // Log test page load
+            if (typeof debugLog !== 'undefined') {
+                debugLog('🧪 Extension test page loaded');
+            }
+        });
+    </script>
+</body>
+</html>
